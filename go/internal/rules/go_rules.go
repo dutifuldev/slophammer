@@ -213,6 +213,12 @@ func scopedGoProjectFile(filePath string, file repo.File, root string, roots []s
 	if root == "" {
 		return file, !isUnderOtherGoRoot(filePath, root, roots)
 	}
+	if isRepoRootGoConfigFile(filePath) {
+		return file, true
+	}
+	if isRepoRootCommandFile(filePath) && workflowMentionsGoRoot(file.Content, root, roots) {
+		return file, true
+	}
 	prefix := root + "/"
 	if !strings.HasPrefix(filePath, prefix) || isUnderOtherGoRoot(filePath, root, roots) {
 		return repo.File{}, false
@@ -430,6 +436,19 @@ func isWorkflowWorkingDirectory(line string) bool {
 func isWorkflowFilePath(filePath string) bool {
 	dir, name := path.Split(filePath)
 	return dir == ".github/workflows/" && (strings.HasSuffix(name, ".yml") || strings.HasSuffix(name, ".yaml"))
+}
+
+func isRepoRootGoConfigFile(filePath string) bool {
+	return filePath == ".golangci.yml" || filePath == ".golangci.yaml"
+}
+
+func isRepoRootCommandFile(filePath string) bool {
+	switch filePath {
+	case "Makefile", "Taskfile.yml", "Taskfile.yaml", "justfile":
+		return true
+	default:
+		return strings.HasPrefix(filePath, "scripts/")
+	}
 }
 
 func isEmbeddedFixturePath(filePath string) bool {
