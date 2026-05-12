@@ -1,0 +1,11 @@
+name: CI
+
+jobs:
+  go:
+    steps:
+      - run: go test ./...
+      - run: go vet ./...
+      - run: ./scripts/check-go-coverage.sh
+      - run: ./scripts/check-dry.sh
+      - run: ./scripts/check-crap.sh
+      - run: ./scripts/check-mutation.sh

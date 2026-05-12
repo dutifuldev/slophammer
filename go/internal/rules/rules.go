@@ -29,10 +29,14 @@ type Report struct {
 
 type Definition struct {
 	ID          string
+	Title       string
+	Category    string
 	Severity    Severity
 	Path        string
 	Message     string
 	Description string
+	Tool        string
+	Status      string
 }
 
 type Metadata struct {
@@ -47,32 +51,149 @@ type Rule interface {
 }
 
 const (
-	ReadmeRequiredRuleID = "repo.readme-required"
-	AgentsRequiredRuleID = "repo.agents-required"
-	CIRequiredRuleID     = "repo.ci-required"
+	ReadmeRequiredRuleID       = "repo.readme-required"
+	AgentsRequiredRuleID       = "repo.agents-required"
+	CIRequiredRuleID           = "repo.ci-required"
+	GoModuleRequiredRuleID     = "go.module-required"
+	GoTestsRequiredRuleID      = "go.tests-required"
+	GoVetRequiredRuleID        = "go.vet-required"
+	GoLintRequiredRuleID       = "go.lint-required"
+	GoCoverageRequiredRuleID   = "go.coverage-required"
+	GoComplexityRequiredRuleID = "go.complexity-required"
+	GoDryRequiredRuleID        = "go.dry-required"
+	GoCRAPRequiredRuleID       = "go.crap-required"
+	GoMutationRequiredRuleID   = "go.mutation-required"
 )
 
 var defaultDefinitions = []Definition{
 	{
 		ID:          ReadmeRequiredRuleID,
+		Title:       "README required",
+		Category:    "repo",
 		Severity:    SeverityError,
 		Path:        "README.md",
 		Message:     "README.md is required",
 		Description: "The target repo should have a README.md.",
+		Status:      "implemented",
 	},
 	{
 		ID:          AgentsRequiredRuleID,
+		Title:       "Agent instructions required",
+		Category:    "repo",
 		Severity:    SeverityError,
 		Path:        "AGENTS.md",
 		Message:     "AGENTS.md is required",
 		Description: "The target repo should have an AGENTS.md.",
+		Status:      "implemented",
 	},
 	{
 		ID:          CIRequiredRuleID,
+		Title:       "CI workflow required",
+		Category:    "repo",
 		Severity:    SeverityError,
 		Path:        ".github/workflows",
 		Message:     ".github/workflows must contain at least one .yml or .yaml workflow",
 		Description: "The target repo should have a CI workflow under .github/workflows.",
+		Status:      "implemented",
+	},
+	{
+		ID:          GoModuleRequiredRuleID,
+		Title:       "Go module required",
+		Category:    "go",
+		Severity:    SeverityError,
+		Path:        "go.mod",
+		Message:     "Go projects must include a go.mod file",
+		Description: "Go projects should be Go modules.",
+		Tool:        "go",
+		Status:      "implemented",
+	},
+	{
+		ID:          GoTestsRequiredRuleID,
+		Title:       "Go tests required",
+		Category:    "go",
+		Severity:    SeverityError,
+		Path:        ".github/workflows",
+		Message:     "Go projects must declare go test ./... in CI or scripts",
+		Description: "Go projects should run go test ./... in an inspectable workflow or script.",
+		Tool:        "go test",
+		Status:      "implemented",
+	},
+	{
+		ID:          GoVetRequiredRuleID,
+		Title:       "Go vet required",
+		Category:    "go",
+		Severity:    SeverityError,
+		Path:        ".github/workflows",
+		Message:     "Go projects must declare go vet ./... in CI or scripts",
+		Description: "Go projects should run go vet ./... in an inspectable workflow or script.",
+		Tool:        "go vet",
+		Status:      "implemented",
+	},
+	{
+		ID:          GoLintRequiredRuleID,
+		Title:       "Go lint required",
+		Category:    "go",
+		Severity:    SeverityError,
+		Path:        ".golangci.yml",
+		Message:     "Go projects must configure and declare golangci-lint",
+		Description: "Go projects should configure golangci-lint and declare a lint check in CI or scripts.",
+		Tool:        "golangci-lint",
+		Status:      "implemented",
+	},
+	{
+		ID:          GoCoverageRequiredRuleID,
+		Title:       "Go coverage gate required",
+		Category:    "go",
+		Severity:    SeverityError,
+		Path:        "scripts/check-go-coverage.sh",
+		Message:     "Go projects must declare a coverage gate",
+		Description: "Go projects should enforce coverage with go test coverage output and go tool cover.",
+		Tool:        "go test -coverprofile",
+		Status:      "implemented",
+	},
+	{
+		ID:          GoComplexityRequiredRuleID,
+		Title:       "Go complexity linting required",
+		Category:    "go",
+		Severity:    SeverityError,
+		Path:        ".golangci.yml",
+		Message:     "Go projects must enable a complexity linter",
+		Description: "Go projects should enable a complexity linter through golangci-lint.",
+		Tool:        "golangci-lint",
+		Status:      "implemented",
+	},
+	{
+		ID:          GoDryRequiredRuleID,
+		Title:       "Go DRY check required",
+		Category:    "go",
+		Severity:    SeverityError,
+		Path:        ".github/workflows",
+		Message:     "Go projects must declare dry4go",
+		Description: "Go projects should declare dry4go for structural duplicate detection.",
+		Tool:        "dry4go",
+		Status:      "implemented",
+	},
+	{
+		ID:          GoCRAPRequiredRuleID,
+		Title:       "Go CRAP check required",
+		Category:    "go",
+		Severity:    SeverityError,
+		Path:        ".github/workflows",
+		Message:     "Go projects must declare crap4go",
+		Description: "Go projects should declare crap4go for complexity and coverage risk scoring.",
+		Tool:        "crap4go",
+		Status:      "implemented",
+	},
+	{
+		ID:          GoMutationRequiredRuleID,
+		Title:       "Go mutation check required",
+		Category:    "go",
+		Severity:    SeverityError,
+		Path:        ".github/workflows",
+		Message:     "Go projects must declare mutate4go",
+		Description: "Go projects should declare mutate4go in an inspectable workflow or script.",
+		Tool:        "mutate4go",
+		Status:      "implemented",
 	},
 }
 
@@ -81,11 +202,11 @@ func DefaultDefinitions() []Definition {
 }
 
 func DefaultRules() []Rule {
-	return []Rule{
-		requiredFileRule{definition: mustDefaultDefinition(ReadmeRequiredRuleID)},
-		requiredFileRule{definition: mustDefaultDefinition(AgentsRequiredRuleID)},
-		ciRequiredRule{definition: mustDefaultDefinition(CIRequiredRuleID)},
+	ruleSet := make([]Rule, 0, len(defaultDefinitions))
+	for _, definition := range defaultDefinitions {
+		ruleSet = append(ruleSet, ruleFromDefinition(definition))
 	}
+	return ruleSet
 }
 
 func Run(ctx context.Context, snapshot repo.Snapshot, ruleSet []Rule) Report {
@@ -120,15 +241,6 @@ func Explain(ruleSet []Rule, id string) (string, bool) {
 	return fmt.Sprintf("%s\nseverity: %s\n\n%s\n", metadata.ID, metadata.Severity, metadata.Description), true
 }
 
-func mustDefaultDefinition(id string) Definition {
-	for _, definition := range defaultDefinitions {
-		if definition.ID == id {
-			return definition
-		}
-	}
-	panic("missing default rule definition: " + id)
-}
-
 func (d Definition) Metadata() Metadata {
 	return Metadata{
 		ID:          d.ID,
@@ -137,8 +249,37 @@ func (d Definition) Metadata() Metadata {
 	}
 }
 
+func ruleFromDefinition(definition Definition) Rule {
+	factory, ok := ruleFactories[definition.ID]
+	if !ok {
+		panic("missing rule implementation: " + definition.ID)
+	}
+	return factory(definition)
+}
+
+type ruleFactory func(Definition) Rule
+
+var ruleFactories = map[string]ruleFactory{
+	ReadmeRequiredRuleID:       newRequiredFileRule,
+	AgentsRequiredRuleID:       newRequiredFileRule,
+	CIRequiredRuleID:           newCIRequiredRule,
+	GoModuleRequiredRuleID:     newGoModuleRule,
+	GoTestsRequiredRuleID:      newGoTestsRule,
+	GoVetRequiredRuleID:        newGoVetRule,
+	GoLintRequiredRuleID:       newGoLintRule,
+	GoCoverageRequiredRuleID:   newGoCoverageRule,
+	GoComplexityRequiredRuleID: newGoComplexityRule,
+	GoDryRequiredRuleID:        newGoDryRule,
+	GoCRAPRequiredRuleID:       newGoCRAPRule,
+	GoMutationRequiredRuleID:   newGoMutationRule,
+}
+
 type requiredFileRule struct {
 	definition Definition
+}
+
+func newRequiredFileRule(definition Definition) Rule {
+	return requiredFileRule{definition: definition}
 }
 
 func (r requiredFileRule) Metadata() Metadata {
@@ -159,6 +300,10 @@ func (r requiredFileRule) Check(_ context.Context, snapshot repo.Snapshot) []Fin
 
 type ciRequiredRule struct {
 	definition Definition
+}
+
+func newCIRequiredRule(definition Definition) Rule {
+	return ciRequiredRule{definition: definition}
 }
 
 func (r ciRequiredRule) Metadata() Metadata {

@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "go.dry-required",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Go projects must declare dry4go"
+    }
+  ]
+}

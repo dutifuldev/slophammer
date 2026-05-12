@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "go.coverage-required",
+      "severity": "error",
+      "path": "scripts/check-go-coverage.sh",
+      "message": "Go projects must declare a coverage gate"
+    }
+  ]
+}

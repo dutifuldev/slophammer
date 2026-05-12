@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "go.module-required",
+      "severity": "error",
+      "path": "go.mod",
+      "message": "Go projects must include a go.mod file"
+    }
+  ]
+}

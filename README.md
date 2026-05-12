@@ -45,6 +45,8 @@ The checker should scan a target repository and report findings such as:
 - weak language-specific typing setup
 - missing linting setup
 - missing coverage gate
+- missing Go complexity check
+- missing `dry4go`, `crap4go`, or `mutate4go` declaration
 - documentation that does not follow the repo convention
 
 The shared report model should stay simple:
@@ -93,28 +95,35 @@ the same product contract.
 
 ## Implementation Status
 
-| Language   | Status                                          |
-| ---------- | ----------------------------------------------- |
-| Go         | First slice: check, JSON/text reports, explain  |
-| TypeScript | Planned: same contract as the Go implementation |
-| Python     | Planned: same contract as the Go implementation |
+| Language   | Status                                           |
+| ---------- | ------------------------------------------------ |
+| Go         | Repo and Go guardrail rules with shared fixtures |
+| TypeScript | Planned: same contract as the Go implementation  |
+| Python     | Planned: same contract as the Go implementation  |
 
 ## Shared Rule Set
 
 Start with a small common rule set:
 
-| Rule ID                | Meaning                                       |
-| ---------------------- | --------------------------------------------- |
-| `repo.readme-required` | The target repo should have a `README.md`.    |
-| `repo.agents-required` | The target repo should have an `AGENTS.md`.   |
-| `repo.ci-required`     | The target repo should have a CI workflow.    |
-| `go.tests-required`    | Go projects should run `go test ./...`.       |
-| `go.vet-required`      | Go projects should run `go vet ./...`.        |
-| `ts.strict-required`   | TypeScript projects should use strict mode.   |
-| `ts.no-explicit-any`   | TypeScript projects should reject `any`.      |
-| `python.mypy-required` | Python projects should run mypy.              |
-| `python.ruff-required` | Python projects should run Ruff.              |
-| `docs.simpledoc`       | Docs should follow the repository convention. |
+| Rule ID                  | Meaning                                       |
+| ------------------------ | --------------------------------------------- |
+| `repo.readme-required`   | The target repo should have a `README.md`.    |
+| `repo.agents-required`   | The target repo should have an `AGENTS.md`.   |
+| `repo.ci-required`       | The target repo should have a CI workflow.    |
+| `go.module-required`     | Go projects should include a `go.mod`.        |
+| `go.tests-required`      | Go projects should run `go test ./...`.       |
+| `go.vet-required`        | Go projects should run `go vet ./...`.        |
+| `go.lint-required`       | Go projects should run `golangci-lint`.       |
+| `go.coverage-required`   | Go projects should enforce coverage.          |
+| `go.complexity-required` | Go projects should check complexity.          |
+| `go.dry-required`        | Go projects should declare `dry4go`.          |
+| `go.crap-required`       | Go projects should declare `crap4go`.         |
+| `go.mutation-required`   | Go projects should declare `mutate4go`.       |
+| `ts.strict-required`     | TypeScript projects should use strict mode.   |
+| `ts.no-explicit-any`     | TypeScript projects should reject `any`.      |
+| `python.mypy-required`   | Python projects should run mypy.              |
+| `python.ruff-required`   | Python projects should run Ruff.              |
+| `docs.simpledoc`         | Docs should follow the repository convention. |
 
 The exact shared rule behavior belongs in [Rules](specs/RULES.md) so each
 implementation can share the same contract.

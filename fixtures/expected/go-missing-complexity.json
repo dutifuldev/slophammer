@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "go.complexity-required",
+      "severity": "error",
+      "path": ".golangci.yml",
+      "message": "Go projects must enable a complexity linter"
+    }
+  ]
+}

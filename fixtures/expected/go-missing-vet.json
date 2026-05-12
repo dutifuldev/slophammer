@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "go.vet-required",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Go projects must declare go vet ./... in CI or scripts"
+    }
+  ]
+}
