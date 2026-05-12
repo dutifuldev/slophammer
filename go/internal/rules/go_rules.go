@@ -2,7 +2,9 @@ package rules
 
 import (
 	"context"
+	"path"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/dutifuldev/slophammer/go/internal/repo"
@@ -55,10 +57,16 @@ func (r goStaticRule) Metadata() Metadata {
 }
 
 func (r goStaticRule) Check(_ context.Context, snapshot repo.Snapshot) []Finding {
-	if !isGoProject(snapshot) || r.satisfied(snapshot) {
+	roots := goProjectRoots(snapshot)
+	if len(roots) == 0 {
 		return nil
 	}
-	return []Finding{finding(r.definition)}
+	for _, root := range roots {
+		if !r.satisfied(goProjectSnapshot(snapshot, root, roots)) {
+			return []Finding{finding(r.definition)}
+		}
+	}
+	return nil
 }
 
 func hasGoModule(snapshot repo.Snapshot) bool {
@@ -109,8 +117,98 @@ func hasMutate4GoCommand(snapshot repo.Snapshot) bool {
 	return hasCommand(snapshot, "mutate4go", "github.com/unclebob/mutate4go/cmd/mutate4go")
 }
 
-func isGoProject(snapshot repo.Snapshot) bool {
-	return hasGoModule(snapshot) || len(snapshot.FilesWithSuffix(".go")) > 0 || hasCommand(snapshot, "go test", "go vet")
+func goProjectRoots(snapshot repo.Snapshot) []string {
+	rootsByPath := map[string]struct{}{}
+	for filePath := range snapshot.Files {
+		if isEmbeddedFixturePath(filePath) {
+			continue
+		}
+		if strings.EqualFold(path.Base(filePath), "go.mod") {
+			root := path.Dir(filePath)
+			if root == "." {
+				root = ""
+			}
+			rootsByPath[root] = struct{}{}
+		}
+	}
+	if len(rootsByPath) == 0 && hasUnscopedGoSignal(snapshot) {
+		rootsByPath[""] = struct{}{}
+	}
+	roots := make([]string, 0, len(rootsByPath))
+	for root := range rootsByPath {
+		roots = append(roots, root)
+	}
+	sort.Strings(roots)
+	return roots
+}
+
+func hasUnscopedGoSignal(snapshot repo.Snapshot) bool {
+	for filePath := range snapshot.Files {
+		if isEmbeddedFixturePath(filePath) {
+			continue
+		}
+		if strings.HasSuffix(filePath, ".go") {
+			return true
+		}
+	}
+	return hasCommand(goProjectSnapshot(snapshot, "", []string{""}), "go test", "go vet")
+}
+
+func goProjectSnapshot(snapshot repo.Snapshot, root string, roots []string) repo.Snapshot {
+	files := map[string]repo.File{}
+	for filePath, file := range snapshot.Files {
+		if isEmbeddedFixturePath(filePath) {
+			continue
+		}
+		if isWorkflowFilePath(filePath) {
+			files[filePath] = file
+			continue
+		}
+		if root == "" {
+			if isUnderOtherGoRoot(filePath, root, roots) {
+				continue
+			}
+			files[filePath] = file
+			continue
+		}
+		prefix := root + "/"
+		if !strings.HasPrefix(filePath, prefix) || isUnderOtherGoRoot(filePath, root, roots) {
+			continue
+		}
+		scopedPath := strings.TrimPrefix(filePath, prefix)
+		files[scopedPath] = repo.File{Path: scopedPath, Content: file.Content}
+	}
+	return repo.NewSnapshot(snapshot.Root, files)
+}
+
+func isUnderOtherGoRoot(filePath, root string, roots []string) bool {
+	for _, otherRoot := range roots {
+		if otherRoot == "" || otherRoot == root {
+			continue
+		}
+		if root == "" && strings.HasPrefix(filePath, otherRoot+"/") {
+			return true
+		}
+		if strings.HasPrefix(otherRoot, root+"/") && strings.HasPrefix(filePath, otherRoot+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+func isWorkflowFilePath(filePath string) bool {
+	dir, name := path.Split(filePath)
+	return dir == ".github/workflows/" && (strings.HasSuffix(name, ".yml") || strings.HasSuffix(name, ".yaml"))
+}
+
+func isEmbeddedFixturePath(filePath string) bool {
+	for _, segment := range strings.Split(strings.ReplaceAll(filePath, "\\", "/"), "/") {
+		switch segment {
+		case "examples", "fixtures", "samples", "templates", "testdata":
+			return true
+		}
+	}
+	return false
 }
 
 func hasCommand(snapshot repo.Snapshot, needles ...string) bool {

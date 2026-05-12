@@ -202,6 +202,46 @@ func TestGoRulesInspectNestedModuleScripts(t *testing.T) {
 	}
 }
 
+func TestGoRulesIgnoreEmbeddedFixtureEvidence(t *testing.T) {
+	files := cleanGoGuardrailFiles(nil)
+	delete(files, "go/.golangci.yml")
+	delete(files, "go/scripts/check-mutation.sh")
+	files["fixtures/repos/go-clean/go/.golangci.yml"] = repo.File{
+		Path:    "fixtures/repos/go-clean/go/.golangci.yml",
+		Content: "linters:\n  enable:\n    - cyclop\n",
+	}
+	files["fixtures/repos/go-clean/go/scripts/check-mutation.sh"] = repo.File{
+		Path:    "fixtures/repos/go-clean/go/scripts/check-mutation.sh",
+		Content: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest internal/rules/rules.go --scan\n",
+	}
+
+	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+	assertRuleIDs(t, report.Findings, []string{
+		GoComplexityRequiredRuleID,
+		GoLintRequiredRuleID,
+		GoMutationRequiredRuleID,
+	})
+}
+
+func TestGoRulesDoNotTreatEmbeddedFixturesAsTargetProjects(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"README.md":                         {Path: "README.md"},
+		"AGENTS.md":                         {Path: "AGENTS.md"},
+		".github/workflows/ci.yml":          {Path: ".github/workflows/ci.yml"},
+		"fixtures/repos/go-missing/go.mod":  {Path: "fixtures/repos/go-missing/go.mod"},
+		"fixtures/repos/go-missing/main.go": {Path: "fixtures/repos/go-missing/main.go"},
+		"templates/go/go.mod":               {Path: "templates/go/go.mod"},
+		"templates/go/main.go":              {Path: "templates/go/main.go"},
+	})
+
+	report := Run(context.Background(), snapshot, DefaultRules())
+
+	if !report.OK {
+		t.Fatalf("report.OK = false, findings = %#v", report.Findings)
+	}
+}
+
 func TestGoCoverageRuleRequiresCoverageOutputAndCoverTool(t *testing.T) {
 	tests := []struct {
 		name          string
