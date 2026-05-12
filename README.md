@@ -44,7 +44,8 @@ This repository is for projects that may be generated, extended, or maintained b
 .
 ├── AGENTS.md
 ├── docs/
-│   └── guardrails.md
+│   ├── 2026-05-12-guardrails.md
+│   └── uncle-bob/
 └── templates/
     ├── go/
     ├── python/
@@ -53,15 +54,14 @@ This repository is for projects that may be generated, extended, or maintained b
 
 ## Template Status
 
-| Language | Focus |
-| --- | --- |
+| Language   | Focus                                                                   |
+| ---------- | ----------------------------------------------------------------------- |
 | TypeScript | Strict compiler settings, no explicit `any`, ESLint flat config, Vitest |
-| Python | Ruff, mypy strict mode, pytest, `src` layout |
-| Go | Standard layout, tests, `go vet`, golangci-lint config |
+| Python     | Ruff, mypy strict mode, pytest, `src` layout                            |
+| Go         | Standard layout, tests, `go vet`, golangci-lint config                  |
 
 ## How To Use This Repo
 
 - For a new project, copy the closest template and rename the package/module.
 - For an existing project, compare its lint, typing, tests, and boundaries against the matching template.
 - For agent workflows, point the agent at `AGENTS.md` and the relevant language template before implementation starts.
-

@@ -16,7 +16,7 @@ jobs:
           test -f README.md
           test -f LICENSE
           test -f AGENTS.md
-          test -f docs/guardrails.md
+          test -f docs/2026-05-12-guardrails.md
 
   go-template:
     runs-on: ubuntu-latest

@@ -1,3 +1,9 @@
+---
+title: Guardrails
+author: Bob <dutifulbob@gmail.com>
+date: 2026-05-12
+---
+
 # Guardrails
 
 Use this checklist when evaluating a generated or agent-assisted project.
@@ -28,4 +34,3 @@ Use this checklist when evaluating a generated or agent-assisted project.
 - Are unsafe type escapes rare, named, and justified?
 - Can the most important tests run in under a few seconds?
 - Would removing the AI prompt history make this project hard to maintain?
-
