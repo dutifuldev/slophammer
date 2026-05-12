@@ -772,6 +772,24 @@ func TestGoRulesPreferModuleLocalConfigOverRepoRootConfig(t *testing.T) {
 	}
 }
 
+func TestGoRulesDoNotUseRepoRootConfigWhenModuleLocalConfigExists(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		".golangci.yml": {
+			Path:    ".golangci.yml",
+			Content: "linters:\n  enable:\n    - cyclop\n",
+		},
+		"go/.golangci.yaml": {
+			Path:    "go/.golangci.yaml",
+			Content: "linters:\n  enable:\n    - errcheck\n",
+		},
+	})
+	delete(files, "go/.golangci.yml")
+
+	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+	assertRuleIDs(t, report.Findings, []string{GoComplexityRequiredRuleID})
+}
+
 func TestGoRulesDoNotCarryMakefileScopeAcrossTargets(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
 		"README.md":     {Path: "README.md"},

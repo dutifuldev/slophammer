@@ -194,7 +194,11 @@ func isUnderAnyGoRoot(filePath string, rootsByPath map[string]struct{}) bool {
 func goProjectSnapshot(snapshot repo.Snapshot, root string, roots []string) repo.Snapshot {
 	files := map[string]repo.File{}
 	priorities := map[string]int{}
+	hasLocalGoConfig := hasModuleLocalGoConfig(snapshot, root)
 	for filePath, file := range snapshot.Files {
+		if hasLocalGoConfig && isRepoRootGoConfigFile(filePath) {
+			continue
+		}
 		scopedFile, ok := scopedGoProjectFile(filePath, file, root, roots)
 		if !ok {
 			continue
@@ -207,6 +211,13 @@ func goProjectSnapshot(snapshot repo.Snapshot, root string, roots []string) repo
 		priorities[scopedFile.Path] = priority
 	}
 	return repo.NewSnapshot(snapshot.Root, files)
+}
+
+func hasModuleLocalGoConfig(snapshot repo.Snapshot, root string) bool {
+	if root == "" {
+		return false
+	}
+	return snapshot.HasFileFold(root+"/.golangci.yml") || snapshot.HasFileFold(root+"/.golangci.yaml")
 }
 
 func scopedGoProjectFilePriority(filePath string, root string) int {
