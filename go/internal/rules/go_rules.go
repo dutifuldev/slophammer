@@ -231,9 +231,6 @@ func isUnderOtherGoRoot(filePath, root string, roots []string) bool {
 }
 
 func scopedWorkflowContent(content, root string, roots []string) (string, bool) {
-	if root == "" {
-		return content, !workflowMentionsAnyGoRoot(content, roots)
-	}
 	if onlyGoRoot(root, roots) {
 		return content, true
 	}
@@ -241,21 +238,11 @@ func scopedWorkflowContent(content, root string, roots []string) (string, bool) 
 }
 
 func filterWorkflowContentForRoot(content, root string, roots []string) (string, bool) {
-	lines := strings.Split(content, "\n")
-	kept := make([]string, 0, len(lines))
-	inRootContext := false
-	for _, line := range lines {
-		if workflowMentionsGoRoot(line, root) {
-			inRootContext = true
-			kept = append(kept, line)
-			continue
-		}
-		if workflowMentionsOtherGoRoot(line, root, roots) {
-			inRootContext = false
-			continue
-		}
-		if inRootContext && isWorkflowCommandLine(line) {
-			kept = append(kept, line)
+	blocks := workflowStepBlocks(content)
+	kept := make([]string, 0, len(blocks))
+	for _, block := range blocks {
+		if workflowStepAppliesToRoot(block, root, roots) {
+			kept = append(kept, block)
 		}
 	}
 	scoped := strings.Join(kept, "\n")
@@ -266,13 +253,39 @@ func onlyGoRoot(root string, roots []string) bool {
 	return len(roots) == 1 && roots[0] == root
 }
 
-func workflowMentionsAnyGoRoot(content string, roots []string) bool {
-	for _, root := range roots {
-		if root != "" && workflowMentionsGoRoot(content, root) {
-			return true
+func workflowStepAppliesToRoot(content, root string, roots []string) bool {
+	if root == "" {
+		return !workflowMentionsOtherGoRoot(content, root, roots)
+	}
+	return workflowMentionsGoRoot(content, root)
+}
+
+func workflowStepBlocks(content string) []string {
+	lines := strings.Split(content, "\n")
+	blocks := make([]string, 0)
+	current := make([]string, 0)
+	for _, line := range lines {
+		if isWorkflowStepStart(line) {
+			blocks = appendWorkflowStepBlock(blocks, current)
+			current = []string{line}
+			continue
+		}
+		if len(current) > 0 {
+			current = append(current, line)
 		}
 	}
-	return false
+	blocks = appendWorkflowStepBlock(blocks, current)
+	if len(blocks) == 0 {
+		return []string{content}
+	}
+	return blocks
+}
+
+func appendWorkflowStepBlock(blocks []string, lines []string) []string {
+	if len(lines) == 0 {
+		return blocks
+	}
+	return append(blocks, strings.Join(lines, "\n"))
 }
 
 func workflowMentionsOtherGoRoot(content, root string, roots []string) bool {
@@ -308,9 +321,9 @@ func workflowMentionsGoRoot(content, root string) bool {
 	return false
 }
 
-func isWorkflowCommandLine(line string) bool {
+func isWorkflowStepStart(line string) bool {
 	trimmed := strings.TrimSpace(line)
-	return strings.HasPrefix(trimmed, "run:") || strings.HasPrefix(trimmed, "- run:")
+	return strings.HasPrefix(trimmed, "- run:") || strings.HasPrefix(trimmed, "- uses:")
 }
 
 func isWorkflowFilePath(filePath string) bool {
