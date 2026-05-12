@@ -261,28 +261,27 @@ Bob's Go tools.
 
 Use `dry4go` for structural duplicate detection.
 
-Slophammer should check that the repo has a declared `dry4go` command in CI or a
-script. Later, execution mode can run it and convert duplicate reports into
-Slophammer findings.
+Slophammer checks that the repo has a declared `dry4go` command in CI, a script,
+or the first-class `slophammer go dry` command. The Slophammer command runs
+`dry4go` directly, parses its JSON report, and applies the candidate budget in
+Go instead of in shell glue.
 
-The first `go.dry-required` implementation should be a hard static requirement:
-the repo must declare `dry4go` somewhere Slophammer can inspect. Execution mode
-can later run `dry4go` and convert duplicate reports into Slophammer findings.
+The static `go.dry-required` rule is a hard requirement: the repo must declare a
+DRY check somewhere Slophammer can inspect.
 
 ### `crap4go`
 
 Use `crap4go` for CRAP scoring.
 
-Slophammer should check that the repo has a declared CRAP command and a clear
-threshold. Later, execution mode can run it and convert high-risk functions into
-Slophammer findings.
+Slophammer checks that the repo has a declared CRAP command and a clear
+threshold. The first-class `slophammer go crap` command runs `crap4go` directly,
+parses its report, and fails when a function exceeds the configured maximum.
 
 Coverage and complexity already exist separately in Go tooling. CRAP is valuable
 because it combines them into one risk signal.
 
-The first `go.crap-required` implementation should be a hard static
-requirement: the repo must declare `crap4go` and a threshold. Execution mode can
-later run `crap4go` and normalize its output.
+The static `go.crap-required` rule is a hard requirement: the repo must declare
+`crap4go` or `slophammer go crap` with a threshold.
 
 ### `mutate4go`
 
@@ -292,11 +291,12 @@ Mutation testing is expensive, so the production policy should require a
 declared workflow slot rather than requiring it on every pull request. Valid
 slots are nightly, manual, release, or targeted execution for risky packages.
 
-Execution mode can support mutation later. It should start with changed or
-configured packages, not the whole repo by default.
+The first-class `slophammer go mutate` command runs `mutate4go` directly. Pull
+requests should use `--scan` against a configured target; full mutation testing
+belongs on slower scheduled or manual paths.
 
-The first `go.mutation-required` implementation should be a hard static
-requirement: the repo must declare `mutate4go` in an inspectable workflow or
+The static `go.mutation-required` rule is a hard requirement: the repo must
+declare `mutate4go` or `slophammer go mutate` in an inspectable workflow or
 script.
 
 ## Native Slophammer Checks
@@ -449,10 +449,9 @@ go test
 coverage gate
 golangci-lint
 slophammer check .
-slophammer check . --execute
-dry4go
-crap4go
-mutate4go scan
+slophammer go dry . --max-candidates 40
+slophammer go crap . --max-score 30
+slophammer go mutate . --target internal/rules/rules.go --scan
 dependency boundary check
 ```
 

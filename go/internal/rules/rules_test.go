@@ -1108,6 +1108,35 @@ jobs:
 	assertRuleIDs(t, report.Findings, []string{GoCRAPRequiredRuleID})
 }
 
+func TestGoToolRulesAcceptSlophammerGoCommands(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+defaults:
+  run:
+    working-directory: go
+jobs:
+  test:
+    steps:
+      - run: go test ./...
+      - run: go vet ./...
+      - run: golangci-lint run
+      - run: ./scripts/check-go-coverage.sh
+      - run: go run ./cmd/slophammer go dry . --max-candidates 40
+      - run: go run ./cmd/slophammer go crap . --max-score 30
+      - run: go run ./cmd/slophammer go mutate . --target internal/rules/rules.go --scan
+`,
+		},
+	})
+
+	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+	if !report.OK {
+		t.Fatalf("report.OK = false, findings = %#v", report.Findings)
+	}
+}
+
 func TestGoCoverageRuleRequiresCoverageOutputAndCoverTool(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -1213,6 +1242,16 @@ go tool cover -html=coverage.out > coverage.html
 	assertRuleIDs(t, report.Findings, []string{GoCoverageRequiredRuleID})
 }
 
+func TestGoThresholdPatternsAcceptStrictComparisons(t *testing.T) {
+	if !hasCoverageThreshold(`awk -v total="$total" -v minimum="80" 'BEGIN { exit (total + 0 < minimum + 0) }'`) {
+		t.Fatal("coverage threshold pattern rejected strict minimum comparison")
+	}
+
+	if !hasCRAPThreshold(`awk -v score="0" -v maximum="30" 'BEGIN { exit (score + 0 > maximum + 0) }'`) {
+		t.Fatal("CRAP threshold pattern rejected strict maximum comparison")
+	}
+}
+
 func TestGoCoverageRuleAcceptsCommonThresholdNames(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -1230,6 +1269,13 @@ awk -v total="$total" -v threshold="80" 'BEGIN { exit !(total + 0 >= threshold +
 			coverageCheck: `go test -coverprofile=coverage.out ./...
 total="$(go tool cover -func=coverage.out | awk '/^total:/ {print substr($3, 1, length($3)-1)}')"
 awk -v total="$total" 'BEGIN { exit !(total + 0 >= 80) }'
+`,
+		},
+		{
+			name: "strict threshold",
+			coverageCheck: `go test -coverprofile=coverage.out ./...
+total="$(go tool cover -func=coverage.out | awk '/^total:/ {print substr($3, 1, length($3)-1)}')"
+awk -v total="$total" -v minimum="80" 'BEGIN { exit (total + 0 < minimum + 0) }'
 `,
 		},
 	}

@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strconv"
 
 	"github.com/dutifuldev/slophammer/go/internal/app"
+	"github.com/dutifuldev/slophammer/go/internal/toolchecks"
 )
 
 func Run(ctx context.Context, args []string, out io.Writer, errOut io.Writer) int {
@@ -18,6 +20,8 @@ func Run(ctx context.Context, args []string, out io.Writer, errOut io.Writer) in
 		return runCheck(ctx, args[1:], out, errOut)
 	case "explain":
 		return runExplain(args[1:], out, errOut)
+	case "go":
+		return runGo(ctx, args[1:], out, errOut)
 	case "-h", "--help", "help":
 		printUsage(out)
 		return app.ExitOK
@@ -42,6 +46,49 @@ func runExplain(args []string, out io.Writer, errOut io.Writer) int {
 		return app.ExitError
 	}
 	return app.Explain(args[0], out, errOut)
+}
+
+func runGo(ctx context.Context, args []string, out io.Writer, errOut io.Writer) int {
+	if len(args) == 0 {
+		printGoUsage(errOut)
+		return app.ExitError
+	}
+	switch args[0] {
+	case "dry":
+		return runGoDry(ctx, args[1:], out, errOut)
+	case "crap":
+		return runGoCRAP(ctx, args[1:], out, errOut)
+	case "mutate":
+		return runGoMutation(ctx, args[1:], out, errOut)
+	default:
+		_, _ = fmt.Fprintf(errOut, "unknown go command: %s\n", args[0])
+		printGoUsage(errOut)
+		return app.ExitError
+	}
+}
+
+func runGoDry(ctx context.Context, args []string, out io.Writer, errOut io.Writer) int {
+	options, ok := parseGoDryArgs(args, errOut)
+	if !ok {
+		return app.ExitError
+	}
+	return app.CheckGoDry(ctx, options, out, errOut)
+}
+
+func runGoCRAP(ctx context.Context, args []string, out io.Writer, errOut io.Writer) int {
+	options, ok := parseGoCRAPArgs(args, errOut)
+	if !ok {
+		return app.ExitError
+	}
+	return app.CheckGoCRAP(ctx, options, out, errOut)
+}
+
+func runGoMutation(ctx context.Context, args []string, out io.Writer, errOut io.Writer) int {
+	options, ok := parseGoMutationArgs(args, errOut)
+	if !ok {
+		return app.ExitError
+	}
+	return app.CheckGoMutation(ctx, options, out, errOut)
 }
 
 func parseCheckArgs(args []string, errOut io.Writer) (app.CheckOptions, bool) {
@@ -77,8 +124,117 @@ func parseCheckArgs(args []string, errOut io.Writer) (app.CheckOptions, bool) {
 	return options, true
 }
 
+func parseGoDryArgs(args []string, errOut io.Writer) (toolchecks.DryOptions, bool) {
+	options := toolchecks.DryOptions{MaximumCandidates: toolchecks.DefaultMaximumDRYCandidates}
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch arg {
+		case "--show-report":
+			options.ShowReport = true
+		case "--max-candidates":
+			if i+1 >= len(args) {
+				_, _ = fmt.Fprintln(errOut, "--max-candidates requires a value")
+				return toolchecks.DryOptions{}, false
+			}
+			i++
+			value, err := strconv.Atoi(args[i])
+			if err != nil || value < 0 {
+				_, _ = fmt.Fprintln(errOut, "--max-candidates must be a non-negative integer")
+				return toolchecks.DryOptions{}, false
+			}
+			options.MaximumCandidates = value
+		default:
+			root, ok := parseSinglePathOption(options.Root, arg, "go dry", errOut)
+			if !ok {
+				return toolchecks.DryOptions{}, false
+			}
+			options.Root = root
+		}
+	}
+	return options, true
+}
+
+func parseGoCRAPArgs(args []string, errOut io.Writer) (toolchecks.CRAPOptions, bool) {
+	options := toolchecks.CRAPOptions{MaximumScore: toolchecks.DefaultMaximumCRAPScore}
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch arg {
+		case "--max-score":
+			if i+1 >= len(args) {
+				_, _ = fmt.Fprintln(errOut, "--max-score requires a value")
+				return toolchecks.CRAPOptions{}, false
+			}
+			i++
+			value, err := strconv.ParseFloat(args[i], 64)
+			if err != nil || value < 0 {
+				_, _ = fmt.Fprintln(errOut, "--max-score must be a non-negative number")
+				return toolchecks.CRAPOptions{}, false
+			}
+			options.MaximumScore = value
+		default:
+			root, ok := parseSinglePathOption(options.Root, arg, "go crap", errOut)
+			if !ok {
+				return toolchecks.CRAPOptions{}, false
+			}
+			options.Root = root
+		}
+	}
+	return options, true
+}
+
+func parseGoMutationArgs(args []string, errOut io.Writer) (toolchecks.MutationOptions, bool) {
+	options := toolchecks.MutationOptions{Target: toolchecks.DefaultMutationTarget}
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch arg {
+		case "--target":
+			if i+1 >= len(args) {
+				_, _ = fmt.Fprintln(errOut, "--target requires a value")
+				return toolchecks.MutationOptions{}, false
+			}
+			i++
+			options.Target = args[i]
+		case "--scan":
+			options.Scan = true
+		default:
+			root, ok := parseSinglePathOption(options.Root, arg, "go mutate", errOut)
+			if !ok {
+				return toolchecks.MutationOptions{}, false
+			}
+			options.Root = root
+		}
+	}
+	if options.Target == "" {
+		_, _ = fmt.Fprintln(errOut, "--target cannot be empty")
+		return toolchecks.MutationOptions{}, false
+	}
+	return options, true
+}
+
+func parseSinglePathOption(currentRoot string, arg string, command string, errOut io.Writer) (string, bool) {
+	if len(arg) > 0 && arg[0] == '-' {
+		_, _ = fmt.Fprintf(errOut, "unknown %s option: %s\n", command, arg)
+		return "", false
+	}
+	if currentRoot != "" {
+		_, _ = fmt.Fprintf(errOut, "%s accepts exactly one path\n", command)
+		return "", false
+	}
+	return arg, true
+}
+
 func printUsage(out io.Writer) {
 	_, _ = fmt.Fprintln(out, "usage:")
 	_, _ = fmt.Fprintln(out, "  slophammer check <path> [--format text|json]")
 	_, _ = fmt.Fprintln(out, "  slophammer explain <rule-id>")
+	_, _ = fmt.Fprintln(out, "  slophammer go dry [path] [--max-candidates n] [--show-report]")
+	_, _ = fmt.Fprintln(out, "  slophammer go crap [path] [--max-score n]")
+	_, _ = fmt.Fprintln(out, "  slophammer go mutate [path] [--target file] [--scan]")
+}
+
+func printGoUsage(out io.Writer) {
+	_, _ = fmt.Fprintln(out, "usage:")
+	_, _ = fmt.Fprintln(out, "  slophammer go dry [path] [--max-candidates n] [--show-report]")
+	_, _ = fmt.Fprintln(out, "  slophammer go crap [path] [--max-score n]")
+	_, _ = fmt.Fprintln(out, "  slophammer go mutate [path] [--target file] [--scan]")
 }

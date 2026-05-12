@@ -8,6 +8,7 @@ import (
 	"github.com/dutifuldev/slophammer/go/internal/report"
 	"github.com/dutifuldev/slophammer/go/internal/rules"
 	"github.com/dutifuldev/slophammer/go/internal/scan"
+	"github.com/dutifuldev/slophammer/go/internal/toolchecks"
 )
 
 const (
@@ -50,6 +51,18 @@ func Explain(ruleID string, out io.Writer, errOut io.Writer) int {
 		return ExitError
 	}
 	return ExitOK
+}
+
+func CheckGoDry(ctx context.Context, options toolchecks.DryOptions, out io.Writer, errOut io.Writer) int {
+	return toolchecks.CheckDry(ctx, options, out, errOut, toolchecks.ExecRunner{})
+}
+
+func CheckGoCRAP(ctx context.Context, options toolchecks.CRAPOptions, out io.Writer, errOut io.Writer) int {
+	return toolchecks.CheckCRAP(ctx, options, out, errOut, toolchecks.ExecRunner{})
+}
+
+func CheckGoMutation(ctx context.Context, options toolchecks.MutationOptions, out io.Writer, errOut io.Writer) int {
+	return toolchecks.CheckMutation(ctx, options, out, errOut, toolchecks.ExecRunner{})
 }
 
 func writeReport(out io.Writer, format string, result rules.Report) error {

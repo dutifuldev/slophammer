@@ -108,7 +108,7 @@ func hasGoComplexityLint(snapshot repo.Snapshot) bool {
 }
 
 func hasDry4GoCommand(snapshot repo.Snapshot) bool {
-	return hasCommand(snapshot, "dry4go", "github.com/unclebob/dry4go/cmd/dry4go")
+	return hasCommand(snapshot, "dry4go", "github.com/unclebob/dry4go/cmd/dry4go", "slophammer go dry")
 }
 
 func hasCRAP4GoGate(snapshot repo.Snapshot) bool {
@@ -118,13 +118,17 @@ func hasCRAP4GoGate(snapshot repo.Snapshot) bool {
 				hasCRAPThreshold(content) {
 				return true
 			}
+			if strings.Contains(content, "slophammer go crap") &&
+				strings.Contains(content, "--max-score") {
+				return true
+			}
 		}
 	}
 	return false
 }
 
 func hasMutate4GoCommand(snapshot repo.Snapshot) bool {
-	return hasCommand(snapshot, "mutate4go", "github.com/unclebob/mutate4go/cmd/mutate4go")
+	return hasCommand(snapshot, "mutate4go", "github.com/unclebob/mutate4go/cmd/mutate4go", "slophammer go mutate")
 }
 
 func goProjectRoots(snapshot repo.Snapshot) []string {
@@ -544,11 +548,11 @@ func golangCIConfigFiles(snapshot repo.Snapshot) []repo.File {
 }
 
 func hasCoverageThreshold(content string) bool {
-	return coverageThresholdPattern.MatchString(content)
+	return coverageThresholdPattern.MatchString(content) || strictCoverageThresholdPattern.MatchString(content)
 }
 
 func hasCRAPThreshold(content string) bool {
-	return crapThresholdPattern.MatchString(content)
+	return crapThresholdPattern.MatchString(content) || strictCRAPThresholdPattern.MatchString(content)
 }
 
 func configEnablesComplexityLinter(content string) bool {
@@ -714,12 +718,14 @@ func finding(definition Definition) Finding {
 }
 
 var (
-	goCommandPattern         = regexp.MustCompile(`(?m)\bgo\s+(test|vet|build|run|tool|mod)\b`)
-	goTestAllPackagesPattern = regexp.MustCompile(`(?m)\bgo\s+test\b[^\n#;&|]*\./\.\.`)
-	goVetAllPackagesPattern  = regexp.MustCompile(`(?m)\bgo\s+vet\b[^\n#;&|]*\./\.\.`)
-	golangCILintRunPattern   = regexp.MustCompile(`(?m)(?:^|[[:space:];&|])golangci-lint\s+run(?:[[:space:];&|]|$)|\bgo\s+run\b[^\n#;&|]*github\.com/golangci/golangci-lint(?:/v[0-9]+)?/cmd/golangci-lint[^\n#;&|]*\srun(?:[[:space:];&|]|$)`)
-	coverageThresholdPattern = regexp.MustCompile(`(?im)\b(total|cover|coverage|minimum|threshold|required)\b[^\n]*(>=|<=|-ge\b|-le\b|-gt\b|-lt\b)|(?:>=|<=|-ge\b|-le\b|-gt\b|-lt\b)[^\n]*\b(total|cover|coverage|minimum|threshold|required)\b`)
-	crapThresholdPattern     = regexp.MustCompile(`(?im)\b(crap|maximum|minimum|threshold|required|score)\b[^\n]*(>=|<=|-ge\b|-le\b|-gt\b|-lt\b)|(?:>=|<=|-ge\b|-le\b|-gt\b|-lt\b)[^\n]*\b(crap|maximum|minimum|threshold|required|score)\b`)
+	goCommandPattern               = regexp.MustCompile(`(?m)\bgo\s+(test|vet|build|run|tool|mod)\b`)
+	goTestAllPackagesPattern       = regexp.MustCompile(`(?m)\bgo\s+test\b[^\n#;&|]*\./\.\.`)
+	goVetAllPackagesPattern        = regexp.MustCompile(`(?m)\bgo\s+vet\b[^\n#;&|]*\./\.\.`)
+	golangCILintRunPattern         = regexp.MustCompile(`(?m)(?:^|[[:space:];&|])golangci-lint\s+run(?:[[:space:];&|]|$)|\bgo\s+run\b[^\n#;&|]*github\.com/golangci/golangci-lint(?:/v[0-9]+)?/cmd/golangci-lint[^\n#;&|]*\srun(?:[[:space:];&|]|$)`)
+	coverageThresholdPattern       = regexp.MustCompile(`(?im)\b(total|cover|coverage|minimum|threshold|required)\b[^\n]*(>=|<=|-ge\b|-le\b|-gt\b|-lt\b)|(?:>=|<=|-ge\b|-le\b|-gt\b|-lt\b)[^\n]*\b(total|cover|coverage|minimum|threshold|required)\b`)
+	crapThresholdPattern           = regexp.MustCompile(`(?im)\b(crap|maximum|minimum|threshold|required|score)\b[^\n]*(>=|<=|-ge\b|-le\b|-gt\b|-lt\b)|(?:>=|<=|-ge\b|-le\b|-gt\b|-lt\b)[^\n]*\b(crap|maximum|minimum|threshold|required|score)\b`)
+	strictCoverageThresholdPattern = regexp.MustCompile(`(?im)\b(total|minimum|threshold|required)\b[^\n]*(>|<)[^\n]*(\b(total|minimum|threshold|required)\b|[0-9]+(?:\.[0-9]+)?)|([0-9]+(?:\.[0-9]+)?|\b(total|minimum|threshold|required)\b)[^\n]*(>|<)[^\n]*\b(total|minimum|threshold|required)\b`)
+	strictCRAPThresholdPattern     = regexp.MustCompile(`(?im)\b(score|maximum|minimum|threshold|required)\b[^\n]*(>|<)[^\n]*(\b(score|maximum|minimum|threshold|required)\b|[0-9]+(?:\.[0-9]+)?)|([0-9]+(?:\.[0-9]+)?|\b(score|maximum|minimum|threshold|required)\b)[^\n]*(>|<)[^\n]*\b(score|maximum|minimum|threshold|required)\b`)
 )
 
 const workflowStepBoundary = "\nSLOPHAMMER_WORKFLOW_STEP_BOUNDARY\n"
