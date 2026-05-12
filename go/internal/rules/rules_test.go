@@ -27,9 +27,9 @@ func TestDefaultRulesReportMissingFiles(t *testing.T) {
 		t.Fatal("report.OK = true, want false")
 	}
 	wantRuleIDs := []string{
-		"repo.agents-required",
-		"repo.ci-required",
-		"repo.readme-required",
+		AgentsRequiredRuleID,
+		CIRequiredRuleID,
+		ReadmeRequiredRuleID,
 	}
 	if len(report.Findings) != len(wantRuleIDs) {
 		t.Fatalf("len(findings) = %d, want %d", len(report.Findings), len(wantRuleIDs))
@@ -42,7 +42,7 @@ func TestDefaultRulesReportMissingFiles(t *testing.T) {
 }
 
 func TestExplainKnownRule(t *testing.T) {
-	got, ok := Explain(DefaultRules(), "repo.agents-required")
+	got, ok := Explain(DefaultRules(), AgentsRequiredRuleID)
 	if !ok {
 		t.Fatal("Explain returned ok=false")
 	}
@@ -55,5 +55,34 @@ func TestExplainUnknownRule(t *testing.T) {
 	_, ok := Explain(DefaultRules(), "missing")
 	if ok {
 		t.Fatal("Explain returned ok=true for missing rule")
+	}
+}
+
+func TestDefaultDefinitionsAreStable(t *testing.T) {
+	definitions := DefaultDefinitions()
+	wantIDs := []string{
+		ReadmeRequiredRuleID,
+		AgentsRequiredRuleID,
+		CIRequiredRuleID,
+	}
+	if len(definitions) != len(wantIDs) {
+		t.Fatalf("len(definitions) = %d, want %d", len(definitions), len(wantIDs))
+	}
+	for i, want := range wantIDs {
+		if definitions[i].ID != want {
+			t.Fatalf("definition[%d].ID = %q, want %q", i, definitions[i].ID, want)
+		}
+		if definitions[i].Severity == "" {
+			t.Fatalf("definition[%d].Severity is empty", i)
+		}
+		if definitions[i].Path == "" {
+			t.Fatalf("definition[%d].Path is empty", i)
+		}
+		if definitions[i].Message == "" {
+			t.Fatalf("definition[%d].Message is empty", i)
+		}
+		if definitions[i].Description == "" {
+			t.Fatalf("definition[%d].Description is empty", i)
+		}
 	}
 }

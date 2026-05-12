@@ -77,8 +77,11 @@ The shared report model should stay simple:
 │   ├── PRODUCT.md
 │   ├── RULES.md
 │   ├── CONFIG.md
-│   └── REPORT_FORMAT.md
+│   ├── REPORT_FORMAT.md
+│   └── EXIT_CODES.md
 ├── fixtures/
+│   ├── repos/
+│   └── expected/
 ├── go/
 ├── python/
 └── typescript/
@@ -113,8 +116,8 @@ Start with a small common rule set:
 | `python.ruff-required` | Python projects should run Ruff.              |
 | `docs.simpledoc`       | Docs should follow the repository convention. |
 
-The exact rule behavior belongs in `specs/RULES.md` so each implementation can
-share the same contract.
+The exact shared rule behavior belongs in [Rules](specs/RULES.md) so each
+implementation can share the same contract.
 
 ## Implementation Expectations
 
@@ -161,6 +164,9 @@ notes behind the guardrails.
 
 See [Implementation Model](docs/IMPLEMENTATION_MODEL.md) for the shared
 architecture that Go, TypeScript, and Python should follow.
+
+See [Product](specs/PRODUCT.md), [Report Format](specs/REPORT_FORMAT.md), and
+[Exit Codes](specs/EXIT_CODES.md) for the shared compatibility contract.
 
 See [DRY](docs/DRY.md) for the duplication policy informed by Uncle Bob's
 structural `dry4clj`, `dry4java`, and `dry4go` tools.

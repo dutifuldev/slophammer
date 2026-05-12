@@ -16,7 +16,8 @@ Keep language implementations at the repository top level:
 │   ├── PRODUCT.md
 │   ├── RULES.md
 │   ├── CONFIG.md
-│   └── REPORT_FORMAT.md
+│   ├── REPORT_FORMAT.md
+│   └── EXIT_CODES.md
 ├── fixtures/
 │   ├── repos/
 │   └── expected/
