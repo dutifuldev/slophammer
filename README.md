@@ -1,44 +1,69 @@
 # Slophammer
 
-Reference implementations and engineering standards for AI-assisted software projects.
+Multi-language reference implementations of the same repository quality checker
+for agent-assisted software projects.
 
-This repository is for projects that may be generated, extended, or maintained by coding agents, but still need to behave like serious software. It collects language-specific baselines that make the correct path explicit: strict typing, small units, fast tests, dependency hygiene, and CI checks that fail before weak code reaches production.
+`slophammer` checks whether a project has the basic constraints needed to keep
+AI-generated code under control: agent instructions, CI, tests, strict typing,
+linting, coverage, documentation conventions, and project structure that humans
+can still review.
+
+The point of this repository is not to ship one blessed implementation. The
+point is to show the same small tool implemented cleanly in multiple languages
+so agents can copy patterns from real, working code.
 
 ## What This Is
 
-- A reference repo for common project shapes across languages.
-- A set of guardrails for agent-built and vibecoded projects.
-- A place to compare an existing project against practical defaults.
-- A starting point when a new project needs sane constraints on day one.
+- A small product spec for a repo quality checker.
+- Parallel Go, TypeScript, and Python implementations of that same product.
+- A reference for project structure, testing, errors, config, reporting, and CI.
+- A source of patterns for agents working in different language ecosystems.
 
 ## What This Is Not
 
+- A generic starter template collection.
 - A framework.
-- A package manager wrapper.
 - A replacement for architecture review.
-- A promise that generated code is correct because it passes lint.
+- A claim that code is good because generated checks pass.
 
-## Guardrail Principles
+## Product Shape
 
-1. Keep the core boring.
-   Business rules should be ordinary code with direct tests. Frameworks, databases, queues, HTTP, file systems, and external APIs belong at the edges.
+Each implementation should support the same basic commands:
 
-2. Make weak types fail early.
-   Avoid `any`, untyped dictionaries, implicit nulls, unchecked casts, and broad escape hatches. If a boundary is dynamic, validate it and convert it to a typed shape.
+```sh
+slophammer check <path>
+slophammer check <path> --format json
+slophammer explain <rule-id>
+```
 
-3. Prefer fast local checks.
-   Formatting, linting, type checking, and unit tests should be cheap enough to run constantly.
+The checker should scan a target repository and report findings such as:
 
-4. Separate policy from plumbing.
-   The important rules should not depend on CLIs, web servers, ORMs, or cloud SDKs.
+- missing `README.md`
+- missing `AGENTS.md`
+- missing CI workflow
+- missing test command
+- weak language-specific typing setup
+- missing linting setup
+- missing coverage gate
+- documentation that does not follow the repo convention
 
-5. Require explicit dependencies.
-   Every dependency should have a job. Avoid packages that replace a few lines of clear standard-library code.
+The shared report model should stay simple:
 
-6. Treat generated code as untrusted.
-   Review it, test it, type-check it, and keep the architecture understandable to humans.
+```json
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "repo.agents-required",
+      "severity": "error",
+      "path": "AGENTS.md",
+      "message": "AGENTS.md is required"
+    }
+  ]
+}
+```
 
-## Repository Layout
+## Target Repository Layout
 
 ```text
 .
@@ -47,25 +72,78 @@ This repository is for projects that may be generated, extended, or maintained b
 │   ├── UNCLE_BOB_CONCEPTS.md
 │   ├── 2026-05-12-guardrails.md
 │   └── uncle-bob/
-└── templates/
+├── specs/
+│   ├── PRODUCT.md
+│   ├── RULES.md
+│   ├── CONFIG.md
+│   └── REPORT_FORMAT.md
+└── implementations/
     ├── go/
     ├── python/
     └── typescript/
 ```
 
-## Template Status
+The repo currently contains transitional language template directories. New work
+should move toward this `specs/` and `implementations/` layout so each language
+implementation follows the same product contract.
 
-| Language   | Focus                                                                   |
-| ---------- | ----------------------------------------------------------------------- |
-| TypeScript | Strict compiler settings, no explicit `any`, ESLint flat config, Vitest |
-| Python     | Ruff, mypy strict mode, pytest, `src` layout                            |
-| Go         | Standard layout, tests, `go vet`, golangci-lint config                  |
+## Shared Rule Set
 
-## How To Use This Repo
+Start with a small common rule set:
 
-- For a new project, copy the closest template and rename the package/module.
-- For an existing project, compare its lint, typing, tests, and boundaries against the matching template.
-- For agent workflows, point the agent at `AGENTS.md` and the relevant language template before implementation starts.
+| Rule ID                | Meaning                                       |
+| ---------------------- | --------------------------------------------- |
+| `repo.readme-required` | The target repo should have a `README.md`.    |
+| `repo.agents-required` | The target repo should have an `AGENTS.md`.   |
+| `repo.ci-required`     | The target repo should have a CI workflow.    |
+| `go.tests-required`    | Go projects should run `go test ./...`.       |
+| `go.vet-required`      | Go projects should run `go vet ./...`.        |
+| `ts.strict-required`   | TypeScript projects should use strict mode.   |
+| `ts.no-explicit-any`   | TypeScript projects should reject `any`.      |
+| `python.mypy-required` | Python projects should run mypy.              |
+| `python.ruff-required` | Python projects should run Ruff.              |
+| `docs.simpledoc`       | Docs should follow the repository convention. |
+
+The exact rule behavior belongs in `specs/RULES.md` so each implementation can
+share the same contract.
+
+## Implementation Expectations
+
+Each language implementation should demonstrate the same boundaries:
+
+- core rule evaluation without filesystem side effects
+- filesystem scanning isolated behind a small boundary
+- config parsing isolated from rule logic
+- text and JSON reporting
+- typed findings, severities, and reports
+- focused unit tests for rules
+- integration tests for CLI behavior
+- CI checks for formatting, linting, type checking, and tests
+
+The implementations should be boring on purpose. Agents should be able to copy
+the shape without copying accidental complexity.
+
+## Guardrail Principles
+
+1. Keep the core boring.
+   Business rules should be ordinary code with direct tests. Frameworks,
+   databases, queues, HTTP, file systems, and external APIs belong at the edges.
+
+2. Make weak types fail early.
+   Avoid broad escape hatches. If a boundary is dynamic, validate it and convert
+   it to a typed shape.
+
+3. Prefer fast local checks.
+   Formatting, linting, type checking, and unit tests should be cheap enough to
+   run constantly.
+
+4. Separate policy from plumbing.
+   The important rules should not depend on CLIs, web servers, ORMs, or cloud
+   SDKs.
+
+5. Treat generated code as untrusted.
+   Review it, test it, type-check it, and keep the architecture understandable to
+   humans.
 
 ## Concept Docs
 
