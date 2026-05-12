@@ -13,7 +13,7 @@ As of 2026-05-12, the profile identifies him as Robert C. Martin, links to
 agent coordination, CRAP analysis, mutation testing, duplication detection,
 dependency checks, and acceptance-test-driven generation.
 
-This matters for `agentic-guardrails` because the repos form a practical tool
+This matters for `slophammer` because the repos form a practical tool
 stack for the same problem described in the 2026 bathrobe rants: AI agents can
 produce code quickly, but they need external constraints that measure structure,
 coverage, mutation strength, duplication, dependency direction, and acceptance
@@ -61,7 +61,7 @@ Important design points:
 - It creates tmux sessions and Terminal windows per configured role.
 - It provides message-passing and cleanup scripts.
 
-For `agentic-guardrails`, this repo is the operational side of the problem:
+For `slophammer`, this repo is the operational side of the problem:
 multiple agents need explicit boundaries, ownership, and communication paths.
 The tool is less about code quality metrics and more about making a swarm
 manageable enough that quality checks can be applied coherently.
@@ -256,7 +256,7 @@ It supports text and EDN output.
 fingerprint idea to top-level Clojure forms. It normalizes Clojure syntax nodes
 and compares forms by Jaccard similarity.
 
-For `agentic-guardrails`, the DRY family provides a measurable way to push
+For `slophammer`, the DRY family provides a measurable way to push
 agents away from copy/paste growth and toward intentional abstraction.
 
 ## Spec, Test, and Architecture Guardrails
@@ -347,7 +347,7 @@ acceptance-test wiki. It is not a new AI repo, but it is relevant background:
 the 2026 rants repeatedly emphasize acceptance tests as a way to keep agents
 from breaking existing behavior.
 
-## What This Suggests For agentic-guardrails
+## What This Suggests For slophammer
 
 The recent Uncle Bob repos imply a concrete guardrail stack:
 

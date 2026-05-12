@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"example.com/agentic-guardrails-go-template/internal/greeting"
+	"example.com/slophammer-go-template/internal/greeting"
 )
 
 func main() {

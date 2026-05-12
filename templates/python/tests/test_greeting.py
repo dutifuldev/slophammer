@@ -1,6 +1,6 @@
 import pytest
 
-from guardrails_template import GreetingInput, create_greeting
+from slophammer_template import GreetingInput, create_greeting
 
 
 def test_create_greeting_trims_name() -> None:

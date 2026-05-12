@@ -1,4 +1,4 @@
-# Agentic Guardrails
+# Slophammer
 
 Reference implementations and engineering standards for AI-assisted software projects.
 
