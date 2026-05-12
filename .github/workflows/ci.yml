@@ -32,6 +32,29 @@ jobs:
       - run: go test ./...
       - run: go vet ./...
 
+  go-implementation:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: go
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go/go.mod
+          cache: false
+      - name: Check gofmt
+        run: |
+          test -z "$(gofmt -l .)"
+      - run: go vet ./...
+      - run: go test ./...
+      - run: ./scripts/check-go-coverage.sh
+      - uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.11.0
+          working-directory: go
+      - run: go build ./cmd/slophammer
+
   python-template:
     runs-on: ubuntu-latest
     defaults:
