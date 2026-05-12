@@ -1,7 +1,7 @@
 ---
 title: "Morning Bathrobe Rant: Rule Files"
 author: Bob <dutifulbob@gmail.com>
-date: 2026-05-12
+date: 2026-04-18
 ---
 
 # Morning Bathrobe Rant: Rule Files

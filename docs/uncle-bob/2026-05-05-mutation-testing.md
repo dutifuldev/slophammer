@@ -1,7 +1,7 @@
 ---
 title: "Morning Bathrobe Rant: Mutation Testing"
 author: Bob <dutifulbob@gmail.com>
-date: 2026-05-12
+date: 2026-05-05
 ---
 
 # Morning Bathrobe Rant: Mutation Testing

@@ -1,7 +1,7 @@
 ---
 title: "Morning Bathrobe Rant: Quicksilver"
 author: Bob <dutifulbob@gmail.com>
-date: 2026-05-12
+date: 2026-04-21
 ---
 
 # Morning Bathrobe Rant: Quicksilver

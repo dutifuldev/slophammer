@@ -1,7 +1,7 @@
 ---
 title: "Morning Bathrobe Rant: Disengage From the Syntax"
 author: Bob <dutifulbob@gmail.com>
-date: 2026-05-12
+date: 2026-05-06
 ---
 
 # Morning Bathrobe Rant: Disengage From the Syntax

@@ -1,7 +1,7 @@
 ---
 title: "Morning Bathrobe Rant: AI Out-Codes You; Deal With It"
 author: Bob <dutifulbob@gmail.com>
-date: 2026-05-12
+date: 2026-04-20
 ---
 
 # Morning Bathrobe Rant: AI Out-Codes You; Deal With It

@@ -1,7 +1,7 @@
 ---
 title: "Morning Bathrobe Rant: Unit Testing"
 author: Bob <dutifulbob@gmail.com>
-date: 2026-05-12
+date: 2026-04-22
 ---
 
 # Morning Bathrobe Rant: Unit Testing
