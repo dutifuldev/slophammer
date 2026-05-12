@@ -154,7 +154,7 @@ func hasUnscopedGoSignal(snapshot repo.Snapshot) bool {
 			return true
 		}
 	}
-	return hasCommand(goProjectSnapshot(snapshot, "", []string{""}), "go test", "go vet")
+	return hasCommandPattern(goProjectSnapshot(snapshot, "", []string{""}), goCommandPattern)
 }
 
 func hasGoSourceOutsideModuleRoots(snapshot repo.Snapshot, rootsByPath map[string]struct{}) bool {
@@ -245,11 +245,17 @@ func workflowMentionsGoRoot(content, root string) bool {
 	normalized := strings.ReplaceAll(content, "\\", "/")
 	for _, needle := range []string{
 		"working-directory: " + root,
+		"working-directory: ./" + root,
 		"working-directory: \"" + root + "\"",
+		"working-directory: \"./" + root + "\"",
 		"working-directory: '" + root + "'",
+		"working-directory: './" + root + "'",
 		"cd " + root,
+		"cd ./" + root,
 		"cd \"" + root + "\"",
+		"cd \"./" + root + "\"",
 		"cd '" + root + "'",
+		"cd './" + root + "'",
 		root + "/",
 	} {
 		if strings.Contains(normalized, needle) {
@@ -423,6 +429,7 @@ func finding(definition Definition) Finding {
 }
 
 var (
+	goCommandPattern         = regexp.MustCompile(`(?m)\bgo\s+(test|vet|build|run|tool|mod)\b`)
 	goTestAllPackagesPattern = regexp.MustCompile(`(?m)\bgo\s+test\b[^\n#;&|]*\./\.\.`)
 	goVetAllPackagesPattern  = regexp.MustCompile(`(?m)\bgo\s+vet\b[^\n#;&|]*\./\.\.`)
 	coverageThresholdPattern = regexp.MustCompile(`(?im)\b(total|cover|coverage|minimum|threshold|required)\b[^\n]*(>=|<=|-ge\b|-le\b|-gt\b|-lt\b)|(?:>=|<=|-ge\b|-le\b|-gt\b|-lt\b)[^\n]*\b(total|cover|coverage|minimum|threshold|required)\b`)
