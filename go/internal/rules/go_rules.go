@@ -221,7 +221,7 @@ func scopedGoProjectFile(filePath string, file repo.File, root string, roots []s
 		return file, true
 	}
 	if isRepoRootCommandFile(filePath) {
-		content, ok := scopedRootCommandContent(file.Content, root, roots)
+		content, ok := scopedRootCommandContent(filePath, file.Content, root, roots)
 		if !ok {
 			return repo.File{}, false
 		}
@@ -257,19 +257,22 @@ func scopedWorkflowContent(content, root string, roots []string) (string, bool) 
 	return filterWorkflowContentForRoot(content, root, roots)
 }
 
-func scopedRootCommandContent(content, root string, roots []string) (string, bool) {
+func scopedRootCommandContent(filePath string, content string, root string, roots []string) (string, bool) {
 	lines := strings.Split(content, "\n")
 	kept := make([]string, 0, len(lines))
 	inRootBlock := false
+	carryRootContext := carriesRootCommandContext(filePath)
 	for _, line := range lines {
 		if workflowMentionsOtherGoRoot(line, root, roots) {
 			inRootBlock = false
 			continue
 		}
 		if workflowMentionsGoRoot(line, root, roots) {
-			inRootBlock = true
+			inRootBlock = carryRootContext
+			kept = append(kept, line)
+			continue
 		}
-		if inRootBlock {
+		if carryRootContext && inRootBlock {
 			kept = append(kept, line)
 		}
 	}
@@ -477,6 +480,10 @@ func isRepoRootCommandFile(filePath string) bool {
 	default:
 		return strings.HasPrefix(filePath, "scripts/")
 	}
+}
+
+func carriesRootCommandContext(filePath string) bool {
+	return strings.HasPrefix(filePath, "scripts/")
 }
 
 func isEmbeddedFixturePath(filePath string) bool {

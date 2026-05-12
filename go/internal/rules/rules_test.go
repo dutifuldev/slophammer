@@ -714,6 +714,65 @@ jobs:
 	}
 }
 
+func TestGoRulesDoNotCarryMakefileScopeAcrossTargets(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"README.md":     {Path: "README.md"},
+		"AGENTS.md":     {Path: "AGENTS.md"},
+		"go/go.mod":     {Path: "go/go.mod"},
+		"go/main.go":    {Path: "go/main.go"},
+		".golangci.yml": {Path: ".golangci.yml", Content: "linters:\n  enable:\n    - cyclop\n"},
+		"Makefile": {
+			Path: "Makefile",
+			Content: `test:
+	cd go && go test ./...
+vet:
+	go vet ./...
+lint:
+	cd go && golangci-lint run
+`,
+		},
+		"scripts/check-go-coverage.sh": {
+			Path: "scripts/check-go-coverage.sh",
+			Content: `cd go
+go test -coverprofile=coverage.out ./...
+go tool cover -func=coverage.out
+awk -v total="80" -v minimum="80" 'BEGIN { exit !(total + 0 >= minimum + 0) }'
+`,
+		},
+		"scripts/check-dry.sh": {
+			Path:    "scripts/check-dry.sh",
+			Content: "cd go && go run github.com/unclebob/dry4go/cmd/dry4go@latest --format json .\n",
+		},
+		"scripts/check-crap.sh": {
+			Path: "scripts/check-crap.sh",
+			Content: `cd go
+maximum_crap_score="30"
+go run github.com/unclebob/crap4go/cmd/crap4go@latest
+awk -v score="0" -v maximum="$maximum_crap_score" 'BEGIN { exit !(score + 0 <= maximum + 0) }'
+`,
+		},
+		"scripts/check-mutation.sh": {
+			Path:    "scripts/check-mutation.sh",
+			Content: "cd go && go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan\n",
+		},
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+jobs:
+  test:
+    steps:
+      - run: make test
+      - run: make vet
+      - run: make lint
+`,
+		},
+	})
+
+	report := Run(context.Background(), snapshot, DefaultRules())
+
+	assertRuleIDs(t, report.Findings, []string{GoVetRequiredRuleID})
+}
+
 func TestGoRulesScopeRootCommandFilesPerModule(t *testing.T) {
 	coverageScript := strings.ReplaceAll(cleanCoverageScript, "go test -coverprofile=coverage.out ./...", "go test -coverprofile=coverage.out ./internal/...")
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
