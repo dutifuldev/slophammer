@@ -88,6 +88,14 @@ The repo currently contains transitional language template directories. New work
 should move toward this top-level language layout so each implementation follows
 the same product contract.
 
+## Implementation Status
+
+| Language   | Status                                          |
+| ---------- | ----------------------------------------------- |
+| Go         | First slice: check, JSON/text reports, explain  |
+| TypeScript | Planned: same contract as the Go implementation |
+| Python     | Planned: same contract as the Go implementation |
+
 ## Shared Rule Set
 
 Start with a small common rule set:
