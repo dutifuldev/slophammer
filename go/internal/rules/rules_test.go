@@ -243,6 +243,34 @@ go tool cover -html=coverage.out > coverage.html
 	assertRuleIDs(t, report.Findings, []string{GoCoverageRequiredRuleID})
 }
 
+func TestGoCoverageRuleRequiresEvidenceInSameCheck(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+jobs:
+  test:
+    steps:
+      - run: go test ./...
+      - run: go vet ./...
+      - run: golangci-lint run
+      - run: ./scripts/check-go-coverage.sh
+      - run: echo "minimum node version >= 20"
+`,
+		},
+		"go/scripts/check-go-coverage.sh": {
+			Path: "go/scripts/check-go-coverage.sh",
+			Content: `go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out > coverage.html
+`,
+		},
+	})
+
+	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+	assertRuleIDs(t, report.Findings, []string{GoCoverageRequiredRuleID})
+}
+
 func TestGoCoverageRuleAcceptsCommonThresholdNames(t *testing.T) {
 	tests := []struct {
 		name          string

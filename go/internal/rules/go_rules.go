@@ -78,10 +78,14 @@ func hasGoLintConfigAndCommand(snapshot repo.Snapshot) bool {
 }
 
 func hasGoCoverageGate(snapshot repo.Snapshot) bool {
-	files := commandFiles(snapshot)
-	return repo.ContainsAny(files, "-coverprofile") &&
-		repo.ContainsAny(files, "go tool cover") &&
-		hasCoverageThreshold(files)
+	for _, file := range commandFiles(snapshot) {
+		if strings.Contains(file.Content, "-coverprofile") &&
+			strings.Contains(file.Content, "go tool cover") &&
+			hasCoverageThreshold(file.Content) {
+			return true
+		}
+	}
+	return false
 }
 
 func hasGoComplexityLint(snapshot repo.Snapshot) bool {
@@ -121,13 +125,8 @@ func golangCIConfigFiles(snapshot repo.Snapshot) []repo.File {
 	return snapshot.FilesNamedFold(".golangci.yml", ".golangci.yaml")
 }
 
-func hasCoverageThreshold(files []repo.File) bool {
-	for _, file := range files {
-		if coverageThresholdPattern.MatchString(file.Content) {
-			return true
-		}
-	}
-	return false
+func hasCoverageThreshold(content string) bool {
+	return coverageThresholdPattern.MatchString(content)
 }
 
 func configEnablesComplexityLinter(content string) bool {
