@@ -288,7 +288,7 @@ func filterWorkflowContentForRoot(content, root string, roots []string) (string,
 			kept = append(kept, block)
 		}
 	}
-	scoped := strings.Join(kept, "\n")
+	scoped := strings.Join(kept, workflowStepBoundary)
 	return scoped, strings.TrimSpace(scoped) != ""
 }
 
@@ -307,23 +307,7 @@ func workflowStepBlocks(content string) []string {
 	lines := strings.Split(content, "\n")
 	scan := workflowStepScan{}
 	for _, line := range lines {
-		if scan.enterJobs(line) {
-			continue
-		}
-		if scan.inJobs && isWorkflowJobStart(line) {
-			scan.startJob()
-			continue
-		}
-		if len(scan.current) == 0 && isWorkflowWorkingDirectory(line) {
-			scan.recordWorkingDirectory(line)
-		}
-		if isWorkflowStepStart(line) {
-			scan.startStep(line)
-			continue
-		}
-		if len(scan.current) > 0 {
-			scan.current = append(scan.current, line)
-		}
+		scan.visitLine(line)
 	}
 	blocks := appendWorkflowStepBlock(scan.blocks, scan.current)
 	if len(blocks) == 0 {
@@ -339,6 +323,26 @@ type workflowStepScan struct {
 	current       []string
 	inJobs        bool
 	seenJob       bool
+}
+
+func (s *workflowStepScan) visitLine(line string) {
+	if s.enterJobs(line) {
+		return
+	}
+	if s.inJobs && isWorkflowJobStart(line) {
+		s.startJob()
+		return
+	}
+	if len(s.current) == 0 && isWorkflowWorkingDirectory(line) {
+		s.recordWorkingDirectory(line)
+	}
+	if s.inJobs && isWorkflowStepStart(line) {
+		s.startStep(line)
+		return
+	}
+	if len(s.current) > 0 {
+		s.current = append(s.current, line)
+	}
 }
 
 func (s *workflowStepScan) enterJobs(line string) bool {
@@ -624,10 +628,24 @@ func commandFiles(snapshot repo.Snapshot) []repo.File {
 }
 
 func commandSections(file repo.File) []string {
+	if isWorkflowFilePath(file.Path) && strings.Contains(file.Content, workflowStepBoundary) {
+		return splitNonEmpty(file.Content, workflowStepBoundary)
+	}
 	if isWorkflowFilePath(file.Path) {
 		return workflowStepBlocks(file.Content)
 	}
 	return []string{file.Content}
+}
+
+func splitNonEmpty(content string, separator string) []string {
+	parts := strings.Split(content, separator)
+	sections := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if strings.TrimSpace(part) != "" {
+			sections = append(sections, part)
+		}
+	}
+	return sections
 }
 
 func isScriptPath(filePath string) bool {
@@ -677,5 +695,7 @@ var (
 	goVetAllPackagesPattern  = regexp.MustCompile(`(?m)\bgo\s+vet\b[^\n#;&|]*\./\.\.`)
 	golangCILintRunPattern   = regexp.MustCompile(`(?m)(?:^|[[:space:];&|])golangci-lint\s+run(?:[[:space:];&|]|$)|\bgo\s+run\b[^\n#;&|]*github\.com/golangci/golangci-lint(?:/v[0-9]+)?/cmd/golangci-lint[^\n#;&|]*\srun(?:[[:space:];&|]|$)`)
 	coverageThresholdPattern = regexp.MustCompile(`(?im)\b(total|cover|coverage|minimum|threshold|required)\b[^\n]*(>=|<=|-ge\b|-le\b|-gt\b|-lt\b)|(?:>=|<=|-ge\b|-le\b|-gt\b|-lt\b)[^\n]*\b(total|cover|coverage|minimum|threshold|required)\b`)
-	crapThresholdPattern     = regexp.MustCompile(`(?im)\b(crap|maximum|minimum|threshold|required|score)\b[^\n]*(>=|<=|>|<|-ge\b|-le\b|-gt\b|-lt\b)|(?:>=|<=|>|<|-ge\b|-le\b|-gt\b|-lt\b)[^\n]*\b(crap|maximum|minimum|threshold|required|score)\b`)
+	crapThresholdPattern     = regexp.MustCompile(`(?im)\b(crap|maximum|minimum|threshold|required|score)\b[^\n]*(>=|<=|-ge\b|-le\b|-gt\b|-lt\b)|(?:>=|<=|-ge\b|-le\b|-gt\b|-lt\b)[^\n]*\b(crap|maximum|minimum|threshold|required|score)\b`)
 )
+
+const workflowStepBoundary = "\nSLOPHAMMER_WORKFLOW_STEP_BOUNDARY\n"

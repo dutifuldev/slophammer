@@ -626,6 +626,44 @@ jobs:
 	}
 }
 
+func TestGoRulesIgnoreWorkflowListsBeforeJobs(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"README.md":                       {Path: "README.md"},
+		"AGENTS.md":                       {Path: "AGENTS.md"},
+		"go/go.mod":                       {Path: "go/go.mod"},
+		"go/main.go":                      {Path: "go/main.go"},
+		"go/.golangci.yml":                {Path: "go/.golangci.yml", Content: "linters:\n  enable:\n    - cyclop\n"},
+		"go/scripts/check-go-coverage.sh": {Path: "go/scripts/check-go-coverage.sh", Content: cleanCoverageScript},
+		"go/scripts/check-dry.sh":         {Path: "go/scripts/check-dry.sh", Content: "go run github.com/unclebob/dry4go/cmd/dry4go@latest --format json .\n"},
+		"go/scripts/check-crap.sh":        {Path: "go/scripts/check-crap.sh", Content: cleanCRAPScript},
+		"go/scripts/check-mutation.sh":    {Path: "go/scripts/check-mutation.sh", Content: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan\n"},
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+on:
+  push:
+    branches:
+      - main
+defaults:
+  run:
+    working-directory: go
+jobs:
+  test:
+    steps:
+      - run: go test ./...
+      - run: go vet ./...
+      - run: golangci-lint run
+`,
+		},
+	})
+
+	report := Run(context.Background(), snapshot, DefaultRules())
+
+	if !report.OK {
+		t.Fatalf("report.OK = false, findings = %#v", report.Findings)
+	}
+}
+
 func TestGoRulesScopeSingleNestedModuleWorkflowEvidence(t *testing.T) {
 	files := cleanGoGuardrailFiles(map[string]repo.File{
 		".github/workflows/ci.yml": {
@@ -981,6 +1019,19 @@ func TestGoCRAPRuleRequiresThreshold(t *testing.T) {
 		"go/scripts/check-crap.sh": {
 			Path:    "go/scripts/check-crap.sh",
 			Content: "go run github.com/unclebob/crap4go/cmd/crap4go@latest\n",
+		},
+	})
+
+	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+	assertRuleIDs(t, report.Findings, []string{GoCRAPRequiredRuleID})
+}
+
+func TestGoCRAPRuleRejectsReportRedirectionWithoutThreshold(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		"go/scripts/check-crap.sh": {
+			Path:    "go/scripts/check-crap.sh",
+			Content: "go run github.com/unclebob/crap4go/cmd/crap4go@latest > crap-report.txt\n",
 		},
 	})
 
