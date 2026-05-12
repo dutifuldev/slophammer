@@ -14,7 +14,7 @@ func TestCheckDryRunsDry4GoAndEnforcesCandidateBudget(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 
-	code := CheckDry(context.Background(), DryOptions{Root: "/repo", MaximumCandidates: 1}, &out, &errOut, runner)
+	code := CheckDry(context.Background(), DryOptions{Root: "/repo", MaximumCandidates: 1, MaximumSet: true}, &out, &errOut, runner)
 
 	if code != 1 {
 		t.Fatalf("code = %d, want 1", code)
@@ -24,6 +24,22 @@ func TestCheckDryRunsDry4GoAndEnforcesCandidateBudget(t *testing.T) {
 		t.Fatalf("call = %#v, want dir=/repo name=go args=%#v", runnerCall, wantArgs)
 	}
 	if !strings.Contains(out.String(), "DRY candidates: 2; maximum: 1") {
+		t.Fatalf("stdout = %q", out.String())
+	}
+}
+
+func TestCheckDryHonorsExplicitZeroBudget(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckDry(context.Background(), DryOptions{MaximumCandidates: 0, MaximumSet: true}, &out, &errOut, &fakeRunner{
+		output: []byte(`{"candidates":[{}]}`),
+	})
+
+	if code != 1 {
+		t.Fatalf("code = %d, want 1", code)
+	}
+	if !strings.Contains(out.String(), "DRY candidates: 1; maximum: 0") {
 		t.Fatalf("stdout = %q", out.String())
 	}
 }
@@ -47,7 +63,7 @@ func TestCheckCRAPRunsCRAP4GoAndReportsViolations(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 
-	code := CheckCRAP(context.Background(), CRAPOptions{Root: "/repo", MaximumScore: 30}, &out, &errOut, runner)
+	code := CheckCRAP(context.Background(), CRAPOptions{Root: "/repo", MaximumScore: 30, MaximumSet: true}, &out, &errOut, runner)
 
 	if code != 1 {
 		t.Fatalf("code = %d, want 1", code)
@@ -57,6 +73,22 @@ func TestCheckCRAPRunsCRAP4GoAndReportsViolations(t *testing.T) {
 		t.Fatalf("call = %#v, want dir=/repo name=go args=%#v", runnerCall, wantArgs)
 	}
 	if !strings.Contains(errOut.String(), "CRAP score 30.1 exceeds maximum 30.0 for pkg.Func") {
+		t.Fatalf("stderr = %q", errOut.String())
+	}
+}
+
+func TestCheckCRAPHonorsExplicitZeroLimit(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckCRAP(context.Background(), CRAPOptions{MaximumScore: 0, MaximumSet: true}, &out, &errOut, &fakeRunner{
+		output: []byte("pkg.Func 1 2 3 0.1\n"),
+	})
+
+	if code != 1 {
+		t.Fatalf("code = %d, want 1", code)
+	}
+	if !strings.Contains(errOut.String(), "CRAP score 0.1 exceeds maximum 0.0 for pkg.Func") {
 		t.Fatalf("stderr = %q", errOut.String())
 	}
 }

@@ -37,12 +37,14 @@ func (ExecRunner) Run(ctx context.Context, dir string, name string, args ...stri
 type DryOptions struct {
 	Root              string
 	MaximumCandidates int
+	MaximumSet        bool
 	ShowReport        bool
 }
 
 type CRAPOptions struct {
 	Root         string
 	MaximumScore float64
+	MaximumSet   bool
 }
 
 type MutationOptions struct {
@@ -54,7 +56,7 @@ type MutationOptions struct {
 func CheckDry(ctx context.Context, options DryOptions, out io.Writer, errOut io.Writer, runner Runner) int {
 	root := defaultRoot(options.Root)
 	maximumCandidates := options.MaximumCandidates
-	if maximumCandidates == 0 {
+	if !options.MaximumSet && maximumCandidates == 0 {
 		maximumCandidates = DefaultMaximumDRYCandidates
 	}
 
@@ -82,7 +84,7 @@ func CheckDry(ctx context.Context, options DryOptions, out io.Writer, errOut io.
 func CheckCRAP(ctx context.Context, options CRAPOptions, out io.Writer, errOut io.Writer, runner Runner) int {
 	root := defaultRoot(options.Root)
 	maximumScore := options.MaximumScore
-	if maximumScore == 0 {
+	if !options.MaximumSet && maximumScore == 0 {
 		maximumScore = DefaultMaximumCRAPScore
 	}
 

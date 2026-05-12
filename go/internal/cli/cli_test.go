@@ -65,7 +65,7 @@ func TestParseGoDryArgs(t *testing.T) {
 	if !ok {
 		t.Fatalf("ok = false; stderr=%q", errOut.String())
 	}
-	if options.Root != "/repo" || options.MaximumCandidates != 12 || !options.ShowReport {
+	if options.Root != "/repo" || options.MaximumCandidates != 12 || !options.MaximumSet || !options.ShowReport {
 		t.Fatalf("options = %#v", options)
 	}
 }
@@ -77,7 +77,7 @@ func TestParseGoCRAPArgs(t *testing.T) {
 	if !ok {
 		t.Fatalf("ok = false; stderr=%q", errOut.String())
 	}
-	if options.Root != "/repo" || options.MaximumScore != 25.5 {
+	if options.Root != "/repo" || options.MaximumScore != 25.5 || !options.MaximumSet {
 		t.Fatalf("options = %#v", options)
 	}
 }

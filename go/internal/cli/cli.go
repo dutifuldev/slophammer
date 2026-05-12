@@ -143,6 +143,7 @@ func parseGoDryArgs(args []string, errOut io.Writer) (toolchecks.DryOptions, boo
 				return toolchecks.DryOptions{}, false
 			}
 			options.MaximumCandidates = value
+			options.MaximumSet = true
 		default:
 			root, ok := parseSinglePathOption(options.Root, arg, "go dry", errOut)
 			if !ok {
@@ -171,6 +172,7 @@ func parseGoCRAPArgs(args []string, errOut io.Writer) (toolchecks.CRAPOptions, b
 				return toolchecks.CRAPOptions{}, false
 			}
 			options.MaximumScore = value
+			options.MaximumSet = true
 		default:
 			root, ok := parseSinglePathOption(options.Root, arg, "go crap", errOut)
 			if !ok {
