@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/dutifuldev/slophammer/go/internal/repo"
+	"gopkg.in/yaml.v3"
 )
 
 type goStaticRule struct {
@@ -76,11 +77,19 @@ func hasGoLintConfigAndCommand(snapshot repo.Snapshot) bool {
 }
 
 func hasGoCoverageGate(snapshot repo.Snapshot) bool {
-	return hasCommand(snapshot, "-coverprofile") && hasCommand(snapshot, "go tool cover")
+	files := commandFiles(snapshot)
+	return repo.ContainsAny(files, "-coverprofile") &&
+		repo.ContainsAny(files, "go tool cover") &&
+		hasCoverageThreshold(files)
 }
 
 func hasGoComplexityLint(snapshot repo.Snapshot) bool {
-	return repo.ContainsAny(golangCIConfigFiles(snapshot), "cyclop", "gocognit", "gocyclo")
+	for _, file := range golangCIConfigFiles(snapshot) {
+		if configEnablesComplexityLinter(file.Content) {
+			return true
+		}
+	}
+	return false
 }
 
 func hasDry4GoCommand(snapshot repo.Snapshot) bool {
@@ -109,6 +118,62 @@ func hasGolangCIConfig(snapshot repo.Snapshot) bool {
 
 func golangCIConfigFiles(snapshot repo.Snapshot) []repo.File {
 	return snapshot.FilesNamedFold(".golangci.yml", ".golangci.yaml")
+}
+
+func hasCoverageThreshold(files []repo.File) bool {
+	for _, file := range files {
+		content := strings.ToLower(file.Content)
+		if strings.Contains(content, "cover") &&
+			strings.Contains(content, "minimum") &&
+			(strings.Contains(content, ">=") || strings.Contains(content, "-ge") || strings.Contains(content, "-lt")) {
+			return true
+		}
+	}
+	return false
+}
+
+func configEnablesComplexityLinter(content string) bool {
+	var document yaml.Node
+	if err := yaml.Unmarshal([]byte(content), &document); err != nil {
+		return false
+	}
+	root := yamlRoot(&document)
+	linters := yamlMappingValue(root, "linters")
+	enable := yamlMappingValue(linters, "enable")
+	return yamlSequenceContains(enable, "cyclop", "gocognit", "gocyclo")
+}
+
+func yamlRoot(node *yaml.Node) *yaml.Node {
+	if node != nil && node.Kind == yaml.DocumentNode && len(node.Content) > 0 {
+		return node.Content[0]
+	}
+	return node
+}
+
+func yamlMappingValue(node *yaml.Node, key string) *yaml.Node {
+	if node == nil || node.Kind != yaml.MappingNode {
+		return nil
+	}
+	for i := 0; i+1 < len(node.Content); i += 2 {
+		if node.Content[i].Value == key {
+			return node.Content[i+1]
+		}
+	}
+	return nil
+}
+
+func yamlSequenceContains(node *yaml.Node, values ...string) bool {
+	if node == nil || node.Kind != yaml.SequenceNode {
+		return false
+	}
+	for _, item := range node.Content {
+		for _, value := range values {
+			if item.Value == value {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func commandFiles(snapshot repo.Snapshot) []repo.File {

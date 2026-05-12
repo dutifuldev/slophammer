@@ -75,12 +75,14 @@ The rule accepts `.golangci.yml` or `.golangci.yaml`.
 
 ### `go.coverage-required`
 
-Go projects should declare a coverage gate using coverage output from `go test`
-and `go tool cover`, or a named coverage script that Slophammer can inspect.
+Go projects should declare a coverage gate using coverage output from `go test`,
+`go tool cover`, and a minimum threshold in a workflow or script that Slophammer
+can inspect.
 
 ### `go.complexity-required`
 
 Go projects should enable a complexity linter through `golangci-lint`.
+Comments, settings, and disabled linter entries do not satisfy this rule.
 
 The accepted linter names are:
 

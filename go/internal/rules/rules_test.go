@@ -86,6 +86,7 @@ func TestGoCoverageRuleRequiresCoverageOutputAndCoverTool(t *testing.T) {
 	}{
 		{name: "missing cover tool", coverageCheck: "go test -coverprofile=coverage.out ./...\n"},
 		{name: "missing cover profile", coverageCheck: "go tool cover -func=coverage.out\n"},
+		{name: "missing threshold", coverageCheck: "go test -coverprofile=coverage.out ./...\ngo tool cover -func=coverage.out\n"},
 	}
 
 	for _, tt := range tests {
@@ -100,6 +101,49 @@ func TestGoCoverageRuleRequiresCoverageOutputAndCoverTool(t *testing.T) {
 			report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
 
 			assertRuleIDs(t, report.Findings, []string{GoCoverageRequiredRuleID})
+		})
+	}
+}
+
+func TestGoComplexityRuleRequiresEnabledLinter(t *testing.T) {
+	tests := []struct {
+		name   string
+		config string
+	}{
+		{
+			name: "disabled",
+			config: `linters:
+  disable:
+    - cyclop
+`,
+		},
+		{
+			name: "settings only",
+			config: `linters:
+  settings:
+    cyclop:
+      max-complexity: 10
+`,
+		},
+		{
+			name: "comment only",
+			config: `linters:
+  enable:
+    - errcheck
+# cyclop belongs in enable, not comments.
+`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			files := cleanGoGuardrailFiles(map[string]repo.File{
+				"go/.golangci.yml": {Path: "go/.golangci.yml", Content: tt.config},
+			})
+
+			report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+			assertRuleIDs(t, report.Findings, []string{GoComplexityRequiredRuleID})
 		})
 	}
 }
@@ -228,7 +272,7 @@ func cleanGoGuardrailFiles(overrides map[string]repo.File) map[string]repo.File 
 		"go/main.go":                      {Path: "go/main.go"},
 		"go/.golangci.yml":                {Path: "go/.golangci.yml", Content: "linters:\n  enable:\n    - cyclop\n"},
 		".github/workflows/ci.yml":        {Path: ".github/workflows/ci.yml", Content: goCleanWorkflow},
-		"go/scripts/check-go-coverage.sh": {Path: "go/scripts/check-go-coverage.sh", Content: "go test -coverprofile=coverage.out ./...\ngo tool cover -func=coverage.out\n"},
+		"go/scripts/check-go-coverage.sh": {Path: "go/scripts/check-go-coverage.sh", Content: cleanCoverageScript},
 		"go/scripts/check-dry.sh":         {Path: "go/scripts/check-dry.sh", Content: "go run github.com/unclebob/dry4go/cmd/dry4go@latest --format json .\n"},
 		"go/scripts/check-crap.sh":        {Path: "go/scripts/check-crap.sh", Content: "go run github.com/unclebob/crap4go/cmd/crap4go@latest\n"},
 		"go/scripts/check-mutation.sh":    {Path: "go/scripts/check-mutation.sh", Content: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest internal/rules/rules.go --scan\n"},
@@ -238,6 +282,12 @@ func cleanGoGuardrailFiles(overrides map[string]repo.File) map[string]repo.File 
 	}
 	return files
 }
+
+const cleanCoverageScript = `minimum_coverage="80"
+go test -coverprofile=coverage.out ./...
+total="$(go tool cover -func=coverage.out | awk '/^total:/ {print substr($3, 1, length($3)-1)}')"
+awk -v total="$total" -v minimum="$minimum_coverage" 'BEGIN { exit !(total + 0 >= minimum + 0) }'
+`
 
 const goCleanWorkflow = `name: CI
 

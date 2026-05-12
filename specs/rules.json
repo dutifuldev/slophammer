@@ -81,7 +81,7 @@
       "severity": "error",
       "path": "scripts/check-go-coverage.sh",
       "message": "Go projects must declare a coverage gate",
-      "description": "Go projects should enforce coverage with go test coverage output and go tool cover.",
+      "description": "Go projects should enforce coverage with go test coverage output, go tool cover, and a minimum threshold.",
       "tool": "go test -coverprofile",
       "status": "implemented"
     },

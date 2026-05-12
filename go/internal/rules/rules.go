@@ -147,7 +147,7 @@ var defaultDefinitions = []Definition{
 		Severity:    SeverityError,
 		Path:        "scripts/check-go-coverage.sh",
 		Message:     "Go projects must declare a coverage gate",
-		Description: "Go projects should enforce coverage with go test coverage output and go tool cover.",
+		Description: "Go projects should enforce coverage with go test coverage output, go tool cover, and a minimum threshold.",
 		Tool:        "go test -coverprofile",
 		Status:      "implemented",
 	},
