@@ -268,35 +268,57 @@ func workflowStepAppliesToRoot(content, root string, roots []string) bool {
 
 func workflowStepBlocks(content string) []string {
 	lines := strings.Split(content, "\n")
-	blocks := make([]string, 0)
-	jobContext := make([]string, 0)
-	current := make([]string, 0)
+	scan := workflowStepScan{}
 	for _, line := range lines {
 		if isWorkflowJobStart(line) {
-			blocks = appendWorkflowStepBlock(blocks, current)
-			current = nil
-			jobContext = nil
+			scan.startJob()
 			continue
 		}
-		if len(current) == 0 {
-			if isWorkflowWorkingDirectory(line) {
-				jobContext = append(jobContext, line)
-			}
+		if len(scan.current) == 0 && isWorkflowWorkingDirectory(line) {
+			scan.recordWorkingDirectory(line)
 		}
 		if isWorkflowStepStart(line) {
-			blocks = appendWorkflowStepBlock(blocks, current)
-			current = append(append([]string{}, jobContext...), line)
+			scan.startStep(line)
 			continue
 		}
-		if len(current) > 0 {
-			current = append(current, line)
+		if len(scan.current) > 0 {
+			scan.current = append(scan.current, line)
 		}
 	}
-	blocks = appendWorkflowStepBlock(blocks, current)
+	blocks := appendWorkflowStepBlock(scan.blocks, scan.current)
 	if len(blocks) == 0 {
 		return []string{content}
 	}
 	return blocks
+}
+
+type workflowStepScan struct {
+	blocks        []string
+	globalContext []string
+	jobContext    []string
+	current       []string
+	seenJob       bool
+}
+
+func (s *workflowStepScan) startJob() {
+	s.blocks = appendWorkflowStepBlock(s.blocks, s.current)
+	s.current = nil
+	s.jobContext = append([]string{}, s.globalContext...)
+	s.seenJob = true
+}
+
+func (s *workflowStepScan) recordWorkingDirectory(line string) {
+	if s.seenJob {
+		s.jobContext = append(s.jobContext, line)
+		return
+	}
+	s.globalContext = append(s.globalContext, line)
+	s.jobContext = append([]string{}, s.globalContext...)
+}
+
+func (s *workflowStepScan) startStep(line string) {
+	s.blocks = appendWorkflowStepBlock(s.blocks, s.current)
+	s.current = append(append([]string{}, s.jobContext...), line)
 }
 
 func appendWorkflowStepBlock(blocks []string, lines []string) []string {
@@ -317,11 +339,22 @@ func workflowMentionsOtherGoRoot(content, root string, roots []string) bool {
 
 func workflowMentionsGoRoot(content, root string, roots []string) bool {
 	normalized := strings.ReplaceAll(content, "\\", "/")
-	return workflowReferencesRootPath(normalized, root, roots)
+	return workflowReferencesRootExact(normalized, root, roots, workingDirectoryPattern(root)) ||
+		workflowReferencesRootExact(normalized, root, roots, cdRootPattern(root)) ||
+		workflowReferencesRootSubpath(normalized, root, roots)
 }
 
-func workflowReferencesRootPath(content, root string, roots []string) bool {
-	for _, match := range rootPathPattern(root).FindAllStringIndex(content, -1) {
+func workflowReferencesRootExact(content, root string, roots []string, pattern *regexp.Regexp) bool {
+	for _, match := range pattern.FindAllStringIndex(content, -1) {
+		if !rootPathIsNestedModule(content[match[0]:], root, roots) {
+			return true
+		}
+	}
+	return false
+}
+
+func workflowReferencesRootSubpath(content, root string, roots []string) bool {
+	for _, match := range rootSubpathPattern(root).FindAllStringIndex(content, -1) {
 		if !rootPathIsNestedModule(content[match[0]:], root, roots) {
 			return true
 		}
@@ -353,8 +386,16 @@ func hasRootPathBoundary(value, root string) bool {
 	return strings.ContainsRune(" \t\r\n'\";:&|)]}", rune(value[len(root)]))
 }
 
-func rootPathPattern(root string) *regexp.Regexp {
-	return regexp.MustCompile(`(?:^|[^[:alnum:]_./-])(?:\./)?` + regexp.QuoteMeta(root) + `(?:/|$|[[:space:]'";:&|)])`)
+func workingDirectoryPattern(root string) *regexp.Regexp {
+	return regexp.MustCompile(`(?m)\bworking-directory:\s*['"]?(?:\./)?` + regexp.QuoteMeta(root) + `['"]?(?:[[:space:]]|$)`)
+}
+
+func cdRootPattern(root string) *regexp.Regexp {
+	return regexp.MustCompile(`(?m)(?:^|[[:space:];&|])cd\s+['"]?(?:\./)?` + regexp.QuoteMeta(root) + `['"]?(?:[[:space:];&|]|$)`)
+}
+
+func rootSubpathPattern(root string) *regexp.Regexp {
+	return regexp.MustCompile(`(?:^|[^[:alnum:]_./-])(?:\./)?` + regexp.QuoteMeta(root) + `/`)
 }
 
 func isWorkflowStepStart(line string) bool {
