@@ -193,14 +193,27 @@ func isUnderAnyGoRoot(filePath string, rootsByPath map[string]struct{}) bool {
 
 func goProjectSnapshot(snapshot repo.Snapshot, root string, roots []string) repo.Snapshot {
 	files := map[string]repo.File{}
+	priorities := map[string]int{}
 	for filePath, file := range snapshot.Files {
 		scopedFile, ok := scopedGoProjectFile(filePath, file, root, roots)
 		if !ok {
 			continue
 		}
+		priority := scopedGoProjectFilePriority(filePath, root)
+		if priorities[scopedFile.Path] > priority {
+			continue
+		}
 		files[scopedFile.Path] = scopedFile
+		priorities[scopedFile.Path] = priority
 	}
 	return repo.NewSnapshot(snapshot.Root, files)
+}
+
+func scopedGoProjectFilePriority(filePath string, root string) int {
+	if root != "" && strings.HasPrefix(filePath, root+"/") {
+		return 2
+	}
+	return 1
 }
 
 func scopedGoProjectFile(filePath string, file repo.File, root string, roots []string) (repo.File, bool) {

@@ -752,6 +752,26 @@ jobs:
 	}
 }
 
+func TestGoRulesPreferModuleLocalConfigOverRepoRootConfig(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		".golangci.yml": {
+			Path:    ".golangci.yml",
+			Content: "linters:\n  enable:\n    - errcheck\n",
+		},
+		"go/.golangci.yml": {
+			Path:    "go/.golangci.yml",
+			Content: "linters:\n  enable:\n    - cyclop\n",
+		},
+	})
+
+	for range 100 {
+		report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+		if !report.OK {
+			t.Fatalf("report.OK = false, findings = %#v", report.Findings)
+		}
+	}
+}
+
 func TestGoRulesDoNotCarryMakefileScopeAcrossTargets(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
 		"README.md":     {Path: "README.md"},
