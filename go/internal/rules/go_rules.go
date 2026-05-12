@@ -197,11 +197,25 @@ func commandFiles(snapshot repo.Snapshot) []repo.File {
 	}
 	files := make([]repo.File, 0, len(filesByPath))
 	for _, file := range filesByPath {
+		file.Content = stripCommentLines(file.Content)
 		if strings.TrimSpace(file.Content) != "" {
 			files = append(files, file)
 		}
 	}
 	return files
+}
+
+func stripCommentLines(content string) string {
+	lines := strings.Split(content, "\n")
+	kept := make([]string, 0, len(lines))
+	for _, line := range lines {
+		beforeComment, _, _ := strings.Cut(line, "#")
+		if strings.TrimSpace(beforeComment) == "" {
+			continue
+		}
+		kept = append(kept, beforeComment)
+	}
+	return strings.Join(kept, "\n")
 }
 
 func hasCommandPattern(snapshot repo.Snapshot, pattern *regexp.Regexp) bool {
@@ -225,5 +239,5 @@ func finding(definition Definition) Finding {
 var (
 	goTestAllPackagesPattern = regexp.MustCompile(`(?m)\bgo\s+test\b[^\n#;&|]*\./\.\.`)
 	goVetAllPackagesPattern  = regexp.MustCompile(`(?m)\bgo\s+vet\b[^\n#;&|]*\./\.\.`)
-	coverageThresholdPattern = regexp.MustCompile(`(?im)\b(total|cover|coverage|minimum|threshold|required)\b[^\n]*(>=|<=|>|<|-ge\b|-le\b|-gt\b|-lt\b)|(?:>=|<=|>|<|-ge\b|-le\b|-gt\b|-lt\b)[^\n]*\b(total|cover|coverage|minimum|threshold|required)\b`)
+	coverageThresholdPattern = regexp.MustCompile(`(?im)\b(total|cover|coverage|minimum|threshold|required)\b[^\n]*(>=|<=|-ge\b|-le\b|-gt\b|-lt\b)|(?:>=|<=|-ge\b|-le\b|-gt\b|-lt\b)[^\n]*\b(total|cover|coverage|minimum|threshold|required)\b`)
 )

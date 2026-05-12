@@ -95,6 +95,64 @@ func TestGoTestsRuleAcceptsFlagsBeforePackagePattern(t *testing.T) {
 	}
 }
 
+func TestGoCommandRulesIgnoreCommentedCommands(t *testing.T) {
+	tests := []struct {
+		name      string
+		workflow  string
+		overrides map[string]repo.File
+		want      string
+	}{
+		{
+			name: "commented go test",
+			workflow: `name: CI
+jobs:
+  test:
+    steps:
+      - run: "# go test ./..."
+      - run: go vet ./...
+      - run: golangci-lint run
+      - run: ./scripts/check-go-coverage.sh
+`,
+			overrides: map[string]repo.File{
+				"go/scripts/check-go-coverage.sh": {
+					Path:    "go/scripts/check-go-coverage.sh",
+					Content: strings.ReplaceAll(cleanCoverageScript, "go test -coverprofile=coverage.out ./...", "go test -coverprofile=coverage.out ./internal/..."),
+				},
+			},
+			want: GoTestsRequiredRuleID,
+		},
+		{
+			name: "commented go vet",
+			workflow: `name: CI
+jobs:
+  test:
+    steps:
+      - run: go test ./...
+      - run: "# go vet ./..."
+      - run: golangci-lint run
+      - run: ./scripts/check-go-coverage.sh
+`,
+			want: GoVetRequiredRuleID,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			overrides := map[string]repo.File{
+				".github/workflows/ci.yml": {Path: ".github/workflows/ci.yml", Content: tt.workflow},
+			}
+			for path, file := range tt.overrides {
+				overrides[path] = file
+			}
+			files := cleanGoGuardrailFiles(overrides)
+
+			report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+			assertRuleIDs(t, report.Findings, []string{tt.want})
+		})
+	}
+}
+
 func TestGoCoverageRuleRequiresCoverageOutputAndCoverTool(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -119,6 +177,21 @@ func TestGoCoverageRuleRequiresCoverageOutputAndCoverTool(t *testing.T) {
 			assertRuleIDs(t, report.Findings, []string{GoCoverageRequiredRuleID})
 		})
 	}
+}
+
+func TestGoCoverageRuleRejectsReportRedirectionWithoutThreshold(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		"go/scripts/check-go-coverage.sh": {
+			Path: "go/scripts/check-go-coverage.sh",
+			Content: `go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out > coverage.html
+`,
+		},
+	})
+
+	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+	assertRuleIDs(t, report.Findings, []string{GoCoverageRequiredRuleID})
 }
 
 func TestGoCoverageRuleAcceptsCommonThresholdNames(t *testing.T) {
