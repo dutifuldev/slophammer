@@ -45,7 +45,7 @@ func newGoDryRule(definition Definition) Rule {
 }
 
 func newGoCRAPRule(definition Definition) Rule {
-	return goStaticRule{definition: definition, satisfied: hasCRAP4GoCommand}
+	return goStaticRule{definition: definition, satisfied: hasCRAP4GoGate}
 }
 
 func newGoMutationRule(definition Definition) Rule {
@@ -109,8 +109,14 @@ func hasDry4GoCommand(snapshot repo.Snapshot) bool {
 	return hasCommand(snapshot, "dry4go", "github.com/unclebob/dry4go/cmd/dry4go")
 }
 
-func hasCRAP4GoCommand(snapshot repo.Snapshot) bool {
-	return hasCommand(snapshot, "crap4go", "github.com/unclebob/crap4go/cmd/crap4go")
+func hasCRAP4GoGate(snapshot repo.Snapshot) bool {
+	for _, file := range commandFiles(snapshot) {
+		if strings.Contains(file.Content, "crap4go") &&
+			hasCRAPThreshold(file.Content) {
+			return true
+		}
+	}
+	return false
 }
 
 func hasMutate4GoCommand(snapshot repo.Snapshot) bool {
@@ -257,17 +263,29 @@ func workflowStepAppliesToRoot(content, root string, roots []string) bool {
 	if root == "" {
 		return !workflowMentionsOtherGoRoot(content, root, roots)
 	}
-	return workflowMentionsGoRoot(content, root)
+	return workflowMentionsGoRoot(content, root, roots)
 }
 
 func workflowStepBlocks(content string) []string {
 	lines := strings.Split(content, "\n")
 	blocks := make([]string, 0)
+	jobContext := make([]string, 0)
 	current := make([]string, 0)
 	for _, line := range lines {
+		if isWorkflowJobStart(line) {
+			blocks = appendWorkflowStepBlock(blocks, current)
+			current = nil
+			jobContext = nil
+			continue
+		}
+		if len(current) == 0 {
+			if isWorkflowWorkingDirectory(line) {
+				jobContext = append(jobContext, line)
+			}
+		}
 		if isWorkflowStepStart(line) {
 			blocks = appendWorkflowStepBlock(blocks, current)
-			current = []string{line}
+			current = append(append([]string{}, jobContext...), line)
 			continue
 		}
 		if len(current) > 0 {
@@ -290,40 +308,70 @@ func appendWorkflowStepBlock(blocks []string, lines []string) []string {
 
 func workflowMentionsOtherGoRoot(content, root string, roots []string) bool {
 	for _, otherRoot := range roots {
-		if otherRoot != "" && otherRoot != root && workflowMentionsGoRoot(content, otherRoot) {
+		if otherRoot != "" && otherRoot != root && workflowMentionsGoRoot(content, otherRoot, roots) {
 			return true
 		}
 	}
 	return false
 }
 
-func workflowMentionsGoRoot(content, root string) bool {
+func workflowMentionsGoRoot(content, root string, roots []string) bool {
 	normalized := strings.ReplaceAll(content, "\\", "/")
-	for _, needle := range []string{
-		"working-directory: " + root,
-		"working-directory: ./" + root,
-		"working-directory: \"" + root + "\"",
-		"working-directory: \"./" + root + "\"",
-		"working-directory: '" + root + "'",
-		"working-directory: './" + root + "'",
-		"cd " + root,
-		"cd ./" + root,
-		"cd \"" + root + "\"",
-		"cd \"./" + root + "\"",
-		"cd '" + root + "'",
-		"cd './" + root + "'",
-		root + "/",
-	} {
-		if strings.Contains(normalized, needle) {
+	return workflowReferencesRootPath(normalized, root, roots)
+}
+
+func workflowReferencesRootPath(content, root string, roots []string) bool {
+	for _, match := range rootPathPattern(root).FindAllStringIndex(content, -1) {
+		if !rootPathIsNestedModule(content[match[0]:], root, roots) {
 			return true
 		}
 	}
 	return false
+}
+
+func rootPathIsNestedModule(match, root string, roots []string) bool {
+	start := strings.TrimLeft(match, " \t\r\n'\";:&|()[]{}")
+	start = strings.TrimPrefix(start, "./")
+	for _, otherRoot := range roots {
+		if otherRoot == "" || otherRoot == root || !strings.HasPrefix(otherRoot, root+"/") {
+			continue
+		}
+		if strings.HasPrefix(start, otherRoot+"/") || hasRootPathBoundary(start, otherRoot) {
+			return true
+		}
+	}
+	return false
+}
+
+func hasRootPathBoundary(value, root string) bool {
+	if !strings.HasPrefix(value, root) {
+		return false
+	}
+	if len(value) == len(root) {
+		return true
+	}
+	return strings.ContainsRune(" \t\r\n'\";:&|)]}", rune(value[len(root)]))
+}
+
+func rootPathPattern(root string) *regexp.Regexp {
+	return regexp.MustCompile(`(?:^|[^[:alnum:]_./-])(?:\./)?` + regexp.QuoteMeta(root) + `(?:/|$|[[:space:]'";:&|)])`)
 }
 
 func isWorkflowStepStart(line string) bool {
 	trimmed := strings.TrimSpace(line)
 	return strings.HasPrefix(trimmed, "- run:") || strings.HasPrefix(trimmed, "- uses:")
+}
+
+func isWorkflowJobStart(line string) bool {
+	if strings.HasPrefix(line, "  ") && !strings.HasPrefix(line, "    ") {
+		trimmed := strings.TrimSpace(line)
+		return strings.HasSuffix(trimmed, ":") && trimmed != "jobs:"
+	}
+	return false
+}
+
+func isWorkflowWorkingDirectory(line string) bool {
+	return strings.Contains(strings.TrimSpace(line), "working-directory:")
 }
 
 func isWorkflowFilePath(filePath string) bool {
@@ -355,6 +403,10 @@ func golangCIConfigFiles(snapshot repo.Snapshot) []repo.File {
 
 func hasCoverageThreshold(content string) bool {
 	return coverageThresholdPattern.MatchString(content)
+}
+
+func hasCRAPThreshold(content string) bool {
+	return crapThresholdPattern.MatchString(content)
 }
 
 func configEnablesComplexityLinter(content string) bool {
@@ -494,4 +546,5 @@ var (
 	goTestAllPackagesPattern = regexp.MustCompile(`(?m)\bgo\s+test\b[^\n#;&|]*\./\.\.`)
 	goVetAllPackagesPattern  = regexp.MustCompile(`(?m)\bgo\s+vet\b[^\n#;&|]*\./\.\.`)
 	coverageThresholdPattern = regexp.MustCompile(`(?im)\b(total|cover|coverage|minimum|threshold|required)\b[^\n]*(>=|<=|-ge\b|-le\b|-gt\b|-lt\b)|(?:>=|<=|-ge\b|-le\b|-gt\b|-lt\b)[^\n]*\b(total|cover|coverage|minimum|threshold|required)\b`)
+	crapThresholdPattern     = regexp.MustCompile(`(?im)\b(crap|maximum|minimum|threshold|required|score)\b[^\n]*(>=|<=|>|<|-ge\b|-le\b|-gt\b|-lt\b)|(?:>=|<=|>|<|-ge\b|-le\b|-gt\b|-lt\b)[^\n]*\b(crap|maximum|minimum|threshold|required|score)\b`)
 )

@@ -46,7 +46,7 @@ The checker should scan a target repository and report findings such as:
 - missing linting setup
 - missing coverage gate
 - missing Go complexity check
-- missing `dry4go`, `crap4go`, or `mutate4go` declaration
+- missing `dry4go`, gated `crap4go`, or `mutate4go` declaration
 - documentation that does not follow the repo convention
 
 The shared report model should stay simple:
@@ -117,7 +117,7 @@ Start with a small common rule set:
 | `go.coverage-required`   | Go projects should enforce coverage.          |
 | `go.complexity-required` | Go projects should check complexity.          |
 | `go.dry-required`        | Go projects should declare `dry4go`.          |
-| `go.crap-required`       | Go projects should declare `crap4go`.         |
+| `go.crap-required`       | Go projects should gate `crap4go`.            |
 | `go.mutation-required`   | Go projects should declare `mutate4go`.       |
 | `ts.strict-required`     | TypeScript projects should use strict mode.   |
 | `ts.no-explicit-any`     | TypeScript projects should reject `any`.      |

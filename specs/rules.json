@@ -113,8 +113,8 @@
       "category": "go",
       "severity": "error",
       "path": ".github/workflows",
-      "message": "Go projects must declare crap4go",
-      "description": "Go projects should declare crap4go for complexity and coverage risk scoring.",
+      "message": "Go projects must declare crap4go with a threshold",
+      "description": "Go projects should declare crap4go with a threshold for complexity and coverage risk scoring.",
       "tool": "crap4go",
       "status": "implemented"
     },

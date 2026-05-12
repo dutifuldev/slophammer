@@ -5,7 +5,7 @@
       "rule_id": "go.crap-required",
       "severity": "error",
       "path": ".github/workflows",
-      "message": "Go projects must declare crap4go"
+      "message": "Go projects must declare crap4go with a threshold"
     }
   ]
 }

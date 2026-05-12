@@ -27,7 +27,7 @@ commands.
 | `go.coverage-required`   | `error`  | `scripts/check-go-coverage.sh` | `Go projects must declare a coverage gate`                |
 | `go.complexity-required` | `error`  | `.golangci.yml`                | `Go projects must enable a complexity linter`             |
 | `go.dry-required`        | `error`  | `.github/workflows`            | `Go projects must declare dry4go`                         |
-| `go.crap-required`       | `error`  | `.github/workflows`            | `Go projects must declare crap4go`                        |
+| `go.crap-required`       | `error`  | `.github/workflows`            | `Go projects must declare crap4go with a threshold`       |
 | `go.mutation-required`   | `error`  | `.github/workflows`            | `Go projects must declare mutate4go`                      |
 
 ## Rule Descriptions
@@ -104,10 +104,11 @@ static mode.
 
 ### `go.crap-required`
 
-Go projects should declare `crap4go` for complexity and coverage risk scoring.
+Go projects should declare `crap4go` with a threshold for complexity and
+coverage risk scoring.
 
-Slophammer checks for an inspectable declaration. It does not run `crap4go` in
-static mode.
+Slophammer checks for an inspectable declaration and threshold. It does not run
+`crap4go` in static mode.
 
 ### `go.mutation-required`
 
