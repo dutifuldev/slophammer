@@ -251,6 +251,19 @@ func TestGoRulesDoNotTreatEmbeddedFixturesAsTargetProjects(t *testing.T) {
 	}
 }
 
+func TestGoRulesIgnoreVendoredModules(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		"go/vendor/example.com/dep/go.mod": {Path: "go/vendor/example.com/dep/go.mod"},
+		"go/vendor/example.com/dep/dep.go": {Path: "go/vendor/example.com/dep/dep.go"},
+	})
+
+	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+	if !report.OK {
+		t.Fatalf("report.OK = false, findings = %#v", report.Findings)
+	}
+}
+
 func TestGoRulesIgnoreNonGoCommandSubstrings(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
 		"README.md": {Path: "README.md"},

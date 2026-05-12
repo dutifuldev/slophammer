@@ -454,7 +454,7 @@ func isRepoRootCommandFile(filePath string) bool {
 func isEmbeddedFixturePath(filePath string) bool {
 	for _, segment := range strings.Split(strings.ReplaceAll(filePath, "\\", "/"), "/") {
 		switch segment {
-		case "examples", "fixtures", "samples", "templates", "testdata":
+		case "examples", "fixtures", "samples", "templates", "testdata", "vendor":
 			return true
 		}
 	}
