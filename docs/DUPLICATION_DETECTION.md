@@ -6,6 +6,8 @@ not identical.
 This matters for agentic projects because agents can produce repeated solutions
 quickly. The code may pass tests while still growing in a copy/paste direction.
 
+See [DRY](DRY.md) for the refactoring policy behind duplicate reports.
+
 ## Core Idea
 
 Do not wait for duplication to become obvious by eye.

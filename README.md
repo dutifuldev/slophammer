@@ -161,3 +161,6 @@ notes behind the guardrails.
 
 See [Implementation Model](docs/IMPLEMENTATION_MODEL.md) for the shared
 architecture that Go, TypeScript, and Python should follow.
+
+See [DRY](docs/DRY.md) for the duplication policy informed by Uncle Bob's
+structural `dry4clj`, `dry4java`, and `dry4go` tools.

@@ -18,6 +18,7 @@ it in a repository.
 | [Mutation Testing](MUTATION_TESTING.md)           | Checking whether tests actually assert behavior           | Kill surviving mutants                                        |
 | [Structural Review](STRUCTURAL_REVIEW.md)         | Reviewing agent output without reading every token        | Inspect structure, names, size, arguments, and dependencies   |
 | [Duplication Detection](DUPLICATION_DETECTION.md) | Catching copy/paste growth                                | Compare code structure, not just text                         |
+| [DRY](DRY.md)                                     | Deciding what duplicate reports mean                      | Keep one idea in one home                                     |
 | [Dependency Checks](DEPENDENCY_CHECKS.md)         | Protecting architecture boundaries                        | Make forbidden dependencies fail automatically                |
 | [Power Tools](POWER_TOOLS.md)                     | Framing AI coding responsibly                             | Treat agents as amplifiers that require guards                |
 | [Agentic Code Quality](AGENTIC_CODE_QUALITY.md)   | Managing AI coding at project scale                       | Surround the agent with external checks and feedback loops    |
@@ -51,7 +52,8 @@ For a new agent-assisted project, start with this loop:
 3. Run coverage and close meaningful gaps.
 4. Run CRAP or equivalent complexity-plus-coverage analysis.
 5. Run mutation testing on risky code.
-6. Check dependencies and module boundaries.
-7. Review structure before reading implementation details.
+6. Run DRY detection and review duplicate candidates.
+7. Check dependencies and module boundaries.
+8. Review structure before reading implementation details.
 
 That loop is the minimum useful shape of a guardrailed agentic workflow.
