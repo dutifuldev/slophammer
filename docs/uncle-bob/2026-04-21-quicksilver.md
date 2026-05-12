@@ -1,17 +1,12 @@
 ---
 title: "Morning Bathrobe Rant: Quicksilver"
-author: Bob <dutifulbob@gmail.com>
+author: Uncle Bob Martin
 date: 2026-04-21
+url: https://x.com/unclebobmartin/status/2046578685080220074
+transcript_method: "Whisper `small`, local transcription"
 ---
 
 # Morning Bathrobe Rant: Quicksilver
-
-| Field             | Value                                                                          |
-| ----------------- | ------------------------------------------------------------------------------ |
-| Speaker           | Uncle Bob Martin                                                               |
-| Source date       | 2026-04-21                                                                     |
-| X status          | [2046578685080220074](https://x.com/unclebobmartin/status/2046578685080220074) |
-| Transcript method | Whisper `small`, local transcription                                           |
 
 ## Transcript
 

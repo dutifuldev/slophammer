@@ -1,17 +1,12 @@
 ---
 title: "Power Tools"
-author: Bob <dutifulbob@gmail.com>
+author: Uncle Bob Martin
 date: 2026-04-28
+url: https://x.com/unclebobmartin/status/2049094990299599334
+transcript_method: "Whisper `small`, local transcription"
 ---
 
 # Power Tools
-
-| Field             | Value                                                                          |
-| ----------------- | ------------------------------------------------------------------------------ |
-| Speaker           | Uncle Bob Martin                                                               |
-| Source date       | 2026-04-28                                                                     |
-| X status          | [2049094990299599334](https://x.com/unclebobmartin/status/2049094990299599334) |
-| Transcript method | Whisper `small`, local transcription                                           |
 
 ## Transcript
 

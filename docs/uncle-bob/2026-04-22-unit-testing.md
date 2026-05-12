@@ -1,17 +1,12 @@
 ---
 title: "Morning Bathrobe Rant: Unit Testing"
-author: Bob <dutifulbob@gmail.com>
+author: Uncle Bob Martin
 date: 2026-04-22
+url: https://x.com/unclebobmartin/status/2046926727650132292
+transcript_method: "Whisper `small`, local transcription"
 ---
 
 # Morning Bathrobe Rant: Unit Testing
-
-| Field             | Value                                                                          |
-| ----------------- | ------------------------------------------------------------------------------ |
-| Speaker           | Uncle Bob Martin                                                               |
-| Source date       | 2026-04-22                                                                     |
-| X status          | [2046926727650132292](https://x.com/unclebobmartin/status/2046926727650132292) |
-| Transcript method | Whisper `small`, local transcription                                           |
 
 ## Transcript
 

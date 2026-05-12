@@ -1,17 +1,12 @@
 ---
 title: "Morning Bathrobe Rant: Mutation Testing"
-author: Bob <dutifulbob@gmail.com>
+author: Uncle Bob Martin
 date: 2026-05-05
+url: https://x.com/unclebobmartin/status/2051615123605733752
+transcript_method: "Whisper `small`, local transcription"
 ---
 
 # Morning Bathrobe Rant: Mutation Testing
-
-| Field             | Value                                                                          |
-| ----------------- | ------------------------------------------------------------------------------ |
-| Speaker           | Uncle Bob Martin                                                               |
-| Source date       | 2026-05-05                                                                     |
-| X status          | [2051615123605733752](https://x.com/unclebobmartin/status/2051615123605733752) |
-| Transcript method | Whisper `small`, local transcription                                           |
 
 ## Transcript
 

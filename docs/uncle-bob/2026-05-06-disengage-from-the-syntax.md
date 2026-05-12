@@ -1,17 +1,12 @@
 ---
 title: "Morning Bathrobe Rant: Disengage From the Syntax"
-author: Bob <dutifulbob@gmail.com>
+author: Uncle Bob Martin
 date: 2026-05-06
+url: https://x.com/unclebobmartin/status/2052002463452958899
+transcript_method: "Whisper `small`, local transcription"
 ---
 
 # Morning Bathrobe Rant: Disengage From the Syntax
-
-| Field             | Value                                                                          |
-| ----------------- | ------------------------------------------------------------------------------ |
-| Speaker           | Uncle Bob Martin                                                               |
-| Source date       | 2026-05-06                                                                     |
-| X status          | [2052002463452958899](https://x.com/unclebobmartin/status/2052002463452958899) |
-| Transcript method | Whisper `small`, local transcription                                           |
 
 ## Transcript
 

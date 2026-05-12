@@ -1,17 +1,12 @@
 ---
 title: "Morning Bathrobe Rant: Rule Files"
-author: Bob <dutifulbob@gmail.com>
+author: Uncle Bob Martin
 date: 2026-04-18
+url: https://x.com/unclebobmartin/status/2045485259127423369
+transcript_method: "Whisper `small`, local transcription"
 ---
 
 # Morning Bathrobe Rant: Rule Files
-
-| Field             | Value                                                                          |
-| ----------------- | ------------------------------------------------------------------------------ |
-| Speaker           | Uncle Bob Martin                                                               |
-| Source date       | 2026-04-18                                                                     |
-| X status          | [2045485259127423369](https://x.com/unclebobmartin/status/2045485259127423369) |
-| Transcript method | Whisper `small`, local transcription                                           |
 
 ## Transcript
 

@@ -1,17 +1,12 @@
 ---
 title: "Morning Bathrobe Rant: AI Out-Codes You; Deal With It"
-author: Bob <dutifulbob@gmail.com>
+author: Uncle Bob Martin
 date: 2026-04-20
+url: https://x.com/unclebobmartin/status/2046206145597972849
+transcript_method: "Whisper `small`, local transcription"
 ---
 
 # Morning Bathrobe Rant: AI Out-Codes You; Deal With It
-
-| Field             | Value                                                                          |
-| ----------------- | ------------------------------------------------------------------------------ |
-| Speaker           | Uncle Bob Martin                                                               |
-| Source date       | 2026-04-20                                                                     |
-| X status          | [2046206145597972849](https://x.com/unclebobmartin/status/2046206145597972849) |
-| Transcript method | Whisper `small`, local transcription                                           |
 
 ## Transcript
 

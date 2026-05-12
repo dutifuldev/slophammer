@@ -1,17 +1,12 @@
 ---
 title: "Morning Bathrobe Rant: It's a Good Thing"
-author: Bob <dutifulbob@gmail.com>
+author: Uncle Bob Martin
 date: 2026-02-10
+url: https://x.com/unclebobmartin/status/2021209931400040526
+transcript_method: "Whisper `small`, local transcription"
 ---
 
 # Morning Bathrobe Rant: It's a Good Thing
-
-| Field             | Value                                                                          |
-| ----------------- | ------------------------------------------------------------------------------ |
-| Speaker           | Uncle Bob Martin                                                               |
-| Source date       | 2026-02-10                                                                     |
-| X status          | [2021209931400040526](https://x.com/unclebobmartin/status/2021209931400040526) |
-| Transcript method | Whisper `small`, local transcription                                           |
 
 ## Transcript
 
