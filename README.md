@@ -44,6 +44,7 @@ This repository is for projects that may be generated, extended, or maintained b
 .
 ├── AGENTS.md
 ├── docs/
+│   ├── UNCLE_BOB_CONCEPTS.md
 │   ├── 2026-05-12-guardrails.md
 │   └── uncle-bob/
 └── templates/
@@ -65,3 +66,8 @@ This repository is for projects that may be generated, extended, or maintained b
 - For a new project, copy the closest template and rename the package/module.
 - For an existing project, compare its lint, typing, tests, and boundaries against the matching template.
 - For agent workflows, point the agent at `AGENTS.md` and the relevant language template before implementation starts.
+
+## Concept Docs
+
+Start with [Uncle Bob Concepts](docs/UNCLE_BOB_CONCEPTS.md) for the wiki-style
+notes behind the guardrails.
