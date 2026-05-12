@@ -1132,6 +1132,15 @@ func TestGoComplexityRuleRequiresEnabledLinter(t *testing.T) {
 # cyclop belongs in enable, not comments.
 `,
 		},
+		{
+			name: "enabled and disabled",
+			config: `linters:
+  enable:
+    - cyclop
+  disable:
+    - cyclop
+`,
+		},
 	}
 
 	for _, tt := range tests {

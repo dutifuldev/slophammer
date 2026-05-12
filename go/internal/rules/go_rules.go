@@ -528,7 +528,7 @@ func configEnablesComplexityLinter(content string) bool {
 		return !yamlSequenceContainsAll(disable, "cyclop", "gocognit", "gocyclo")
 	}
 	enable := yamlMappingValue(linters, "enable")
-	return yamlSequenceContains(enable, "cyclop", "gocognit", "gocyclo")
+	return yamlSequenceContainsEnabled(enable, disable, "cyclop", "gocognit", "gocyclo")
 }
 
 func yamlRoot(node *yaml.Node) *yaml.Node {
@@ -571,6 +571,15 @@ func yamlSequenceContainsAll(node *yaml.Node, values ...string) bool {
 		}
 	}
 	return true
+}
+
+func yamlSequenceContainsEnabled(enable *yaml.Node, disable *yaml.Node, values ...string) bool {
+	for _, value := range values {
+		if yamlSequenceContains(enable, value) && !yamlSequenceContains(disable, value) {
+			return true
+		}
+	}
+	return false
 }
 
 func yamlScalarEquals(node *yaml.Node, value string) bool {
