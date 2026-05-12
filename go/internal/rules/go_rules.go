@@ -76,7 +76,7 @@ func hasGoLintConfigAndCommand(snapshot repo.Snapshot) bool {
 }
 
 func hasGoCoverageGate(snapshot repo.Snapshot) bool {
-	return hasCommand(snapshot, "-coverprofile", "go tool cover", "check-go-coverage.sh")
+	return hasCommand(snapshot, "-coverprofile") && hasCommand(snapshot, "go tool cover")
 }
 
 func hasGoComplexityLint(snapshot repo.Snapshot) bool {

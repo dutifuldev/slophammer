@@ -71,21 +71,36 @@ func TestDefaultRulesReportMissingGoGuardrails(t *testing.T) {
 }
 
 func TestDefaultRulesPassForGoRepoWithDeclaredGuardrails(t *testing.T) {
-	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
-		"README.md":                  {Path: "README.md"},
-		"AGENTS.md":                  {Path: "AGENTS.md"},
-		"go/go.mod":                  {Path: "go/go.mod"},
-		"go/main.go":                 {Path: "go/main.go"},
-		"go/.golangci.yml":           {Path: "go/.golangci.yml", Content: "linters:\n  enable:\n    - cyclop\n"},
-		".github/workflows/ci.yml":   {Path: ".github/workflows/ci.yml", Content: goCleanWorkflow},
-		"go/scripts/check-dry.sh":    {Path: "go/scripts/check-dry.sh", Content: "go run github.com/unclebob/dry4go/cmd/dry4go@latest --format json .\n"},
-		"go/scripts/check-crap.sh":   {Path: "go/scripts/check-crap.sh", Content: "go run github.com/unclebob/crap4go/cmd/crap4go@latest\n"},
-		"go/scripts/check-mutate.sh": {Path: "go/scripts/check-mutate.sh", Content: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest internal/rules/rules.go --scan\n"},
-	})
+	snapshot := repo.NewSnapshot("/repo", cleanGoGuardrailFiles(nil))
 
 	report := Run(context.Background(), snapshot, DefaultRules())
 	if !report.OK {
 		t.Fatalf("report.OK = false, findings = %#v", report.Findings)
+	}
+}
+
+func TestGoCoverageRuleRequiresCoverageOutputAndCoverTool(t *testing.T) {
+	tests := []struct {
+		name          string
+		coverageCheck string
+	}{
+		{name: "missing cover tool", coverageCheck: "go test -coverprofile=coverage.out ./...\n"},
+		{name: "missing cover profile", coverageCheck: "go tool cover -func=coverage.out\n"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			files := cleanGoGuardrailFiles(map[string]repo.File{
+				"go/scripts/check-go-coverage.sh": {
+					Path:    "go/scripts/check-go-coverage.sh",
+					Content: tt.coverageCheck,
+				},
+			})
+
+			report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+			assertRuleIDs(t, report.Findings, []string{GoCoverageRequiredRuleID})
+		})
 	}
 }
 
@@ -203,6 +218,25 @@ type ruleSpec struct {
 	Description string   `json:"description"`
 	Tool        string   `json:"tool,omitempty"`
 	Status      string   `json:"status"`
+}
+
+func cleanGoGuardrailFiles(overrides map[string]repo.File) map[string]repo.File {
+	files := map[string]repo.File{
+		"README.md":                       {Path: "README.md"},
+		"AGENTS.md":                       {Path: "AGENTS.md"},
+		"go/go.mod":                       {Path: "go/go.mod"},
+		"go/main.go":                      {Path: "go/main.go"},
+		"go/.golangci.yml":                {Path: "go/.golangci.yml", Content: "linters:\n  enable:\n    - cyclop\n"},
+		".github/workflows/ci.yml":        {Path: ".github/workflows/ci.yml", Content: goCleanWorkflow},
+		"go/scripts/check-go-coverage.sh": {Path: "go/scripts/check-go-coverage.sh", Content: "go test -coverprofile=coverage.out ./...\ngo tool cover -func=coverage.out\n"},
+		"go/scripts/check-dry.sh":         {Path: "go/scripts/check-dry.sh", Content: "go run github.com/unclebob/dry4go/cmd/dry4go@latest --format json .\n"},
+		"go/scripts/check-crap.sh":        {Path: "go/scripts/check-crap.sh", Content: "go run github.com/unclebob/crap4go/cmd/crap4go@latest\n"},
+		"go/scripts/check-mutation.sh":    {Path: "go/scripts/check-mutation.sh", Content: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest internal/rules/rules.go --scan\n"},
+	}
+	for path, file := range overrides {
+		files[path] = file
+	}
+	return files
 }
 
 const goCleanWorkflow = `name: CI
