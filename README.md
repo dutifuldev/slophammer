@@ -70,6 +70,7 @@ The shared report model should stay simple:
 ├── AGENTS.md
 ├── docs/
 │   ├── UNCLE_BOB_CONCEPTS.md
+│   ├── IMPLEMENTATION_MODEL.md
 │   ├── 2026-05-12-guardrails.md
 │   └── uncle-bob/
 ├── specs/
@@ -77,15 +78,15 @@ The shared report model should stay simple:
 │   ├── RULES.md
 │   ├── CONFIG.md
 │   └── REPORT_FORMAT.md
-└── implementations/
-    ├── go/
-    ├── python/
-    └── typescript/
+├── fixtures/
+├── go/
+├── python/
+└── typescript/
 ```
 
 The repo currently contains transitional language template directories. New work
-should move toward this `specs/` and `implementations/` layout so each language
-implementation follows the same product contract.
+should move toward this top-level language layout so each implementation follows
+the same product contract.
 
 ## Shared Rule Set
 
@@ -149,3 +150,6 @@ the shape without copying accidental complexity.
 
 Start with [Uncle Bob Concepts](docs/UNCLE_BOB_CONCEPTS.md) for the wiki-style
 notes behind the guardrails.
+
+See [Implementation Model](docs/IMPLEMENTATION_MODEL.md) for the shared
+architecture that Go, TypeScript, and Python should follow.
