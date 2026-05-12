@@ -60,7 +60,9 @@ directory such as `go/`.
 
 ### `go.tests-required`
 
-Go projects should declare `go test ./...` in an inspectable workflow or script.
+Go projects should declare a `go test` command against `./...` in an
+inspectable workflow or script. Common test flags before the package pattern are
+accepted.
 
 ### `go.vet-required`
 
@@ -89,6 +91,9 @@ The accepted linter names are:
 - `cyclop`
 - `gocognit`
 - `gocyclo`
+
+`linters.default: all` is also accepted because it enables the complexity
+linters through golangci-lint.
 
 ### `go.dry-required`
 

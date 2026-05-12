@@ -48,7 +48,7 @@
       "severity": "error",
       "path": ".github/workflows",
       "message": "Go projects must declare go test ./... in CI or scripts",
-      "description": "Go projects should run go test ./... in an inspectable workflow or script.",
+      "description": "Go projects should run go test against ./... in an inspectable workflow or script.",
       "tool": "go test",
       "status": "implemented"
     },

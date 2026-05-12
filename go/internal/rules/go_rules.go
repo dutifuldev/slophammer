@@ -2,6 +2,7 @@ package rules
 
 import (
 	"context"
+	"regexp"
 	"strings"
 
 	"github.com/dutifuldev/slophammer/go/internal/repo"
@@ -65,11 +66,11 @@ func hasGoModule(snapshot repo.Snapshot) bool {
 }
 
 func hasGoTestCommand(snapshot repo.Snapshot) bool {
-	return hasCommand(snapshot, "go test ./...")
+	return hasCommandPattern(snapshot, goTestAllPackagesPattern)
 }
 
 func hasGoVetCommand(snapshot repo.Snapshot) bool {
-	return hasCommand(snapshot, "go vet ./...")
+	return hasCommandPattern(snapshot, goVetAllPackagesPattern)
 }
 
 func hasGoLintConfigAndCommand(snapshot repo.Snapshot) bool {
@@ -122,10 +123,7 @@ func golangCIConfigFiles(snapshot repo.Snapshot) []repo.File {
 
 func hasCoverageThreshold(files []repo.File) bool {
 	for _, file := range files {
-		content := strings.ToLower(file.Content)
-		if strings.Contains(content, "cover") &&
-			strings.Contains(content, "minimum") &&
-			(strings.Contains(content, ">=") || strings.Contains(content, "-ge") || strings.Contains(content, "-lt")) {
+		if coverageThresholdPattern.MatchString(file.Content) {
 			return true
 		}
 	}
@@ -139,6 +137,9 @@ func configEnablesComplexityLinter(content string) bool {
 	}
 	root := yamlRoot(&document)
 	linters := yamlMappingValue(root, "linters")
+	if yamlScalarEquals(yamlMappingValue(linters, "default"), "all") {
+		return true
+	}
 	enable := yamlMappingValue(linters, "enable")
 	return yamlSequenceContains(enable, "cyclop", "gocognit", "gocyclo")
 }
@@ -176,6 +177,10 @@ func yamlSequenceContains(node *yaml.Node, values ...string) bool {
 	return false
 }
 
+func yamlScalarEquals(node *yaml.Node, value string) bool {
+	return node != nil && node.Kind == yaml.ScalarNode && node.Value == value
+}
+
 func commandFiles(snapshot repo.Snapshot) []repo.File {
 	filesByPath := map[string]repo.File{}
 	for _, file := range snapshot.WorkflowFiles() {
@@ -199,6 +204,15 @@ func commandFiles(snapshot repo.Snapshot) []repo.File {
 	return files
 }
 
+func hasCommandPattern(snapshot repo.Snapshot, pattern *regexp.Regexp) bool {
+	for _, file := range commandFiles(snapshot) {
+		if pattern.MatchString(file.Content) {
+			return true
+		}
+	}
+	return false
+}
+
 func finding(definition Definition) Finding {
 	return Finding{
 		RuleID:   definition.ID,
@@ -207,3 +221,9 @@ func finding(definition Definition) Finding {
 		Message:  definition.Message,
 	}
 }
+
+var (
+	goTestAllPackagesPattern = regexp.MustCompile(`(?m)\bgo\s+test\b[^\n#;&|]*\./\.\.`)
+	goVetAllPackagesPattern  = regexp.MustCompile(`(?m)\bgo\s+vet\b[^\n#;&|]*\./\.\.`)
+	coverageThresholdPattern = regexp.MustCompile(`(?im)\b(total|cover|coverage|minimum|threshold|required)\b[^\n]*(>=|<=|>|<|-ge\b|-le\b|-gt\b|-lt\b)|(?:>=|<=|>|<|-ge\b|-le\b|-gt\b|-lt\b)[^\n]*\b(total|cover|coverage|minimum|threshold|required)\b`)
+)

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/dutifuldev/slophammer/go/internal/repo"
@@ -79,6 +80,21 @@ func TestDefaultRulesPassForGoRepoWithDeclaredGuardrails(t *testing.T) {
 	}
 }
 
+func TestGoTestsRuleAcceptsFlagsBeforePackagePattern(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		".github/workflows/ci.yml": {
+			Path:    ".github/workflows/ci.yml",
+			Content: strings.ReplaceAll(goCleanWorkflow, "go test ./...", "go test -race -count=1 ./..."),
+		},
+	})
+
+	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+	if !report.OK {
+		t.Fatalf("report.OK = false, findings = %#v", report.Findings)
+	}
+}
+
 func TestGoCoverageRuleRequiresCoverageOutputAndCoverTool(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -101,6 +117,45 @@ func TestGoCoverageRuleRequiresCoverageOutputAndCoverTool(t *testing.T) {
 			report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
 
 			assertRuleIDs(t, report.Findings, []string{GoCoverageRequiredRuleID})
+		})
+	}
+}
+
+func TestGoCoverageRuleAcceptsCommonThresholdNames(t *testing.T) {
+	tests := []struct {
+		name          string
+		coverageCheck string
+	}{
+		{
+			name: "threshold variable",
+			coverageCheck: `go test -coverprofile=coverage.out ./...
+total="$(go tool cover -func=coverage.out | awk '/^total:/ {print substr($3, 1, length($3)-1)}')"
+awk -v total="$total" -v threshold="80" 'BEGIN { exit !(total + 0 >= threshold + 0) }'
+`,
+		},
+		{
+			name: "literal threshold",
+			coverageCheck: `go test -coverprofile=coverage.out ./...
+total="$(go tool cover -func=coverage.out | awk '/^total:/ {print substr($3, 1, length($3)-1)}')"
+awk -v total="$total" 'BEGIN { exit !(total + 0 >= 80) }'
+`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			files := cleanGoGuardrailFiles(map[string]repo.File{
+				"go/scripts/check-go-coverage.sh": {
+					Path:    "go/scripts/check-go-coverage.sh",
+					Content: tt.coverageCheck,
+				},
+			})
+
+			report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+			if !report.OK {
+				t.Fatalf("report.OK = false, findings = %#v", report.Findings)
+			}
 		})
 	}
 }
@@ -145,6 +200,21 @@ func TestGoComplexityRuleRequiresEnabledLinter(t *testing.T) {
 
 			assertRuleIDs(t, report.Findings, []string{GoComplexityRequiredRuleID})
 		})
+	}
+}
+
+func TestGoComplexityRuleAcceptsDefaultAll(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		"go/.golangci.yml": {
+			Path:    "go/.golangci.yml",
+			Content: "linters:\n  default: all\n",
+		},
+	})
+
+	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+	if !report.OK {
+		t.Fatalf("report.OK = false, findings = %#v", report.Findings)
 	}
 }
 

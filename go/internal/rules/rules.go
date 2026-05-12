@@ -114,7 +114,7 @@ var defaultDefinitions = []Definition{
 		Severity:    SeverityError,
 		Path:        ".github/workflows",
 		Message:     "Go projects must declare go test ./... in CI or scripts",
-		Description: "Go projects should run go test ./... in an inspectable workflow or script.",
+		Description: "Go projects should run go test against ./... in an inspectable workflow or script.",
 		Tool:        "go test",
 		Status:      "implemented",
 	},
