@@ -137,8 +137,9 @@ func configEnablesComplexityLinter(content string) bool {
 	}
 	root := yamlRoot(&document)
 	linters := yamlMappingValue(root, "linters")
+	disable := yamlMappingValue(linters, "disable")
 	if yamlScalarEquals(yamlMappingValue(linters, "default"), "all") {
-		return true
+		return !yamlSequenceContainsAll(disable, "cyclop", "gocognit", "gocyclo")
 	}
 	enable := yamlMappingValue(linters, "enable")
 	return yamlSequenceContains(enable, "cyclop", "gocognit", "gocyclo")
@@ -177,6 +178,15 @@ func yamlSequenceContains(node *yaml.Node, values ...string) bool {
 	return false
 }
 
+func yamlSequenceContainsAll(node *yaml.Node, values ...string) bool {
+	for _, value := range values {
+		if !yamlSequenceContains(node, value) {
+			return false
+		}
+	}
+	return true
+}
+
 func yamlScalarEquals(node *yaml.Node, value string) bool {
 	return node != nil && node.Kind == yaml.ScalarNode && node.Value == value
 }
@@ -195,14 +205,25 @@ func commandFiles(snapshot repo.Snapshot) []repo.File {
 	for _, file := range snapshot.FilesUnder("go/scripts") {
 		filesByPath[file.Path] = file
 	}
+	for path, file := range snapshot.Files {
+		if isScriptPath(path) {
+			filesByPath[file.Path] = file
+		}
+	}
 	files := make([]repo.File, 0, len(filesByPath))
 	for _, file := range filesByPath {
 		file.Content = stripCommentLines(file.Content)
+		file.Content = joinShellContinuations(file.Content)
 		if strings.TrimSpace(file.Content) != "" {
 			files = append(files, file)
 		}
 	}
 	return files
+}
+
+func isScriptPath(filePath string) bool {
+	normalized := strings.ToLower(strings.ReplaceAll(filePath, "\\", "/"))
+	return strings.HasPrefix(normalized, "scripts/") || strings.Contains(normalized, "/scripts/")
 }
 
 func stripCommentLines(content string) string {
@@ -216,6 +237,11 @@ func stripCommentLines(content string) string {
 		kept = append(kept, beforeComment)
 	}
 	return strings.Join(kept, "\n")
+}
+
+func joinShellContinuations(content string) string {
+	content = strings.ReplaceAll(content, "\\\r\n", " ")
+	return strings.ReplaceAll(content, "\\\n", " ")
 }
 
 func hasCommandPattern(snapshot repo.Snapshot, pattern *regexp.Regexp) bool {

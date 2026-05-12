@@ -95,6 +95,34 @@ func TestGoTestsRuleAcceptsFlagsBeforePackagePattern(t *testing.T) {
 	}
 }
 
+func TestGoCommandRulesAcceptShellContinuations(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+jobs:
+  test:
+    steps:
+      - run: |
+          go test \
+            -race \
+            ./...
+      - run: |
+          go vet \
+            ./...
+      - run: golangci-lint run
+      - run: ./scripts/check-go-coverage.sh
+`,
+		},
+	})
+
+	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+	if !report.OK {
+		t.Fatalf("report.OK = false, findings = %#v", report.Findings)
+	}
+}
+
 func TestGoCommandRulesIgnoreCommentedCommands(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -150,6 +178,27 @@ jobs:
 
 			assertRuleIDs(t, report.Findings, []string{tt.want})
 		})
+	}
+}
+
+func TestGoRulesInspectNestedModuleScripts(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"README.md":                              {Path: "README.md"},
+		"AGENTS.md":                              {Path: "AGENTS.md"},
+		"services/api/go.mod":                    {Path: "services/api/go.mod"},
+		"services/api/main.go":                   {Path: "services/api/main.go"},
+		"services/api/.golangci.yml":             {Path: "services/api/.golangci.yml", Content: "linters:\n  enable:\n    - cyclop\n"},
+		".github/workflows/ci.yml":               {Path: ".github/workflows/ci.yml", Content: nestedGoWorkflow},
+		"services/api/scripts/check-coverage.sh": {Path: "services/api/scripts/check-coverage.sh", Content: cleanCoverageScript},
+		"services/api/scripts/check-dry.sh":      {Path: "services/api/scripts/check-dry.sh", Content: "go run github.com/unclebob/dry4go/cmd/dry4go@latest --format json .\n"},
+		"services/api/scripts/check-crap.sh":     {Path: "services/api/scripts/check-crap.sh", Content: "go run github.com/unclebob/crap4go/cmd/crap4go@latest\n"},
+		"services/api/scripts/check-mutation.sh": {Path: "services/api/scripts/check-mutation.sh", Content: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest internal/rules/rules.go --scan\n"},
+	})
+
+	report := Run(context.Background(), snapshot, DefaultRules())
+
+	if !report.OK {
+		t.Fatalf("report.OK = false, findings = %#v", report.Findings)
 	}
 }
 
@@ -289,6 +338,25 @@ func TestGoComplexityRuleAcceptsDefaultAll(t *testing.T) {
 	if !report.OK {
 		t.Fatalf("report.OK = false, findings = %#v", report.Findings)
 	}
+}
+
+func TestGoComplexityRuleRejectsDefaultAllWhenAllComplexityLintersDisabled(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		"go/.golangci.yml": {
+			Path: "go/.golangci.yml",
+			Content: `linters:
+  default: all
+  disable:
+    - cyclop
+    - gocognit
+    - gocyclo
+`,
+		},
+	})
+
+	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+	assertRuleIDs(t, report.Findings, []string{GoComplexityRequiredRuleID})
 }
 
 func TestExplainKnownRule(t *testing.T) {
@@ -441,4 +509,18 @@ jobs:
       - run: go vet ./...
       - run: go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.0 run
       - run: ./scripts/check-go-coverage.sh
+`
+
+const nestedGoWorkflow = `name: CI
+
+jobs:
+  test:
+    steps:
+      - run: go test ./...
+      - run: go vet ./...
+      - run: golangci-lint run
+      - run: services/api/scripts/check-coverage.sh
+      - run: services/api/scripts/check-dry.sh
+      - run: services/api/scripts/check-crap.sh
+      - run: services/api/scripts/check-mutation.sh
 `
