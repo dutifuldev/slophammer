@@ -134,6 +134,9 @@ func goProjectRoots(snapshot repo.Snapshot) []string {
 	if len(rootsByPath) == 0 && hasUnscopedGoSignal(snapshot) {
 		rootsByPath[""] = struct{}{}
 	}
+	if len(rootsByPath) > 0 && hasGoSourceOutsideModuleRoots(snapshot, rootsByPath) {
+		rootsByPath[""] = struct{}{}
+	}
 	roots := make([]string, 0, len(rootsByPath))
 	for root := range rootsByPath {
 		roots = append(roots, root)
@@ -154,31 +157,58 @@ func hasUnscopedGoSignal(snapshot repo.Snapshot) bool {
 	return hasCommand(goProjectSnapshot(snapshot, "", []string{""}), "go test", "go vet")
 }
 
+func hasGoSourceOutsideModuleRoots(snapshot repo.Snapshot, rootsByPath map[string]struct{}) bool {
+	for filePath := range snapshot.Files {
+		if isEmbeddedFixturePath(filePath) || !strings.HasSuffix(filePath, ".go") {
+			continue
+		}
+		if !isUnderAnyGoRoot(filePath, rootsByPath) {
+			return true
+		}
+	}
+	return false
+}
+
+func isUnderAnyGoRoot(filePath string, rootsByPath map[string]struct{}) bool {
+	for root := range rootsByPath {
+		if root == "" {
+			return true
+		}
+		if strings.HasPrefix(filePath, root+"/") {
+			return true
+		}
+	}
+	return false
+}
+
 func goProjectSnapshot(snapshot repo.Snapshot, root string, roots []string) repo.Snapshot {
 	files := map[string]repo.File{}
 	for filePath, file := range snapshot.Files {
-		if isEmbeddedFixturePath(filePath) {
+		scopedFile, ok := scopedGoProjectFile(filePath, file, root, roots)
+		if !ok {
 			continue
 		}
-		if isWorkflowFilePath(filePath) {
-			files[filePath] = file
-			continue
-		}
-		if root == "" {
-			if isUnderOtherGoRoot(filePath, root, roots) {
-				continue
-			}
-			files[filePath] = file
-			continue
-		}
-		prefix := root + "/"
-		if !strings.HasPrefix(filePath, prefix) || isUnderOtherGoRoot(filePath, root, roots) {
-			continue
-		}
-		scopedPath := strings.TrimPrefix(filePath, prefix)
-		files[scopedPath] = repo.File{Path: scopedPath, Content: file.Content}
+		files[scopedFile.Path] = scopedFile
 	}
 	return repo.NewSnapshot(snapshot.Root, files)
+}
+
+func scopedGoProjectFile(filePath string, file repo.File, root string, roots []string) (repo.File, bool) {
+	if isEmbeddedFixturePath(filePath) {
+		return repo.File{}, false
+	}
+	if isWorkflowFilePath(filePath) {
+		return file, workflowAppliesToGoRoot(file.Content, root, roots)
+	}
+	if root == "" {
+		return file, !isUnderOtherGoRoot(filePath, root, roots)
+	}
+	prefix := root + "/"
+	if !strings.HasPrefix(filePath, prefix) || isUnderOtherGoRoot(filePath, root, roots) {
+		return repo.File{}, false
+	}
+	scopedPath := strings.TrimPrefix(filePath, prefix)
+	return repo.File{Path: scopedPath, Content: file.Content}, true
 }
 
 func isUnderOtherGoRoot(filePath, root string, roots []string) bool {
@@ -190,6 +220,39 @@ func isUnderOtherGoRoot(filePath, root string, roots []string) bool {
 			return true
 		}
 		if strings.HasPrefix(otherRoot, root+"/") && strings.HasPrefix(filePath, otherRoot+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+func workflowAppliesToGoRoot(content, root string, roots []string) bool {
+	if root != "" {
+		if len(roots) == 1 && roots[0] == root {
+			return true
+		}
+		return workflowMentionsGoRoot(content, root)
+	}
+	for _, otherRoot := range roots {
+		if otherRoot != "" && workflowMentionsGoRoot(content, otherRoot) {
+			return false
+		}
+	}
+	return true
+}
+
+func workflowMentionsGoRoot(content, root string) bool {
+	normalized := strings.ReplaceAll(content, "\\", "/")
+	for _, needle := range []string{
+		"working-directory: " + root,
+		"working-directory: \"" + root + "\"",
+		"working-directory: '" + root + "'",
+		"cd " + root,
+		"cd \"" + root + "\"",
+		"cd '" + root + "'",
+		root + "/",
+	} {
+		if strings.Contains(normalized, needle) {
 			return true
 		}
 	}
