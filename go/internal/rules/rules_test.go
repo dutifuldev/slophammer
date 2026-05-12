@@ -100,6 +100,9 @@ func TestGoCommandRulesAcceptShellContinuations(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+defaults:
+  run:
+    working-directory: go
 jobs:
   test:
     steps:
@@ -133,6 +136,9 @@ func TestGoCommandRulesIgnoreCommentedCommands(t *testing.T) {
 		{
 			name: "commented go test",
 			workflow: `name: CI
+defaults:
+  run:
+    working-directory: go
 jobs:
   test:
     steps:
@@ -152,6 +158,9 @@ jobs:
 		{
 			name: "commented go vet",
 			workflow: `name: CI
+defaults:
+  run:
+    working-directory: go
 jobs:
   test:
     steps:
@@ -249,6 +258,9 @@ func TestGoRulesIgnoreNonGoCommandSubstrings(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+defaults:
+  run:
+    working-directory: go
 jobs:
   test:
     steps:
@@ -601,6 +613,74 @@ jobs:
 	}
 }
 
+func TestGoRulesScopeSingleNestedModuleWorkflowEvidence(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+jobs:
+  test:
+    steps:
+      - run: go test ./...
+      - run: go vet ./...
+      - run: golangci-lint run
+`,
+		},
+	})
+
+	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+	assertRuleIDs(t, report.Findings, []string{
+		GoLintRequiredRuleID,
+		GoVetRequiredRuleID,
+	})
+}
+
+func TestGoRulesKeepNamedWorkflowStepsForModule(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"README.md":                                    {Path: "README.md"},
+		"AGENTS.md":                                    {Path: "AGENTS.md"},
+		"services/api/go.mod":                          {Path: "services/api/go.mod"},
+		"services/api/main.go":                         {Path: "services/api/main.go"},
+		"services/api/.golangci.yml":                   {Path: "services/api/.golangci.yml", Content: "linters:\n  enable:\n    - cyclop\n"},
+		"services/api/scripts/check-go-coverage.sh":    {Path: "services/api/scripts/check-go-coverage.sh", Content: cleanCoverageScript},
+		"services/api/scripts/check-dry.sh":            {Path: "services/api/scripts/check-dry.sh", Content: "go run github.com/unclebob/dry4go/cmd/dry4go@latest --format json .\n"},
+		"services/api/scripts/check-crap.sh":           {Path: "services/api/scripts/check-crap.sh", Content: cleanCRAPScript},
+		"services/api/scripts/check-mutation.sh":       {Path: "services/api/scripts/check-mutation.sh", Content: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan\n"},
+		"services/worker/go.mod":                       {Path: "services/worker/go.mod"},
+		"services/worker/main.go":                      {Path: "services/worker/main.go"},
+		"services/worker/.golangci.yml":                {Path: "services/worker/.golangci.yml", Content: "linters:\n  enable:\n    - cyclop\n"},
+		"services/worker/scripts/check-go-coverage.sh": {Path: "services/worker/scripts/check-go-coverage.sh", Content: cleanCoverageScript},
+		"services/worker/scripts/check-dry.sh":         {Path: "services/worker/scripts/check-dry.sh", Content: "go run github.com/unclebob/dry4go/cmd/dry4go@latest --format json .\n"},
+		"services/worker/scripts/check-crap.sh":        {Path: "services/worker/scripts/check-crap.sh", Content: cleanCRAPScript},
+		"services/worker/scripts/check-mutation.sh":    {Path: "services/worker/scripts/check-mutation.sh", Content: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan\n"},
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+jobs:
+  api:
+    steps:
+      - name: api tests
+        run: cd services/api && go test ./...
+      - name: api vet
+        run: cd services/api && go vet ./...
+      - name: api lint
+        run: cd services/api && golangci-lint run
+  worker:
+    steps:
+      - name: worker lint
+        run: cd services/worker && golangci-lint run
+      - name: marker
+        run: echo services/worker
+`,
+		},
+	})
+
+	report := Run(context.Background(), snapshot, DefaultRules())
+
+	assertRuleIDs(t, report.Findings, []string{GoVetRequiredRuleID})
+}
+
 func TestGoRulesDoNotTreatGoCommandAsGoModuleRoot(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
 		"README.md":                        {Path: "README.md"},
@@ -665,6 +745,7 @@ func TestGoRulesDetectRootGoSourceWithNestedModule(t *testing.T) {
 		GoLintRequiredRuleID,
 		GoModuleRequiredRuleID,
 		GoMutationRequiredRuleID,
+		GoTestsRequiredRuleID,
 		GoVetRequiredRuleID,
 	})
 }
@@ -728,6 +809,9 @@ func TestGoCoverageRuleRequiresEvidenceInSameCheck(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+defaults:
+  run:
+    working-directory: go
 jobs:
   test:
     steps:
@@ -1015,6 +1099,10 @@ awk -v score="0" -v maximum="$maximum_crap_score" 'BEGIN { exit !(score + 0 <= m
 
 const goCleanWorkflow = `name: CI
 
+defaults:
+  run:
+    working-directory: go
+
 jobs:
   test:
     steps:
@@ -1029,9 +1117,9 @@ const nestedGoWorkflow = `name: CI
 jobs:
   test:
     steps:
-      - run: go test ./...
-      - run: go vet ./...
-      - run: golangci-lint run
+      - run: cd services/api && go test ./...
+      - run: cd services/api && go vet ./...
+      - run: cd services/api && golangci-lint run
       - run: services/api/scripts/check-coverage.sh
       - run: services/api/scripts/check-dry.sh
       - run: services/api/scripts/check-crap.sh

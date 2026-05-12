@@ -256,7 +256,7 @@ func filterWorkflowContentForRoot(content, root string, roots []string) (string,
 }
 
 func onlyGoRoot(root string, roots []string) bool {
-	return len(roots) == 1 && roots[0] == root
+	return root == "" && len(roots) == 1 && roots[0] == root
 }
 
 func workflowStepAppliesToRoot(content, root string, roots []string) bool {
@@ -270,7 +270,10 @@ func workflowStepBlocks(content string) []string {
 	lines := strings.Split(content, "\n")
 	scan := workflowStepScan{}
 	for _, line := range lines {
-		if isWorkflowJobStart(line) {
+		if scan.enterJobs(line) {
+			continue
+		}
+		if scan.inJobs && isWorkflowJobStart(line) {
 			scan.startJob()
 			continue
 		}
@@ -297,7 +300,16 @@ type workflowStepScan struct {
 	globalContext []string
 	jobContext    []string
 	current       []string
+	inJobs        bool
 	seenJob       bool
+}
+
+func (s *workflowStepScan) enterJobs(line string) bool {
+	if strings.TrimSpace(line) != "jobs:" {
+		return false
+	}
+	s.inJobs = true
+	return true
 }
 
 func (s *workflowStepScan) startJob() {
@@ -400,13 +412,13 @@ func rootSubpathPattern(root string) *regexp.Regexp {
 
 func isWorkflowStepStart(line string) bool {
 	trimmed := strings.TrimSpace(line)
-	return strings.HasPrefix(trimmed, "- run:") || strings.HasPrefix(trimmed, "- uses:")
+	return strings.HasPrefix(trimmed, "- ")
 }
 
 func isWorkflowJobStart(line string) bool {
 	if strings.HasPrefix(line, "  ") && !strings.HasPrefix(line, "    ") {
 		trimmed := strings.TrimSpace(line)
-		return strings.HasSuffix(trimmed, ":") && trimmed != "jobs:"
+		return strings.HasSuffix(trimmed, ":")
 	}
 	return false
 }
