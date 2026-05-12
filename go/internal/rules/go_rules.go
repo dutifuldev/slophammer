@@ -198,7 +198,11 @@ func scopedGoProjectFile(filePath string, file repo.File, root string, roots []s
 		return repo.File{}, false
 	}
 	if isWorkflowFilePath(filePath) {
-		return file, workflowAppliesToGoRoot(file.Content, root, roots)
+		content, ok := scopedWorkflowContent(file.Content, root, roots)
+		if !ok {
+			return repo.File{}, false
+		}
+		return repo.File{Path: file.Path, Content: content}, true
 	}
 	if root == "" {
 		return file, !isUnderOtherGoRoot(filePath, root, roots)
@@ -226,19 +230,58 @@ func isUnderOtherGoRoot(filePath, root string, roots []string) bool {
 	return false
 }
 
-func workflowAppliesToGoRoot(content, root string, roots []string) bool {
-	if root != "" {
-		if len(roots) == 1 && roots[0] == root {
+func scopedWorkflowContent(content, root string, roots []string) (string, bool) {
+	if root == "" {
+		return content, !workflowMentionsAnyGoRoot(content, roots)
+	}
+	if onlyGoRoot(root, roots) {
+		return content, true
+	}
+	return filterWorkflowContentForRoot(content, root, roots)
+}
+
+func filterWorkflowContentForRoot(content, root string, roots []string) (string, bool) {
+	lines := strings.Split(content, "\n")
+	kept := make([]string, 0, len(lines))
+	inRootContext := false
+	for _, line := range lines {
+		if workflowMentionsGoRoot(line, root) {
+			inRootContext = true
+			kept = append(kept, line)
+			continue
+		}
+		if workflowMentionsOtherGoRoot(line, root, roots) {
+			inRootContext = false
+			continue
+		}
+		if inRootContext && isWorkflowCommandLine(line) {
+			kept = append(kept, line)
+		}
+	}
+	scoped := strings.Join(kept, "\n")
+	return scoped, strings.TrimSpace(scoped) != ""
+}
+
+func onlyGoRoot(root string, roots []string) bool {
+	return len(roots) == 1 && roots[0] == root
+}
+
+func workflowMentionsAnyGoRoot(content string, roots []string) bool {
+	for _, root := range roots {
+		if root != "" && workflowMentionsGoRoot(content, root) {
 			return true
 		}
-		return workflowMentionsGoRoot(content, root)
 	}
+	return false
+}
+
+func workflowMentionsOtherGoRoot(content, root string, roots []string) bool {
 	for _, otherRoot := range roots {
-		if otherRoot != "" && workflowMentionsGoRoot(content, otherRoot) {
-			return false
+		if otherRoot != "" && otherRoot != root && workflowMentionsGoRoot(content, otherRoot) {
+			return true
 		}
 	}
-	return true
+	return false
 }
 
 func workflowMentionsGoRoot(content, root string) bool {
@@ -263,6 +306,11 @@ func workflowMentionsGoRoot(content, root string) bool {
 		}
 	}
 	return false
+}
+
+func isWorkflowCommandLine(line string) bool {
+	trimmed := strings.TrimSpace(line)
+	return strings.HasPrefix(trimmed, "run:") || strings.HasPrefix(trimmed, "- run:")
 }
 
 func isWorkflowFilePath(filePath string) bool {
