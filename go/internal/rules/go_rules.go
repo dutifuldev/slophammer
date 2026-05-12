@@ -87,10 +87,12 @@ func hasGoLintConfigAndCommand(snapshot repo.Snapshot) bool {
 
 func hasGoCoverageGate(snapshot repo.Snapshot) bool {
 	for _, file := range commandFiles(snapshot) {
-		if strings.Contains(file.Content, "-coverprofile") &&
-			strings.Contains(file.Content, "go tool cover") &&
-			hasCoverageThreshold(file.Content) {
-			return true
+		for _, content := range commandSections(file) {
+			if strings.Contains(content, "-coverprofile") &&
+				strings.Contains(content, "go tool cover") &&
+				hasCoverageThreshold(content) {
+				return true
+			}
 		}
 	}
 	return false
@@ -111,9 +113,11 @@ func hasDry4GoCommand(snapshot repo.Snapshot) bool {
 
 func hasCRAP4GoGate(snapshot repo.Snapshot) bool {
 	for _, file := range commandFiles(snapshot) {
-		if strings.Contains(file.Content, "crap4go") &&
-			hasCRAPThreshold(file.Content) {
-			return true
+		for _, content := range commandSections(file) {
+			if strings.Contains(content, "crap4go") &&
+				hasCRAPThreshold(content) {
+				return true
+			}
 		}
 	}
 	return false
@@ -601,6 +605,13 @@ func commandFiles(snapshot repo.Snapshot) []repo.File {
 		}
 	}
 	return files
+}
+
+func commandSections(file repo.File) []string {
+	if isWorkflowFilePath(file.Path) {
+		return workflowStepBlocks(file.Content)
+	}
+	return []string{file.Content}
 }
 
 func isScriptPath(filePath string) bool {

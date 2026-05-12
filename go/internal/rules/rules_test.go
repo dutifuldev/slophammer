@@ -930,6 +930,36 @@ func TestGoCRAPRuleRequiresThreshold(t *testing.T) {
 	assertRuleIDs(t, report.Findings, []string{GoCRAPRequiredRuleID})
 }
 
+func TestGoCRAPRuleRequiresThresholdInSameCheck(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+defaults:
+  run:
+    working-directory: go
+jobs:
+  test:
+    steps:
+      - run: go test ./...
+      - run: go vet ./...
+      - run: go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.0 run
+      - run: ./scripts/check-go-coverage.sh
+      - run: crap4go .
+      - run: echo "minimum coverage >= 80"
+`,
+		},
+		"go/scripts/check-crap.sh": {
+			Path:    "go/scripts/check-crap.sh",
+			Content: "go run github.com/unclebob/crap4go/cmd/crap4go@latest\n",
+		},
+	})
+
+	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+	assertRuleIDs(t, report.Findings, []string{GoCRAPRequiredRuleID})
+}
+
 func TestGoCoverageRuleRequiresCoverageOutputAndCoverTool(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -958,6 +988,39 @@ func TestGoCoverageRuleRequiresCoverageOutputAndCoverTool(t *testing.T) {
 
 func TestGoCoverageRuleRejectsReportRedirectionWithoutThreshold(t *testing.T) {
 	files := cleanGoGuardrailFiles(map[string]repo.File{
+		"go/scripts/check-go-coverage.sh": {
+			Path: "go/scripts/check-go-coverage.sh",
+			Content: `go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out > coverage.html
+`,
+		},
+	})
+
+	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+	assertRuleIDs(t, report.Findings, []string{GoCoverageRequiredRuleID})
+}
+
+func TestGoCoverageRuleRequiresThresholdInSameCheck(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+defaults:
+  run:
+    working-directory: go
+jobs:
+  test:
+    steps:
+      - run: go test ./...
+      - run: go vet ./...
+      - run: go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.0 run
+      - run: |
+          go test -coverprofile=coverage.out ./...
+          go tool cover -html=coverage.out > coverage.html
+      - run: echo "minimum node version >= 20"
+`,
+		},
 		"go/scripts/check-go-coverage.sh": {
 			Path: "go/scripts/check-go-coverage.sh",
 			Content: `go test -coverprofile=coverage.out ./...
