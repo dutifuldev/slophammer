@@ -6,10 +6,12 @@ date: 2026-05-12
 
 # Uncle Bob Transcript Index
 
-Machine-generated transcripts from recent Uncle Bob Martin X videos used as reference material for agentic coding guardrails.
+Machine-generated transcripts from 2026 Uncle Bob Martin X videos used as reference material for agentic coding guardrails.
 
 | Source date | Topic                                                 | Transcript                                                                         |
 | ----------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| 2026-02-01  | Morning Bathrobe Rant: A Warning                      | [2026-02-01-a-warning.md](2026-02-01-a-warning.md)                                 |
+| 2026-02-10  | Morning Bathrobe Rant: It's a Good Thing              | [2026-02-10-its-a-good-thing.md](2026-02-10-its-a-good-thing.md)                   |
 | 2026-04-18  | Morning Bathrobe Rant: Rule Files                     | [2026-04-18-rule-files.md](2026-04-18-rule-files.md)                               |
 | 2026-04-20  | Morning Bathrobe Rant: AI Out-Codes You; Deal With It | [2026-04-20-ai-out-codes-you.md](2026-04-20-ai-out-codes-you.md)                   |
 | 2026-04-21  | Morning Bathrobe Rant: Quicksilver                    | [2026-04-21-quicksilver.md](2026-04-21-quicksilver.md)                             |
