@@ -82,7 +82,7 @@ func hasGoVetCommand(snapshot repo.Snapshot) bool {
 }
 
 func hasGoLintConfigAndCommand(snapshot repo.Snapshot) bool {
-	return hasGolangCIConfig(snapshot) && hasCommand(snapshot, "golangci-lint", "golangci/golangci-lint-action")
+	return hasGolangCIConfig(snapshot) && hasGolangCICommand(snapshot)
 }
 
 func hasGoCoverageGate(snapshot repo.Snapshot) bool {
@@ -216,8 +216,12 @@ func scopedGoProjectFile(filePath string, file repo.File, root string, roots []s
 	if isRepoRootGoConfigFile(filePath) {
 		return file, true
 	}
-	if isRepoRootCommandFile(filePath) && workflowMentionsGoRoot(file.Content, root, roots) {
-		return file, true
+	if isRepoRootCommandFile(filePath) {
+		content, ok := scopedRootCommandContent(file.Content, root, roots)
+		if !ok {
+			return repo.File{}, false
+		}
+		return repo.File{Path: file.Path, Content: content}, true
 	}
 	prefix := root + "/"
 	if !strings.HasPrefix(filePath, prefix) || isUnderOtherGoRoot(filePath, root, roots) {
@@ -247,6 +251,26 @@ func scopedWorkflowContent(content, root string, roots []string) (string, bool) 
 		return content, true
 	}
 	return filterWorkflowContentForRoot(content, root, roots)
+}
+
+func scopedRootCommandContent(content, root string, roots []string) (string, bool) {
+	lines := strings.Split(content, "\n")
+	kept := make([]string, 0, len(lines))
+	inRootBlock := false
+	for _, line := range lines {
+		if workflowMentionsOtherGoRoot(line, root, roots) {
+			inRootBlock = false
+			continue
+		}
+		if workflowMentionsGoRoot(line, root, roots) {
+			inRootBlock = true
+		}
+		if inRootBlock {
+			kept = append(kept, line)
+		}
+	}
+	scoped := strings.Join(kept, "\n")
+	return scoped, strings.TrimSpace(scoped) != ""
 }
 
 func filterWorkflowContentForRoot(content, root string, roots []string) (string, bool) {
@@ -469,6 +493,13 @@ func hasGolangCIConfig(snapshot repo.Snapshot) bool {
 	return len(golangCIConfigFiles(snapshot)) > 0
 }
 
+func hasGolangCICommand(snapshot repo.Snapshot) bool {
+	if hasCommand(snapshot, "golangci/golangci-lint-action") {
+		return true
+	}
+	return hasCommandPattern(snapshot, golangCILintRunPattern)
+}
+
 func golangCIConfigFiles(snapshot repo.Snapshot) []repo.File {
 	return snapshot.FilesNamedFold(".golangci.yml", ".golangci.yaml")
 }
@@ -617,6 +648,7 @@ var (
 	goCommandPattern         = regexp.MustCompile(`(?m)\bgo\s+(test|vet|build|run|tool|mod)\b`)
 	goTestAllPackagesPattern = regexp.MustCompile(`(?m)\bgo\s+test\b[^\n#;&|]*\./\.\.`)
 	goVetAllPackagesPattern  = regexp.MustCompile(`(?m)\bgo\s+vet\b[^\n#;&|]*\./\.\.`)
+	golangCILintRunPattern   = regexp.MustCompile(`(?m)(?:^|[[:space:];&|])golangci-lint\s+run(?:[[:space:];&|]|$)|\bgo\s+run\b[^\n#;&|]*github\.com/golangci/golangci-lint(?:/v[0-9]+)?/cmd/golangci-lint[^\n#;&|]*\srun(?:[[:space:];&|]|$)`)
 	coverageThresholdPattern = regexp.MustCompile(`(?im)\b(total|cover|coverage|minimum|threshold|required)\b[^\n]*(>=|<=|-ge\b|-le\b|-gt\b|-lt\b)|(?:>=|<=|-ge\b|-le\b|-gt\b|-lt\b)[^\n]*\b(total|cover|coverage|minimum|threshold|required)\b`)
 	crapThresholdPattern     = regexp.MustCompile(`(?im)\b(crap|maximum|minimum|threshold|required|score)\b[^\n]*(>=|<=|>|<|-ge\b|-le\b|-gt\b|-lt\b)|(?:>=|<=|>|<|-ge\b|-le\b|-gt\b|-lt\b)[^\n]*\b(crap|maximum|minimum|threshold|required|score)\b`)
 )

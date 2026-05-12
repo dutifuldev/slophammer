@@ -714,6 +714,95 @@ jobs:
 	}
 }
 
+func TestGoRulesScopeRootCommandFilesPerModule(t *testing.T) {
+	coverageScript := strings.ReplaceAll(cleanCoverageScript, "go test -coverprofile=coverage.out ./...", "go test -coverprofile=coverage.out ./internal/...")
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"README.md":                              {Path: "README.md"},
+		"AGENTS.md":                              {Path: "AGENTS.md"},
+		"services/api/go.mod":                    {Path: "services/api/go.mod"},
+		"services/api/main.go":                   {Path: "services/api/main.go"},
+		"services/api/.golangci.yml":             {Path: "services/api/.golangci.yml", Content: "linters:\n  enable:\n    - cyclop\n"},
+		"services/api/scripts/check-coverage.sh": {Path: "services/api/scripts/check-coverage.sh", Content: coverageScript},
+		"services/api/scripts/check-dry.sh":      {Path: "services/api/scripts/check-dry.sh", Content: "go run github.com/unclebob/dry4go/cmd/dry4go@latest --format json .\n"},
+		"services/api/scripts/check-crap.sh":     {Path: "services/api/scripts/check-crap.sh", Content: cleanCRAPScript},
+		"services/api/scripts/check-mutation.sh": {Path: "services/api/scripts/check-mutation.sh", Content: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan\n"},
+		"services/worker/go.mod":                 {Path: "services/worker/go.mod"},
+		"services/worker/main.go":                {Path: "services/worker/main.go"},
+		"services/worker/.golangci.yml":          {Path: "services/worker/.golangci.yml", Content: "linters:\n  enable:\n    - cyclop\n"},
+		"services/worker/scripts/check-coverage.sh": {
+			Path:    "services/worker/scripts/check-coverage.sh",
+			Content: coverageScript,
+		},
+		"services/worker/scripts/check-dry.sh": {
+			Path:    "services/worker/scripts/check-dry.sh",
+			Content: "go run github.com/unclebob/dry4go/cmd/dry4go@latest --format json .\n",
+		},
+		"services/worker/scripts/check-crap.sh": {
+			Path:    "services/worker/scripts/check-crap.sh",
+			Content: cleanCRAPScript,
+		},
+		"services/worker/scripts/check-mutation.sh": {
+			Path:    "services/worker/scripts/check-mutation.sh",
+			Content: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan\n",
+		},
+		"Makefile": {
+			Path: "Makefile",
+			Content: `api-test:
+	cd services/api && go test ./...
+api-lint:
+	cd services/api && golangci-lint run
+worker-vet:
+	cd services/worker && go vet ./...
+worker-lint:
+	cd services/worker && golangci-lint run
+`,
+		},
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+jobs:
+  test:
+    steps:
+      - run: make api-test
+      - run: make api-lint
+      - run: make worker-vet
+      - run: make worker-lint
+`,
+		},
+	})
+
+	report := Run(context.Background(), snapshot, DefaultRules())
+
+	assertRuleIDs(t, report.Findings, []string{
+		GoTestsRequiredRuleID,
+		GoVetRequiredRuleID,
+	})
+}
+
+func TestGoLintRuleRequiresRunCommand(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+defaults:
+  run:
+    working-directory: go
+jobs:
+  test:
+    steps:
+      - run: go test ./...
+      - run: go vet ./...
+      - run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.0
+      - run: ./scripts/check-go-coverage.sh
+`,
+		},
+	})
+
+	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+	assertRuleIDs(t, report.Findings, []string{GoLintRequiredRuleID})
+}
+
 func TestGoRulesKeepNamedWorkflowStepsForModule(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
 		"README.md":                                    {Path: "README.md"},
