@@ -23,4 +23,6 @@ Do you know what human chauvinists don't like?
 Novices who pick up power tools and cut their fingers off.
 Novices who don't have the sense God gave a grapefruit to be careful.
 
-Novices who run headlong swinging a power tool around at every object they can until they wreak havoc and destruction on everything and then get the government to disallow the power tools.
+Novices who run headlong swinging a power tool around at every object they can
+until they wreak havoc and destruction on everything
+and then get the government to disallow the power tools.

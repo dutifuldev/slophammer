@@ -12,9 +12,13 @@ transcript_method: "Whisper `small`, local transcription"
 
 Claude.md, Agents.md, all those rule files.
 Did you ever watch Andy of Mayberry?
-There's this wonderful scene where Barney Fife, the deputy, puts some criminals in his two jail cells, and he walks around saying, here at the rock, we have two rules.
+There's this wonderful scene where Barney Fife, the deputy,
+puts some criminals in his two jail cells,
+and he walks around saying, here at the rock, we have two rules.
 The first rule is, obey all rules.
-You know, I read a lot of these, you know, Agent.md files and Claude.md files, and they say things like that.
+You know, I read a lot of these,
+you know, Agent.md files and Claude.md files,
+and they say things like that.
 You must follow all these rules.
 Do you know how much impact that has on an AI?
 Zero.
