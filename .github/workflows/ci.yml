@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
 
       - name: Check markdown links to local files
         run: |
@@ -17,6 +20,14 @@ jobs:
           test -f LICENSE
           test -f AGENTS.md
           test -f docs/2026-05-12-guardrails.md
+          test -f specs/PRODUCT.md
+          test -f specs/RULES.md
+          test -f specs/CONFIG.md
+          test -f specs/REPORT_FORMAT.md
+          test -f specs/EXIT_CODES.md
+          test -f fixtures/repos/clean/README.md
+          test -f fixtures/expected/clean.json
+      - run: npx -y @simpledoc/simpledoc check
 
   go-template:
     runs-on: ubuntu-latest

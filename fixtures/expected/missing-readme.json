@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "repo.readme-required",
+      "severity": "error",
+      "path": "README.md",
+      "message": "README.md is required"
+    }
+  ]
+}
