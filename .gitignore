@@ -1,0 +1,19 @@
+.DS_Store
+
+# TypeScript
+node_modules/
+dist/
+coverage/
+
+# Python
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.venv/
+__pycache__/
+*.egg-info/
+
+# Go
+bin/
+*.test
+
