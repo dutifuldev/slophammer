@@ -253,3 +253,7 @@ See [Product](specs/PRODUCT.md), [Report Format](specs/REPORT_FORMAT.md), and
 
 See [DRY](docs/DRY.md) for the duplication policy informed by Uncle Bob's
 structural `dry4clj`, `dry4java`, and `dry4go` tools.
+
+The intended DRY policy is production-only: implementation code should trend
+toward a zero-candidate budget, while tests are reviewed selectively, fixtures
+are excluded, and templates run their own checks.

@@ -106,6 +106,32 @@ For agentic work, a good default policy is:
 5. Add or strengthen tests before consolidating behavior.
 6. Rerun the detector after refactoring.
 
+## Budgets
+
+The ideal production-code DRY budget is zero duplicate candidates.
+
+That does not mean every reported candidate in a repository should be removed.
+The budget should apply to the code that ships as the implementation. Tests,
+fixtures, templates, and generated examples have different jobs and should not
+be forced through the same number.
+
+For Go projects, the intended Slophammer policy is:
+
+```yaml
+go:
+  dry_max_candidates: 0
+  dry_paths:
+    - go/cmd
+    - go/internal
+  dry_exclude:
+    - "**/*_test.go"
+    - "fixtures/**"
+    - "templates/**"
+```
+
+That shape keeps the production code honest without turning test clarity or
+fixture repetition into false failures.
+
 ## What To Refactor
 
 A duplicate report should push the reviewer to identify the duplicated
@@ -130,6 +156,24 @@ Risky extraction targets:
 The goal is not a lower duplication number at any cost. The goal is fewer places
 where one rule can drift into several rules.
 
+## Tests And Fixtures
+
+Test duplication should be reviewed differently from production duplication.
+
+Repeated test setup is worth refactoring when it hides the behavior being
+tested, makes changes painful, or creates several copies of the same assertion
+logic. Repeated test setup should stay explicit when a helper would make the
+test harder to read.
+
+Fixtures should normally be excluded. Slophammer fixtures intentionally repeat
+small repository shapes so the rule behavior is obvious. Collapsing those
+fixtures into clever shared setup would make the acceptance contract harder to
+inspect.
+
+Templates should also be checked separately. A template is a reference project,
+not part of the Slophammer implementation. It should pass its own local checks
+instead of being counted inside the implementation's DRY budget.
+
 ## How This Applies To Slophammer
 
 `slophammer` is intentionally implemented across languages, so some duplication
@@ -142,11 +186,15 @@ DRY enforcement should focus on duplication inside one implementation:
 - repeated report construction
 - repeated CLI parsing branches
 - repeated filesystem scanning code
-- repeated test fixture setup that could become a shared helper
 
 Do not force the language implementations into one artificial abstraction. The
 cross-language repetition is documentation by example. The intra-language
 copy/paste is the risk.
+
+For this repo, the long-term Go target is a zero-candidate budget over
+production implementation paths only. The current whole-module budget is a
+temporary compatibility setting until Slophammer can pass `dry4go` include and
+exclude paths directly.
 
 ## Source Notes
 

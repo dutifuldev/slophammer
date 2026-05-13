@@ -333,6 +333,12 @@ or the first-class `slophammer go dry` command. The Slophammer command runs
 Go instead of in shell glue. If `slophammer.yml` sets `go.dry_max_candidates`,
 that value is the default budget unless `--max-candidates` is passed.
 
+The production target is strict: production Go code should have a zero-candidate
+DRY budget. Tests should be reviewed separately, fixtures should be excluded,
+and templates should run their own checks as reference projects. The current
+whole-module budget is transitional until Slophammer supports direct `dry4go`
+include and exclude path configuration.
+
 The static `go.dry-required` rule is a hard requirement: the repo must declare a
 DRY check somewhere Slophammer can inspect.
 
@@ -569,6 +575,11 @@ The implemented Go quality surface is:
    Config tunes policy without hiding problems. It parses coverage
    thresholds, DRY candidate budgets, CRAP score limits, mutation targets, and
    dependency boundary declarations.
+
+   The long-term DRY config should support production-only include and exclude
+   paths. That lets this repo enforce a zero-candidate budget over `go/cmd` and
+   `go/internal` production code while excluding `_test.go`, `fixtures/`, and
+   `templates/`.
 
 3. Use native dependency boundary checking.
    This is Slophammer-owned Go policy because import direction is project
