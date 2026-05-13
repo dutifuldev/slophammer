@@ -47,12 +47,22 @@ type DryOptions struct {
 	MaximumCandidates int
 	MaximumSet        bool
 	ShowReport        bool
+	Paths             []string
+	Exclude           []string
+}
+
+func (options DryOptions) RootPath() string {
+	return options.Root
 }
 
 type CRAPOptions struct {
 	Root         string
 	MaximumScore float64
 	MaximumSet   bool
+}
+
+func (options CRAPOptions) RootPath() string {
+	return options.Root
 }
 
 type MutationOptions struct {
@@ -62,6 +72,10 @@ type MutationOptions struct {
 	Scan    bool
 }
 
+func (options MutationOptions) RootPath() string {
+	return options.Root
+}
+
 func CheckDry(ctx context.Context, options DryOptions, out io.Writer, errOut io.Writer, runner Runner) int {
 	root := defaultRoot(options.Root)
 	maximumCandidates := options.MaximumCandidates
@@ -69,7 +83,8 @@ func CheckDry(ctx context.Context, options DryOptions, out io.Writer, errOut io.
 		maximumCandidates = DefaultMaximumDRYCandidates
 	}
 
-	result, err := runner.Run(ctx, root, "go", gotools.Dry4Go.GoRunArgs(gotools.Latest, "--format", "json", ".")...)
+	args := gotools.Dry4Go.GoRunArgs(gotools.Latest, append([]string{"--format", "json"}, dryPaths(options)...)...)
+	result, err := runner.Run(ctx, root, "go", args...)
 	if options.ShowReport || err != nil {
 		writeBytes(out, result.Stdout)
 	}
@@ -160,6 +175,10 @@ func MutationTargets(options MutationOptions) []string {
 	return mutationTargets(options)
 }
 
+func DryPaths(options DryOptions) []string {
+	return dryPaths(options)
+}
+
 type CRAPViolation struct {
 	Name  string
 	Score float64
@@ -188,6 +207,19 @@ func defaultRoot(root string) string {
 		return "."
 	}
 	return root
+}
+
+func dryPaths(options DryOptions) []string {
+	paths := make([]string, 0, len(options.Paths))
+	for _, targetPath := range options.Paths {
+		if targetPath != "" {
+			paths = append(paths, targetPath)
+		}
+	}
+	if len(paths) == 0 {
+		return []string{"."}
+	}
+	return paths
 }
 
 func mutationTargets(options MutationOptions) []string {

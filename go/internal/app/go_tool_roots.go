@@ -20,7 +20,21 @@ func checkDryInModules(
 	errOut io.Writer,
 	runner toolchecks.Runner,
 ) int {
-	return checkInModules(ctx, snapshot, options, out, errOut, runner, setDryRoot, toolchecks.CheckDry)
+	exitCode := ExitOK
+	for _, moduleRoot := range goModuleRootsOrDefault(snapshot) {
+		moduleOptions, ok := dryOptionsForModule(options, snapshot, moduleRoot)
+		if !ok {
+			continue
+		}
+		code := toolchecks.CheckDry(ctx, moduleOptions, out, errOut, runner)
+		if code == ExitError {
+			return ExitError
+		}
+		if code == ExitFindings {
+			exitCode = ExitFindings
+		}
+	}
+	return exitCode
 }
 
 func checkCRAPInModules(
@@ -70,10 +84,6 @@ func optionRoot(options any) string {
 	}
 }
 
-func setDryRoot(options *toolchecks.DryOptions, root string) {
-	options.Root = root
-}
-
 func setCRAPRoot(options *toolchecks.CRAPOptions, root string) {
 	options.Root = root
 }
@@ -100,15 +110,97 @@ func checkMutationInModules(
 }
 
 func goToolRoots(root string, snapshot repo.Snapshot) []string {
-	moduleRoots := goModuleRoots(snapshot)
-	if len(moduleRoots) == 0 {
-		return []string{commandRoot(root)}
-	}
+	moduleRoots := goModuleRootsOrDefault(snapshot)
 	roots := make([]string, 0, len(moduleRoots))
 	for _, moduleRoot := range moduleRoots {
 		roots = append(roots, moduleToolRoot(root, moduleRoot))
 	}
 	return roots
+}
+
+func dryOptionsForModule(options toolchecks.DryOptions, snapshot repo.Snapshot, moduleRoot string) (toolchecks.DryOptions, bool) {
+	moduleOptions := options
+	moduleOptions.Root = moduleToolRoot(options.Root, moduleRoot)
+	if len(options.Paths) == 0 && len(options.Exclude) == 0 {
+		return moduleOptions, true
+	}
+	paths := dryFilePathsForModule(snapshot, moduleRoot, options.Paths, options.Exclude)
+	if len(paths) == 0 {
+		return toolchecks.DryOptions{}, false
+	}
+	moduleOptions.Paths = paths
+	return moduleOptions, true
+}
+
+func dryFilePathsForModule(snapshot repo.Snapshot, moduleRoot string, includes []string, excludes []string) []string {
+	roots := dryIncludeRoots(moduleRoot, includes)
+	files := make([]string, 0)
+	for filePath := range snapshot.Files {
+		if !strings.HasSuffix(filePath, ".go") || !isUnderDryRoot(filePath, roots) || isDryExcluded(filePath, moduleRoot, excludes) {
+			continue
+		}
+		files = append(files, trimModuleRoot(filePath, moduleRoot))
+	}
+	sort.Strings(files)
+	return files
+}
+
+func dryIncludeRoots(moduleRoot string, includes []string) []string {
+	if len(includes) == 0 {
+		return []string{moduleRoot}
+	}
+	roots := make([]string, 0, len(includes))
+	for _, include := range includes {
+		include = cleanSlashPath(include)
+		if include == "" {
+			continue
+		}
+		switch {
+		case moduleRoot == ".":
+			roots = append(roots, include)
+		case include == moduleRoot || strings.HasPrefix(include, moduleRoot+"/"):
+			roots = append(roots, include)
+		}
+	}
+	return roots
+}
+
+func isUnderDryRoot(filePath string, roots []string) bool {
+	for _, root := range roots {
+		if root == "." || filePath == root || strings.HasPrefix(filePath, root+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+func isDryExcluded(filePath string, moduleRoot string, excludes []string) bool {
+	modulePath := trimModuleRoot(filePath, moduleRoot)
+	for _, exclude := range excludes {
+		exclude = cleanSlashPath(exclude)
+		if exclude == "" {
+			continue
+		}
+		if pathMatchesDryPattern(filePath, exclude) || pathMatchesDryPattern(modulePath, exclude) {
+			return true
+		}
+	}
+	return false
+}
+
+func pathMatchesDryPattern(filePath string, pattern string) bool {
+	if strings.HasPrefix(pattern, "**/") {
+		suffix := strings.TrimPrefix(pattern, "**/")
+		if matched, _ := path.Match(suffix, path.Base(filePath)); matched {
+			return true
+		}
+	}
+	if strings.HasSuffix(pattern, "/**") {
+		prefix := strings.TrimSuffix(pattern, "/**")
+		return filePath == prefix || strings.HasPrefix(filePath, prefix+"/")
+	}
+	matched, _ := path.Match(pattern, filePath)
+	return matched
 }
 
 func mutationOptionsForModules(options toolchecks.MutationOptions, snapshot repo.Snapshot) []toolchecks.MutationOptions {
@@ -174,6 +266,14 @@ func goModuleRoots(snapshot repo.Snapshot) []string {
 	return roots
 }
 
+func goModuleRootsOrDefault(snapshot repo.Snapshot) []string {
+	roots := goModuleRoots(snapshot)
+	if len(roots) > 0 {
+		return roots
+	}
+	return []string{"."}
+}
+
 func targetModuleRoot(target string, moduleRoots []string) string {
 	for i := len(moduleRoots) - 1; i >= 0; i-- {
 		moduleRoot := moduleRoots[i]
@@ -192,6 +292,14 @@ func trimModuleRoot(target string, moduleRoot string) string {
 		return target
 	}
 	return strings.TrimPrefix(strings.TrimPrefix(target, moduleRoot), "/")
+}
+
+func cleanSlashPath(filePath string) string {
+	cleaned := path.Clean(strings.ReplaceAll(filePath, "\\", "/"))
+	if cleaned == "." {
+		return ""
+	}
+	return cleaned
 }
 
 func configuredMutationTargets(options toolchecks.MutationOptions) []string {

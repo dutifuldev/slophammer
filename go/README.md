@@ -10,10 +10,10 @@ go run ./cmd/slophammer check .. --format json
 go run ./cmd/slophammer check .. --format sarif
 go run ./cmd/slophammer check .. --execute
 go run ./cmd/slophammer explain repo.agents-required
-go run ./cmd/slophammer go dry . --max-candidates 50
-go run ./cmd/slophammer go dry . --max-candidates 50 --show-report
-go run ./cmd/slophammer go crap . --max-score 30
-go run ./cmd/slophammer go mutate . --target internal/rules/rules.go --scan
+go run ./cmd/slophammer go dry ..
+go run ./cmd/slophammer go dry .. --show-report
+go run ./cmd/slophammer go crap ..
+go run ./cmd/slophammer go mutate .. --scan
 ```
 
 ## Local Checks
@@ -24,11 +24,12 @@ golangci-lint fmt --diff
 go vet ./...
 go test ./...
 ./scripts/check-go-coverage.sh
-go run ./cmd/slophammer go dry . --max-candidates 50
-go run ./cmd/slophammer go crap . --max-score 30
-go run ./cmd/slophammer go mutate . --target internal/rules/rules.go --scan
+go run ./cmd/slophammer go dry ..
+go run ./cmd/slophammer go crap ..
+go run ./cmd/slophammer go mutate .. --scan
 go build ./cmd/slophammer
 go run ./cmd/slophammer check ..
+go run ./cmd/slophammer check .. --execute
 ```
 
 The direct `go dry`, `go crap`, and `go mutate` commands read

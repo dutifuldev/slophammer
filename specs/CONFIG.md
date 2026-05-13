@@ -16,7 +16,7 @@ rules:
     severity: warn
 go:
   coverage_threshold: 80
-  dry_max_candidates: 50
+  dry_max_candidates: 0
   dry_paths:
     - go/cmd
     - go/internal
@@ -60,10 +60,8 @@ reason and is not used by the current Go implementation to hide findings.
 `go.coverage_threshold`, `go.dry_max_candidates`, `go.crap_max_score`, and
 `go.mutation_targets` are parsed as typed policy fields.
 
-`go.dry_paths` and `go.dry_exclude` are the intended policy shape for
-production-only DRY enforcement. They document where Slophammer should run
-`dry4go` once path filtering is implemented. Until then, the Go implementation
-uses the target module root and the candidate budget.
+`go.dry_paths` and `go.dry_exclude` configure production-only DRY enforcement.
+Slophammer expands those paths to Go source files before running `dry4go`.
 
 The direct Go commands use these values as defaults:
 
@@ -79,7 +77,7 @@ to the normal report. Go tool execution runs from discovered Go module roots,
 so a repo-level config can drive a nested module such as `go/`. Embedded
 `fixtures/`, `templates/`, and `vendor/` modules are not execution targets.
 
-The long-term DRY budget should be zero for production code. Tests are reviewed
+The configured DRY budget is zero for production code. Tests are reviewed
 selectively, fixtures are excluded, and templates are checked as independent
 reference projects.
 

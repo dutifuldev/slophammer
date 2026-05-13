@@ -191,10 +191,9 @@ Do not force the language implementations into one artificial abstraction. The
 cross-language repetition is documentation by example. The intra-language
 copy/paste is the risk.
 
-For this repo, the long-term Go target is a zero-candidate budget over
-production implementation paths only. The current whole-module budget is a
-temporary compatibility setting until Slophammer can pass `dry4go` include and
-exclude paths directly.
+For this repo, the Go target is a zero-candidate budget over production
+implementation paths only. Slophammer enforces that by expanding configured
+include paths and exclude globs before it calls `dry4go`.
 
 ## Source Notes
 

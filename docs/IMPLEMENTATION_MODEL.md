@@ -335,9 +335,9 @@ that value is the default budget unless `--max-candidates` is passed.
 
 The production target is strict: production Go code should have a zero-candidate
 DRY budget. Tests should be reviewed separately, fixtures should be excluded,
-and templates should run their own checks as reference projects. The current
-whole-module budget is transitional until Slophammer supports direct `dry4go`
-include and exclude path configuration.
+and templates should run their own checks as reference projects. Slophammer
+enforces that by expanding configured include paths and exclude globs before
+calling `dry4go`.
 
 The static `go.dry-required` rule is a hard requirement: the repo must declare a
 DRY check somewhere Slophammer can inspect.
@@ -529,15 +529,12 @@ go test
 coverage gate
 golangci-lint
 slophammer check .
-slophammer go dry . --max-candidates 50
-slophammer go crap . --max-score 30
-slophammer go mutate . --target internal/rules/rules.go --scan
+slophammer check . --execute
+slophammer go dry ..
+slophammer go crap ..
+slophammer go mutate .. --scan
 dependency boundary check
 ```
-
-The explicit `go dry`, `go crap`, and `go mutate` flags in CI are allowed even
-when the same values exist in `slophammer.yml`; explicit flags make CI behavior
-easy to audit. Local `check --execute` uses config defaults.
 
 Full mutation testing should run on a slower schedule or targeted path:
 

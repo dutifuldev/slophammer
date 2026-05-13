@@ -28,6 +28,9 @@ type RuleConfig struct {
 type GoConfig struct {
 	CoverageThreshold    float64              `yaml:"coverage_threshold"`
 	DRYMaxCandidates     int                  `yaml:"dry_max_candidates"`
+	DRYMaxCandidatesSet  bool                 `yaml:"-"`
+	DRYPaths             []string             `yaml:"dry_paths"`
+	DRYExclude           []string             `yaml:"dry_exclude"`
 	CRAPMaxScore         float64              `yaml:"crap_max_score"`
 	MutationTargets      []string             `yaml:"mutation_targets"`
 	DependencyBoundaries []DependencyBoundary `yaml:"dependency_boundaries"`
@@ -36,6 +39,33 @@ type GoConfig struct {
 type DependencyBoundary struct {
 	From  string   `yaml:"from"`
 	Allow []string `yaml:"allow"`
+}
+
+func (cfg *GoConfig) UnmarshalYAML(value *yaml.Node) error {
+	type goConfig struct {
+		CoverageThreshold    float64              `yaml:"coverage_threshold"`
+		DRYMaxCandidates     *int                 `yaml:"dry_max_candidates"`
+		DRYPaths             []string             `yaml:"dry_paths"`
+		DRYExclude           []string             `yaml:"dry_exclude"`
+		CRAPMaxScore         float64              `yaml:"crap_max_score"`
+		MutationTargets      []string             `yaml:"mutation_targets"`
+		DependencyBoundaries []DependencyBoundary `yaml:"dependency_boundaries"`
+	}
+	var parsed goConfig
+	if err := value.Decode(&parsed); err != nil {
+		return err
+	}
+	cfg.CoverageThreshold = parsed.CoverageThreshold
+	if parsed.DRYMaxCandidates != nil {
+		cfg.DRYMaxCandidates = *parsed.DRYMaxCandidates
+		cfg.DRYMaxCandidatesSet = true
+	}
+	cfg.DRYPaths = parsed.DRYPaths
+	cfg.DRYExclude = parsed.DRYExclude
+	cfg.CRAPMaxScore = parsed.CRAPMaxScore
+	cfg.MutationTargets = parsed.MutationTargets
+	cfg.DependencyBoundaries = parsed.DependencyBoundaries
+	return nil
 }
 
 func Load(snapshot repo.Snapshot) (Config, error) {
@@ -90,6 +120,9 @@ func validate(cfg Config) error {
 		if boundary.From == "" {
 			return fmt.Errorf("go.dependency_boundaries[%d].from cannot be empty", i)
 		}
+	}
+	if cfg.Go.DRYMaxCandidatesSet && cfg.Go.DRYMaxCandidates < 0 {
+		return fmt.Errorf("go.dry_max_candidates must be non-negative")
 	}
 	return nil
 }

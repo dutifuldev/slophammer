@@ -123,6 +123,13 @@ func scopedGoProjectFile(filePath string, file repo.File, root string, roots []s
 	if root == "" {
 		return file, !isUnderOtherGoRoot(filePath, root, roots)
 	}
+	return scopedNestedGoProjectFile(filePath, file, root, roots)
+}
+
+func scopedNestedGoProjectFile(filePath string, file repo.File, root string, roots []string) (repo.File, bool) {
+	if isRepoRootSlophammerConfigFile(filePath) {
+		return file, true
+	}
 	if isRepoRootGoConfigFile(filePath) {
 		return file, true
 	}
@@ -478,6 +485,10 @@ func isWorkflowFilePath(filePath string) bool {
 
 func isRepoRootGoConfigFile(filePath string) bool {
 	return filePath == ".golangci.yml" || filePath == ".golangci.yaml"
+}
+
+func isRepoRootSlophammerConfigFile(filePath string) bool {
+	return filePath == "slophammer.yml" || filePath == "slophammer.yaml"
 }
 
 func isRepoRootCommandFile(filePath string) bool {

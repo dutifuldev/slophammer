@@ -149,15 +149,21 @@ func TestCheckExecuteAddsToolFindings(t *testing.T) {
 
 func TestApplyCommandConfigUsesConfiguredDefaults(t *testing.T) {
 	cfg := config.Config{Go: config.GoConfig{
-		DRYMaxCandidates: 7,
-		CRAPMaxScore:     8,
-		MutationTargets:  []string{"a.go", "b.go"},
+		DRYMaxCandidates:    0,
+		DRYMaxCandidatesSet: true,
+		DRYPaths:            []string{"go/cmd", "go/internal"},
+		DRYExclude:          []string{"**/*_test.go"},
+		CRAPMaxScore:        8,
+		MutationTargets:     []string{"a.go", "b.go"},
 	}}
 
 	dry := toolchecks.DryOptions{}
 	applyDryConfig(&dry, cfg)
-	if dry.MaximumCandidates != 7 || !dry.MaximumSet {
+	if dry.MaximumCandidates != 0 || !dry.MaximumSet {
 		t.Fatalf("dry = %#v", dry)
+	}
+	if !reflect.DeepEqual(dry.Paths, []string{"go/cmd", "go/internal"}) || !reflect.DeepEqual(dry.Exclude, []string{"**/*_test.go"}) {
+		t.Fatalf("dry paths = %#v excludes = %#v", dry.Paths, dry.Exclude)
 	}
 
 	crap := toolchecks.CRAPOptions{}
@@ -175,9 +181,11 @@ func TestApplyCommandConfigUsesConfiguredDefaults(t *testing.T) {
 
 func TestApplyCommandConfigKeepsExplicitValues(t *testing.T) {
 	cfg := config.Config{Go: config.GoConfig{
-		DRYMaxCandidates: 7,
-		CRAPMaxScore:     8,
-		MutationTargets:  []string{"configured.go"},
+		DRYMaxCandidates:    7,
+		DRYMaxCandidatesSet: true,
+		DRYPaths:            []string{"go/internal"},
+		CRAPMaxScore:        8,
+		MutationTargets:     []string{"configured.go"},
 	}}
 
 	dry := toolchecks.DryOptions{MaximumCandidates: 3, MaximumSet: true}

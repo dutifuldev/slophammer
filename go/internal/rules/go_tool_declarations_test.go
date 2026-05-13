@@ -68,6 +68,14 @@ go run github.com/unclebob/crap4go/cmd/crap4go@latest
 
 func TestGoToolRulesAcceptSlophammerGoCommands(t *testing.T) {
 	files := cleanGoGuardrailFiles(map[string]repo.File{
+		"slophammer.yml": {
+			Path: "slophammer.yml",
+			Content: `go:
+  crap_max_score: 30
+  mutation_targets:
+    - go/internal/rules/rules.go
+`,
+		},
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
@@ -81,9 +89,9 @@ jobs:
       - run: go vet ./...
       - run: golangci-lint run
       - run: ./scripts/check-go-coverage.sh
-      - run: go run ./cmd/slophammer go dry . --max-candidates 50
-      - run: go run ./cmd/slophammer go crap . --max-score 30
-      - run: go run ./cmd/slophammer go mutate . --target internal/rules/rules.go --scan
+      - run: go run ./cmd/slophammer go dry ..
+      - run: go run ./cmd/slophammer go crap ..
+      - run: go run ./cmd/slophammer go mutate .. --scan
 `,
 		},
 	})
@@ -110,6 +118,36 @@ jobs:
 
 	if hasMutate4GoCommand(snapshot) {
 		t.Fatal("hasMutate4GoCommand = true, want false without --target")
+	}
+}
+
+func TestGoToolRulesAcceptConfigBackedSlophammerCommands(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"slophammer.yml": {
+			Path: "slophammer.yml",
+			Content: `go:
+  crap_max_score: 30
+  mutation_targets:
+    - go/internal/rules/rules.go
+`,
+		},
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+jobs:
+  test:
+    steps:
+      - run: go run ./cmd/slophammer go crap ..
+      - run: go run ./cmd/slophammer go mutate .. --scan
+`,
+		},
+	})
+
+	if !hasCRAP4GoGate(snapshot) {
+		t.Fatal("hasCRAP4GoGate = false, want true with configured threshold")
+	}
+	if !hasMutate4GoCommand(snapshot) {
+		t.Fatal("hasMutate4GoCommand = false, want true with configured target")
 	}
 }
 

@@ -23,6 +23,36 @@ func TestGoToolRootsUseNestedModule(t *testing.T) {
 	}
 }
 
+func TestDryOptionsForModuleExpandsProductionFiles(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"go/go.mod":                         {Path: "go/go.mod"},
+		"go/cmd/slophammer/main.go":         {Path: "go/cmd/slophammer/main.go"},
+		"go/internal/app/app.go":            {Path: "go/internal/app/app.go"},
+		"go/internal/app/app_test.go":       {Path: "go/internal/app/app_test.go"},
+		"go/internal/app/testdata/input.go": {Path: "go/internal/app/testdata/input.go"},
+		"fixtures/repos/go-clean/main.go":   {Path: "fixtures/repos/go-clean/main.go"},
+		"templates/go/main.go":              {Path: "templates/go/main.go"},
+	})
+
+	got, ok := dryOptionsForModule(toolchecks.DryOptions{
+		Root:    "..",
+		Paths:   []string{"go/cmd", "go/internal"},
+		Exclude: []string{"**/*_test.go", "go/internal/app/testdata/**", "fixtures/**", "templates/**"},
+	}, snapshot, "go")
+	want := toolchecks.DryOptions{
+		Root:    "../go",
+		Paths:   []string{"cmd/slophammer/main.go", "internal/app/app.go"},
+		Exclude: []string{"**/*_test.go", "go/internal/app/testdata/**", "fixtures/**", "templates/**"},
+	}
+
+	if !ok {
+		t.Fatal("ok = false, want true")
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("dryOptionsForModule = %#v, want %#v", got, want)
+	}
+}
+
 func TestMutationOptionsForModulesTrimsConfiguredTargets(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
 		"go/go.mod": {Path: "go/go.mod"},

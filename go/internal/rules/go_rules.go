@@ -3,6 +3,7 @@ package rules
 import (
 	"context"
 
+	"github.com/dutifuldev/slophammer/go/internal/config"
 	"github.com/dutifuldev/slophammer/go/internal/gotools"
 	"github.com/dutifuldev/slophammer/go/internal/repo"
 )
@@ -70,14 +71,16 @@ func hasGoModule(snapshot repo.Snapshot) bool {
 }
 
 func hasGoTestCommand(snapshot repo.Snapshot) bool {
-	return hasRunnableCommandLine(snapshot, func(tokens []string) bool {
-		return lineHasGoSubcommandAllPackages(tokens, "test")
-	})
+	return hasGoSubcommand(snapshot, "test")
 }
 
 func hasGoVetCommand(snapshot repo.Snapshot) bool {
+	return hasGoSubcommand(snapshot, "vet")
+}
+
+func hasGoSubcommand(snapshot repo.Snapshot, subcommand string) bool {
 	return hasRunnableCommandLine(snapshot, func(tokens []string) bool {
-		return lineHasGoSubcommandAllPackages(tokens, "vet")
+		return lineHasGoSubcommandAllPackages(tokens, subcommand)
 	})
 }
 
@@ -154,9 +157,11 @@ func hasDry4GoCommand(snapshot repo.Snapshot) bool {
 }
 
 func hasCRAP4GoGate(snapshot repo.Snapshot) bool {
+	hasConfiguredThreshold := hasConfiguredCRAPThreshold(snapshot)
 	for _, file := range commandFiles(snapshot) {
 		for _, content := range commandSections(file) {
-			if contentHasSlophammerGoCommand(content, "crap", "--max-score") {
+			if contentHasSlophammerGoCommand(content, "crap", "--max-score") ||
+				(hasConfiguredThreshold && contentHasSlophammerGoCommand(content, "crap", "")) {
 				return true
 			}
 			if !hasCRAPThreshold(content) {
@@ -174,14 +179,26 @@ func hasMutate4GoCommand(snapshot repo.Snapshot) bool {
 	if hasDirectMutate4GoCommand(snapshot) {
 		return true
 	}
+	hasConfiguredTargets := hasConfiguredMutationTargets(snapshot)
 	for _, file := range commandFiles(snapshot) {
 		for _, content := range commandSections(file) {
-			if contentHasSlophammerGoCommand(content, "mutate", "--target") {
+			if contentHasSlophammerGoCommand(content, "mutate", "--target") ||
+				(hasConfiguredTargets && contentHasSlophammerGoCommand(content, "mutate", "")) {
 				return true
 			}
 		}
 	}
 	return false
+}
+
+func hasConfiguredCRAPThreshold(snapshot repo.Snapshot) bool {
+	cfg, err := config.Load(snapshot)
+	return err == nil && cfg.Go.CRAPMaxScore > 0
+}
+
+func hasConfiguredMutationTargets(snapshot repo.Snapshot) bool {
+	cfg, err := config.Load(snapshot)
+	return err == nil && len(cfg.Go.MutationTargets) > 0
 }
 
 func hasDirectMutate4GoCommand(snapshot repo.Snapshot) bool {

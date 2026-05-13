@@ -46,6 +46,27 @@ func TestCheckDryHonorsExplicitZeroBudget(t *testing.T) {
 	}
 }
 
+func TestCheckDryPassesConfiguredPaths(t *testing.T) {
+	runner := &fakeRunner{output: []byte(`{"candidates":[]}`)}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckDry(context.Background(), DryOptions{
+		Root:              "/repo",
+		MaximumCandidates: 0,
+		MaximumSet:        true,
+		Paths:             []string{"cmd/main.go", "internal/app/app.go"},
+	}, &out, &errOut, runner)
+
+	if code != 0 {
+		t.Fatalf("code = %d, want 0", code)
+	}
+	wantArgs := gotools.Dry4Go.GoRunArgs(gotools.Latest, "--format", "json", "cmd/main.go", "internal/app/app.go")
+	if runnerCall := runner.call; !reflect.DeepEqual(runnerCall.args, wantArgs) {
+		t.Fatalf("args = %#v, want %#v", runnerCall.args, wantArgs)
+	}
+}
+
 func TestCheckDryParsesStdoutWhenGoRunWritesToStderr(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer

@@ -73,21 +73,15 @@ func Explain(ruleID string, out io.Writer, errOut io.Writer) int {
 }
 
 func CheckGoDry(ctx context.Context, options toolchecks.DryOptions, out io.Writer, errOut io.Writer) int {
-	return runConfiguredGoCheck(options.Root, errOut, options, applyDryConfig, func(snapshot repo.Snapshot, options toolchecks.DryOptions) int {
-		return checkDryInModules(ctx, snapshot, options, out, errOut, toolchecks.ExecRunner{})
-	})
+	return runConfiguredGoTool(ctx, options, out, errOut, applyDryConfig, checkDryInModules)
 }
 
 func CheckGoCRAP(ctx context.Context, options toolchecks.CRAPOptions, out io.Writer, errOut io.Writer) int {
-	return runConfiguredGoCheck(options.Root, errOut, options, applyCRAPConfig, func(snapshot repo.Snapshot, options toolchecks.CRAPOptions) int {
-		return checkCRAPInModules(ctx, snapshot, options, out, errOut, toolchecks.ExecRunner{})
-	})
+	return runConfiguredGoTool(ctx, options, out, errOut, applyCRAPConfig, checkCRAPInModules)
 }
 
 func CheckGoMutation(ctx context.Context, options toolchecks.MutationOptions, out io.Writer, errOut io.Writer) int {
-	return runConfiguredGoCheck(options.Root, errOut, options, applyMutationConfig, func(snapshot repo.Snapshot, options toolchecks.MutationOptions) int {
-		return checkMutationInModules(ctx, snapshot, options, out, errOut, toolchecks.ExecRunner{})
-	})
+	return runConfiguredGoTool(ctx, options, out, errOut, applyMutationConfig, checkMutationInModules)
 }
 
 func writeReport(out io.Writer, format string, result rules.Report) error {
@@ -117,16 +111,17 @@ func runWithCommandConfig(root string, errOut io.Writer, run func(repo.Snapshot,
 	return run(snapshot, cfg)
 }
 
-func runConfiguredGoCheck[T any](
-	root string,
-	errOut io.Writer,
+func runConfiguredGoTool[T interface{ RootPath() string }](
+	ctx context.Context,
 	options T,
+	out io.Writer,
+	errOut io.Writer,
 	apply func(*T, config.Config),
-	run func(repo.Snapshot, T) int,
+	run func(context.Context, repo.Snapshot, T, io.Writer, io.Writer, toolchecks.Runner) int,
 ) int {
-	return runWithCommandConfig(root, errOut, func(snapshot repo.Snapshot, cfg config.Config) int {
+	return runWithCommandConfig(options.RootPath(), errOut, func(snapshot repo.Snapshot, cfg config.Config) int {
 		apply(&options, cfg)
-		return run(snapshot, options)
+		return run(ctx, snapshot, options, out, errOut, toolchecks.ExecRunner{})
 	})
 }
 
@@ -138,11 +133,12 @@ func commandRoot(root string) string {
 }
 
 func applyDryConfig(options *toolchecks.DryOptions, cfg config.Config) {
-	if options.MaximumSet || cfg.Go.DRYMaxCandidates <= 0 {
-		return
+	if !options.MaximumSet && cfg.Go.DRYMaxCandidatesSet {
+		options.MaximumCandidates = cfg.Go.DRYMaxCandidates
+		options.MaximumSet = true
 	}
-	options.MaximumCandidates = cfg.Go.DRYMaxCandidates
-	options.MaximumSet = true
+	options.Paths = append([]string(nil), cfg.Go.DRYPaths...)
+	options.Exclude = append([]string(nil), cfg.Go.DRYExclude...)
 }
 
 func applyCRAPConfig(options *toolchecks.CRAPOptions, cfg config.Config) {
@@ -162,11 +158,13 @@ func applyMutationConfig(options *toolchecks.MutationOptions, cfg config.Config)
 
 func executeGoChecks(ctx context.Context, snapshot repo.Snapshot, root string, cfg config.Config, runner toolchecks.Runner) []rules.Finding {
 	var findings []rules.Finding
-	if cfg.Go.DRYMaxCandidates > 0 {
+	if cfg.Go.DRYMaxCandidatesSet {
 		options := toolchecks.DryOptions{
 			Root:              commandRoot(root),
 			MaximumCandidates: cfg.Go.DRYMaxCandidates,
 			MaximumSet:        true,
+			Paths:             append([]string(nil), cfg.Go.DRYPaths...),
+			Exclude:           append([]string(nil), cfg.Go.DRYExclude...),
 		}
 		findings = appendToolFinding(findings, rules.GoDryRequiredRuleID, cfg, "dry4go exceeded the configured candidate budget", func(out, errOut io.Writer) int {
 			return checkDryInModules(ctx, snapshot, options, out, errOut, runner)

@@ -137,23 +137,7 @@ func isGoRunPackage(tokens []string, packageIndex int) bool {
 }
 
 func goCommandIndex(tokens []string, start int) int {
-	for i := start; i < len(tokens); i++ {
-		token := cleanCommandToken(tokens[i])
-		if token == "" {
-			continue
-		}
-		if isShellSeparator(token) {
-			return -1
-		}
-		if strings.HasPrefix(token, "-") {
-			if goGlobalFlagNeedsValue(token) && !strings.Contains(token, "=") {
-				i++
-			}
-			continue
-		}
-		return i
-	}
-	return -1
+	return goArgumentIndex(tokens, start, goGlobalFlagNeedsValue)
 }
 
 func goGlobalFlagNeedsValue(token string) bool {
@@ -162,6 +146,10 @@ func goGlobalFlagNeedsValue(token string) bool {
 }
 
 func goRunPackageIndex(tokens []string, start int) int {
+	return goArgumentIndex(tokens, start, goRunFlagNeedsValue)
+}
+
+func goArgumentIndex(tokens []string, start int, flagNeedsValue func(string) bool) int {
 	for i := start; i < len(tokens); i++ {
 		token := cleanCommandToken(tokens[i])
 		if token == "" {
@@ -171,7 +159,7 @@ func goRunPackageIndex(tokens []string, start int) int {
 			return -1
 		}
 		if strings.HasPrefix(token, "-") {
-			if goRunFlagNeedsValue(token) && !strings.Contains(token, "=") {
+			if flagNeedsValue(token) && !strings.Contains(token, "=") {
 				i++
 			}
 			continue
