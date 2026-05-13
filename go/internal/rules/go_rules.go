@@ -703,7 +703,7 @@ func scopedWorkflowStepBlock(content, root string, roots []string) (string, bool
 			continue
 		}
 		runLine, ok := workflowRunLine(strings.TrimSpace(line))
-		if ok && (runLine == "|" || runLine == ">") {
+		if _, block := workflowRunBlockScalar(runLine); ok && block {
 			kept = append(kept, line)
 		}
 	}

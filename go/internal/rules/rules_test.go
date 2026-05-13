@@ -515,7 +515,7 @@ jobs:
 }
 
 func TestScopedWorkflowStepBlockFiltersMixedModuleCommands(t *testing.T) {
-	block := `      - run: |
+	block := `      - run: |-
           cd services/worker && go test ./...
           cd services/api
           go vet ./...
@@ -535,11 +535,35 @@ func TestScopedWorkflowStepBlockFiltersMixedModuleCommands(t *testing.T) {
 	if strings.Contains(scoped, "cd ../worker") {
 		t.Fatalf("scoped block kept command after leaving api: %q", scoped)
 	}
-	if !strings.Contains(scoped, "- run: |") ||
+	if !strings.Contains(scoped, "- run: |-") ||
 		!strings.Contains(scoped, "cd services/api") ||
 		!strings.Contains(scoped, "go vet ./...") ||
 		!strings.Contains(scoped, "golangci-lint run") {
 		t.Fatalf("scoped block lost api run content: %q", scoped)
+	}
+}
+
+func TestGoRulesAcceptChompedMixedModuleWorkflowRunBlocks(t *testing.T) {
+	workflow := `name: CI
+jobs:
+  all:
+    steps:
+      - run: |-
+          cd services/api
+          go test ./...
+          go vet ./...
+          golangci-lint run
+          cd services/worker
+          go test ./...
+          go vet ./...
+          golangci-lint run
+`
+	snapshot := repo.NewSnapshot("/repo", cleanTwoModuleGoGuardrailFiles(workflow))
+
+	report := Run(context.Background(), snapshot, DefaultRules())
+
+	if !report.OK {
+		t.Fatalf("report.OK = false, findings = %#v", report.Findings)
 	}
 }
 
@@ -2133,6 +2157,39 @@ func cleanGoGuardrailFiles(overrides map[string]repo.File) map[string]repo.File 
 	}
 	for path, file := range overrides {
 		files[path] = file
+	}
+	return files
+}
+
+func cleanTwoModuleGoGuardrailFiles(workflow string) map[string]repo.File {
+	files := map[string]repo.File{
+		"README.md":                {Path: "README.md"},
+		"AGENTS.md":                {Path: "AGENTS.md"},
+		".github/workflows/ci.yml": {Path: ".github/workflows/ci.yml", Content: workflow},
+	}
+	for _, root := range []string{"services/api", "services/worker"} {
+		files[root+"/go.mod"] = repo.File{Path: root + "/go.mod"}
+		files[root+"/main.go"] = repo.File{Path: root + "/main.go"}
+		files[root+"/.golangci.yml"] = repo.File{
+			Path:    root + "/.golangci.yml",
+			Content: "linters:\n  enable:\n    - cyclop\n",
+		}
+		files[root+"/scripts/check-go-coverage.sh"] = repo.File{
+			Path:    root + "/scripts/check-go-coverage.sh",
+			Content: cleanCoverageScript,
+		}
+		files[root+"/scripts/check-dry.sh"] = repo.File{
+			Path:    root + "/scripts/check-dry.sh",
+			Content: cleanDryScript(),
+		}
+		files[root+"/scripts/check-crap.sh"] = repo.File{
+			Path:    root + "/scripts/check-crap.sh",
+			Content: cleanCRAPScript(),
+		}
+		files[root+"/scripts/check-mutation.sh"] = repo.File{
+			Path:    root + "/scripts/check-mutation.sh",
+			Content: cleanMutationScript("main.go"),
+		}
 	}
 	return files
 }
