@@ -275,13 +275,47 @@ func commandTokens(line string) []string {
 }
 
 func isGoRunPackage(tokens []string, packageIndex int) bool {
-	if packageIndex < 2 {
+	for goIndex := 0; goIndex+1 < packageIndex; goIndex++ {
+		if cleanCommandToken(tokens[goIndex]) != "go" ||
+			cleanCommandToken(tokens[goIndex+1]) != "run" ||
+			!isCommandToken(tokens, goIndex) {
+			continue
+		}
+		if goRunPackageIndex(tokens, goIndex+2) == packageIndex {
+			return true
+		}
+	}
+	return false
+}
+
+func goRunPackageIndex(tokens []string, start int) int {
+	for i := start; i < len(tokens); i++ {
+		token := cleanCommandToken(tokens[i])
+		if token == "" {
+			continue
+		}
+		if isShellSeparator(token) {
+			return -1
+		}
+		if strings.HasPrefix(token, "-") {
+			if goRunFlagNeedsValue(token) && !strings.Contains(token, "=") {
+				i++
+			}
+			continue
+		}
+		return i
+	}
+	return -1
+}
+
+func goRunFlagNeedsValue(token string) bool {
+	flag, _, _ := strings.Cut(token, "=")
+	switch flag {
+	case "-asmflags", "-exec", "-gcflags", "-ldflags", "-mod", "-overlay", "-p", "-pkgdir", "-tags", "-toolexec":
+		return true
+	default:
 		return false
 	}
-	goIndex := packageIndex - 2
-	return cleanCommandToken(tokens[goIndex]) == "go" &&
-		cleanCommandToken(tokens[packageIndex-1]) == "run" &&
-		isCommandToken(tokens, goIndex)
 }
 
 func isCommandToken(tokens []string, commandIndex int) bool {
@@ -534,6 +568,10 @@ func scopedRootCommandContent(filePath string, content string, root string, root
 			continue
 		}
 		if carryRootContext && inRootBlock {
+			if lineHasCDCommand(line) {
+				inRootBlock = false
+				continue
+			}
 			kept = append(kept, line)
 		}
 	}

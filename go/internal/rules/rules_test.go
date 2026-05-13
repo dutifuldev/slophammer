@@ -973,6 +973,27 @@ jobs:
 	})
 }
 
+func TestScopedRootCommandContentStopsAfterLeavingModule(t *testing.T) {
+	content := `cd go
+go test ./...
+cd ..
+go vet ./...
+dry4go .
+`
+
+	scoped, ok := scopedRootCommandContent("scripts/check.sh", content, "go", []string{"go"})
+
+	if !ok {
+		t.Fatal("scopedRootCommandContent returned ok=false")
+	}
+	if strings.Contains(scoped, "go vet ./...") || strings.Contains(scoped, "dry4go .") {
+		t.Fatalf("scoped content kept commands after leaving module: %q", scoped)
+	}
+	if !strings.Contains(scoped, "go test ./...") {
+		t.Fatalf("scoped content lost in-module command: %q", scoped)
+	}
+}
+
 func TestGoLintRuleRequiresRunCommand(t *testing.T) {
 	files := cleanGoGuardrailFiles(map[string]repo.File{
 		".github/workflows/ci.yml": {
@@ -1305,6 +1326,20 @@ func TestGoToolCommandDetectionRequiresRunnableCommand(t *testing.T) {
 			want:          true,
 		},
 		{
+			name:          "dry package run with flag",
+			command:       "go run -mod=readonly github.com/unclebob/dry4go/cmd/dry4go@latest --format json .",
+			binaryName:    "dry4go",
+			packageNeedle: "github.com/unclebob/dry4go/cmd/dry4go",
+			want:          true,
+		},
+		{
+			name:          "dry package run with flag value",
+			command:       "go run -mod readonly github.com/unclebob/dry4go/cmd/dry4go@latest --format json .",
+			binaryName:    "dry4go",
+			packageNeedle: "github.com/unclebob/dry4go/cmd/dry4go",
+			want:          true,
+		},
+		{
 			name:          "dry install only",
 			command:       "go install github.com/unclebob/dry4go/cmd/dry4go@latest",
 			binaryName:    "dry4go",
@@ -1338,6 +1373,13 @@ func TestGoToolCommandDetectionRequiresRunnableCommand(t *testing.T) {
 			want:          true,
 		},
 		{
+			name:          "crap package run with flag",
+			command:       "go run -mod=readonly github.com/unclebob/crap4go/cmd/crap4go@latest",
+			binaryName:    "crap4go",
+			packageNeedle: "github.com/unclebob/crap4go/cmd/crap4go",
+			want:          true,
+		},
+		{
 			name:          "crap echo only",
 			command:       "echo crap4go",
 			binaryName:    "crap4go",
@@ -1363,6 +1405,7 @@ func TestGoMutationRuleRequiresTargetForDirectMutate4Go(t *testing.T) {
 		{name: "package target", command: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan", want: true},
 		{name: "binary target", command: "mutate4go main.go --scan", want: true},
 		{name: "flag before target", command: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest --scan internal/rules/rules.go", want: true},
+		{name: "go run flag before package", command: "go run -mod=readonly github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan", want: true},
 		{name: "install then run", command: "go install github.com/unclebob/mutate4go/cmd/mutate4go@latest && mutate4go main.go --scan", want: true},
 		{name: "package after semicolon", command: "cd go; go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan", want: true},
 		{name: "binary after semicolon", command: "cd go; mutate4go main.go --scan", want: true},
