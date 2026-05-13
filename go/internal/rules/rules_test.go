@@ -1238,6 +1238,7 @@ func TestGoMutationRuleRequiresTargetForDirectMutate4Go(t *testing.T) {
 	}{
 		{name: "package target", command: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan", want: true},
 		{name: "binary target", command: "mutate4go main.go --scan", want: true},
+		{name: "flag before target", command: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest --scan internal/rules/rules.go", want: true},
 		{name: "package missing target", command: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest --scan"},
 		{name: "binary missing target", command: "mutate4go --scan"},
 		{name: "install only", command: "go install github.com/unclebob/mutate4go/cmd/mutate4go@latest"},

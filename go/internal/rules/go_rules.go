@@ -266,11 +266,22 @@ func isCommandToken(tokens []string, commandIndex int) bool {
 }
 
 func hasMutationTargetAfter(tokens []string, commandIndex int) bool {
-	if commandIndex+1 >= len(tokens) {
-		return false
+	for _, token := range tokens[commandIndex+1:] {
+		target := cleanCommandToken(token)
+		if target == "" {
+			continue
+		}
+		if isShellSeparator(target) {
+			return false
+		}
+		if strings.HasPrefix(target, "-") {
+			continue
+		}
+		if strings.HasSuffix(target, ".go") {
+			return true
+		}
 	}
-	target := cleanCommandToken(tokens[commandIndex+1])
-	return target != "" && !strings.HasPrefix(target, "-") && !isShellSeparator(target)
+	return false
 }
 
 func lineHasRequiredFlag(tokens []string, requiredFlag string) bool {
