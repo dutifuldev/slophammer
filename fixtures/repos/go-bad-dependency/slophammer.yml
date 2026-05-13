@@ -1,0 +1,4 @@
+go:
+  dependency_boundaries:
+    - from: internal/repo
+      allow: []

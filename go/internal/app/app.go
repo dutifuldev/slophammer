@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/dutifuldev/slophammer/go/internal/config"
 	"github.com/dutifuldev/slophammer/go/internal/report"
 	"github.com/dutifuldev/slophammer/go/internal/rules"
 	"github.com/dutifuldev/slophammer/go/internal/scan"
@@ -28,7 +29,12 @@ func Check(ctx context.Context, options CheckOptions, out io.Writer, errOut io.W
 		_, _ = fmt.Fprintf(errOut, "scan failed: %v\n", err)
 		return ExitError
 	}
-	result := rules.Run(ctx, snapshot, rules.DefaultRules())
+	cfg, err := config.Load(snapshot)
+	if err != nil {
+		_, _ = fmt.Fprintf(errOut, "config failed: %v\n", err)
+		return ExitError
+	}
+	result := rules.RunWithConfig(ctx, snapshot, rules.DefaultRules(), cfg)
 	if err := writeReport(out, options.Format, result); err != nil {
 		_, _ = fmt.Fprintf(errOut, "report failed: %v\n", err)
 		return ExitError
@@ -71,6 +77,8 @@ func writeReport(out io.Writer, format string, result rules.Report) error {
 		return report.WriteText(out, result)
 	case "json":
 		return report.WriteJSON(out, result)
+	case "sarif":
+		return report.WriteSARIF(out, result)
 	default:
 		return fmt.Errorf("unsupported format %q", format)
 	}

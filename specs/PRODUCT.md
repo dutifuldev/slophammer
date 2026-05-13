@@ -13,6 +13,7 @@ The public command surface is:
 ```sh
 slophammer check <path>
 slophammer check <path> --format json
+slophammer check <path> --format sarif
 slophammer explain <rule-id>
 ```
 
@@ -21,8 +22,8 @@ slophammer explain <rule-id>
 `check` scans the target repository, evaluates the default rule set, writes a
 report, and exits with a stable exit code.
 
-The default report format is text. The JSON report format is selected with
-`--format json`.
+The default report format is text. JSON and SARIF report formats are selected
+with `--format json` and `--format sarif`.
 
 ## Explain
 

@@ -51,6 +51,7 @@ func TestCheckMatchesSharedFixtures(t *testing.T) {
 		{name: "go-missing-dry", code: ExitFindings},
 		{name: "go-missing-crap", code: ExitFindings},
 		{name: "go-missing-mutation", code: ExitFindings},
+		{name: "go-bad-dependency", code: ExitFindings},
 	}
 
 	for _, tt := range tests {
@@ -82,6 +83,36 @@ func TestCheckRejectsUnknownFormat(t *testing.T) {
 		t.Fatalf("code = %d, want %d", code, ExitError)
 	}
 	if !strings.Contains(errOut.String(), "unsupported format") {
+		t.Fatalf("stderr = %q", errOut.String())
+	}
+}
+
+func TestCheckWritesSARIF(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	code := Check(context.Background(), CheckOptions{Root: t.TempDir(), Format: "sarif"}, &out, &errOut)
+
+	if code != ExitFindings {
+		t.Fatalf("code = %d, want %d; stderr=%q", code, ExitFindings, errOut.String())
+	}
+	if !strings.Contains(out.String(), `"version": "2.1.0"`) ||
+		!strings.Contains(out.String(), `"ruleId": "repo.agents-required"`) {
+		t.Fatalf("SARIF output = %q", out.String())
+	}
+}
+
+func TestCheckRejectsInvalidConfig(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "slophammer.yml", "rules:\n  repo.readme-required:\n    severity: info\n")
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	code := Check(context.Background(), CheckOptions{Root: root, Format: "text"}, &out, &errOut)
+
+	if code != ExitError {
+		t.Fatalf("code = %d, want %d", code, ExitError)
+	}
+	if !strings.Contains(errOut.String(), "config failed") {
 		t.Fatalf("stderr = %q", errOut.String())
 	}
 }

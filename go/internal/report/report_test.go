@@ -62,3 +62,30 @@ func TestWriteTextOK(t *testing.T) {
 		t.Fatalf("output = %q", out.String())
 	}
 }
+
+func TestWriteSARIF(t *testing.T) {
+	var out bytes.Buffer
+	input := rules.Report{
+		OK: false,
+		Findings: []rules.Finding{{
+			RuleID:   "repo.agents-required",
+			Severity: rules.SeverityError,
+			Path:     "AGENTS.md",
+			Message:  "AGENTS.md is required",
+		}},
+	}
+
+	if err := WriteSARIF(&out, input); err != nil {
+		t.Fatalf("WriteSARIF returned error: %v", err)
+	}
+	var decoded map[string]any
+	if err := json.Unmarshal(out.Bytes(), &decoded); err != nil {
+		t.Fatalf("json.Unmarshal returned error: %v", err)
+	}
+	if decoded["version"] != "2.1.0" {
+		t.Fatalf("version = %#v, want 2.1.0", decoded["version"])
+	}
+	if !strings.Contains(out.String(), `"ruleId": "repo.agents-required"`) {
+		t.Fatalf("SARIF output missing rule ID: %s", out.String())
+	}
+}

@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "go.dependency-boundaries-required",
+      "severity": "error",
+      "path": "go/internal/repo/repo.go",
+      "message": "go/internal/repo/repo.go imports go/internal/rules outside configured dependency boundaries"
+    }
+  ]
+}

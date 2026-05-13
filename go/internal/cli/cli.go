@@ -118,7 +118,7 @@ func parseCheckArgs(args []string, errOut io.Writer) (app.CheckOptions, bool) {
 		}
 	}
 	if options.Root == "" {
-		_, _ = fmt.Fprintln(errOut, "usage: slophammer check <path> [--format text|json]")
+		_, _ = fmt.Fprintln(errOut, "usage: slophammer check <path> [--format text|json|sarif]")
 		return app.CheckOptions{}, false
 	}
 	return options, true
@@ -241,7 +241,7 @@ func parseSinglePathOption(currentRoot string, arg string, command string, errOu
 
 func printUsage(out io.Writer) {
 	_, _ = fmt.Fprintln(out, "usage:")
-	_, _ = fmt.Fprintln(out, "  slophammer check <path> [--format text|json]")
+	_, _ = fmt.Fprintln(out, "  slophammer check <path> [--format text|json|sarif]")
 	_, _ = fmt.Fprintln(out, "  slophammer explain <rule-id>")
 	_, _ = fmt.Fprintln(out, "  slophammer go dry [path] [--max-candidates n] [--show-report]")
 	_, _ = fmt.Fprintln(out, "  slophammer go crap [path] [--max-score n]")

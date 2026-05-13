@@ -34,6 +34,7 @@ Each implementation should support the same basic commands:
 ```sh
 slophammer check <path>
 slophammer check <path> --format json
+slophammer check <path> --format sarif
 slophammer explain <rule-id>
 ```
 
@@ -79,6 +80,7 @@ The shared report model should stay simple:
 ```text
 .
 ├── AGENTS.md
+├── slophammer.yml
 ├── docs/
 │   ├── UNCLE_BOB_CONCEPTS.md
 │   ├── IMPLEMENTATION_MODEL.md
@@ -122,6 +124,9 @@ The Go implementation currently provides:
 - Go rules for module, tests, vet, lint, coverage, and complexity
 - static declarations for `dry4go`, `crap4go`, and `mutate4go`
 - direct commands that run `dry4go`, `crap4go`, and `mutate4go`
+- `slophammer.yml` config parsing
+- native Go dependency boundary checks
+- text, JSON, and SARIF report output
 - shared fixtures and expected reports for clean and failing repos
 - CI gates for formatting, tests, vet, lint, coverage, tool checks, and
   Slophammer's own self-check
@@ -132,29 +137,59 @@ errors, nil handling, exhaustiveness, HTTP cleanup, context use, conversions,
 whitespace, and `nolint` discipline. See
 [Implementation Model](docs/IMPLEMENTATION_MODEL.md) for the detailed policy.
 
+## Current Go Quality Surface
+
+The Go implementation now covers the policy and architecture items that make it
+useful as a reference implementation:
+
+1. `main` stays clean between tranches.
+   Completed work is committed and pushed after green checks.
+
+2. `slophammer.yml` config is parsed.
+   Config covers repo-specific policy such as coverage thresholds, DRY
+   candidate budgets, CRAP score limits, mutation targets, and dependency
+   boundary declarations.
+
+3. Dependency boundary rules are native.
+   This is Slophammer-owned policy. Existing tools cover lint, tests, coverage,
+   duplication, CRAP, and mutation. Import direction belongs in this repo.
+
+4. Go fixture coverage is organized by concern.
+   Shared fixtures remain the acceptance contract, while tests separate
+   command parsing, workflow scoping, `golangci-lint` config parsing, Go tool
+   declarations, and coverage gates.
+
+5. Formatter checks run through `golangci-lint` v2.
+   CI keeps the direct `gofmt` check and adds `golangci-lint fmt --diff`.
+
+6. SARIF output is available.
+   JSON stays the stable internal report contract. SARIF lets GitHub code
+   scanning consume Slophammer findings.
+
 ## Shared Rule Set
 
 The current shared rule set is:
 
-| Rule ID                  | Meaning                                       |
-| ------------------------ | --------------------------------------------- |
-| `repo.readme-required`   | The target repo should have a `README.md`.    |
-| `repo.agents-required`   | The target repo should have an `AGENTS.md`.   |
-| `repo.ci-required`       | The target repo should have a CI workflow.    |
-| `go.module-required`     | Go projects should include a `go.mod`.        |
-| `go.tests-required`      | Go projects should run `go test ./...`.       |
-| `go.vet-required`        | Go projects should run `go vet ./...`.        |
-| `go.lint-required`       | Go projects should run `golangci-lint`.       |
-| `go.coverage-required`   | Go projects should enforce coverage.          |
-| `go.complexity-required` | Go projects should check complexity.          |
-| `go.dry-required`        | Go projects should declare `dry4go`.          |
-| `go.crap-required`       | Go projects should gate `crap4go`.            |
-| `go.mutation-required`   | Go projects should declare `mutate4go`.       |
-| `ts.strict-required`     | TypeScript projects should use strict mode.   |
-| `ts.no-explicit-any`     | TypeScript projects should reject `any`.      |
-| `python.mypy-required`   | Python projects should run mypy.              |
-| `python.ruff-required`   | Python projects should run Ruff.              |
-| `docs.simpledoc`         | Docs should follow the repository convention. |
+| Rule ID                             | Meaning                                             |
+| ----------------------------------- | --------------------------------------------------- |
+| `repo.readme-required`              | The target repo should have a `README.md`.          |
+| `repo.agents-required`              | The target repo should have an `AGENTS.md`.         |
+| `repo.ci-required`                  | The target repo should have a CI workflow.          |
+| `go.module-required`                | Go projects should include a `go.mod`.              |
+| `go.tests-required`                 | Go projects should run `go test ./...`.             |
+| `go.vet-required`                   | Go projects should run `go vet ./...`.              |
+| `go.lint-required`                  | Go projects should run `golangci-lint`.             |
+| `go.coverage-required`              | Go projects should enforce coverage.                |
+| `go.complexity-required`            | Go projects should check complexity.                |
+| `go.dry-required`                   | Go projects should declare `dry4go`.                |
+| `go.crap-required`                  | Go projects should gate `crap4go`.                  |
+| `go.mutation-required`              | Go projects should declare `mutate4go`.             |
+| `go.dependency-boundaries-required` | Go projects should obey configured import boundaries. |
+| `ts.strict-required`                | TypeScript projects should use strict mode.         |
+| `ts.no-explicit-any`                | TypeScript projects should reject `any`.            |
+| `python.mypy-required`              | Python projects should run mypy.                    |
+| `python.ruff-required`              | Python projects should run Ruff.                    |
+| `docs.simpledoc`                    | Docs should follow the repository convention.       |
 
 The exact shared rule behavior belongs in [Rules](specs/RULES.md) so each
 implementation can share the same contract.

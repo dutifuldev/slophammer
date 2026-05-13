@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/dutifuldev/slophammer/go/internal/config"
 	"github.com/dutifuldev/slophammer/go/internal/repo"
 )
 
@@ -51,18 +52,19 @@ type Rule interface {
 }
 
 const (
-	ReadmeRequiredRuleID       = "repo.readme-required"
-	AgentsRequiredRuleID       = "repo.agents-required"
-	CIRequiredRuleID           = "repo.ci-required"
-	GoModuleRequiredRuleID     = "go.module-required"
-	GoTestsRequiredRuleID      = "go.tests-required"
-	GoVetRequiredRuleID        = "go.vet-required"
-	GoLintRequiredRuleID       = "go.lint-required"
-	GoCoverageRequiredRuleID   = "go.coverage-required"
-	GoComplexityRequiredRuleID = "go.complexity-required"
-	GoDryRequiredRuleID        = "go.dry-required"
-	GoCRAPRequiredRuleID       = "go.crap-required"
-	GoMutationRequiredRuleID   = "go.mutation-required"
+	ReadmeRequiredRuleID         = "repo.readme-required"
+	AgentsRequiredRuleID         = "repo.agents-required"
+	CIRequiredRuleID             = "repo.ci-required"
+	GoModuleRequiredRuleID       = "go.module-required"
+	GoTestsRequiredRuleID        = "go.tests-required"
+	GoVetRequiredRuleID          = "go.vet-required"
+	GoLintRequiredRuleID         = "go.lint-required"
+	GoCoverageRequiredRuleID     = "go.coverage-required"
+	GoComplexityRequiredRuleID   = "go.complexity-required"
+	GoDryRequiredRuleID          = "go.dry-required"
+	GoCRAPRequiredRuleID         = "go.crap-required"
+	GoMutationRequiredRuleID     = "go.mutation-required"
+	GoDependencyBoundariesRuleID = "go.dependency-boundaries-required"
 )
 
 var defaultDefinitions = []Definition{
@@ -195,6 +197,16 @@ var defaultDefinitions = []Definition{
 		Tool:        "mutate4go",
 		Status:      "implemented",
 	},
+	{
+		ID:          GoDependencyBoundariesRuleID,
+		Title:       "Go dependency boundaries required",
+		Category:    "go",
+		Severity:    SeverityError,
+		Path:        "slophammer.yml",
+		Message:     "Go projects must respect configured dependency boundaries",
+		Description: "Go projects should keep imports inside the dependency boundaries declared in slophammer.yml.",
+		Status:      "implemented",
+	},
 }
 
 func DefaultDefinitions() []Definition {
@@ -210,10 +222,15 @@ func DefaultRules() []Rule {
 }
 
 func Run(ctx context.Context, snapshot repo.Snapshot, ruleSet []Rule) Report {
+	return RunWithConfig(ctx, snapshot, ruleSet, config.Config{})
+}
+
+func RunWithConfig(ctx context.Context, snapshot repo.Snapshot, ruleSet []Rule, cfg config.Config) Report {
 	findings := make([]Finding, 0)
 	for _, rule := range ruleSet {
-		findings = append(findings, rule.Check(ctx, snapshot)...)
+		findings = append(findings, checkRule(ctx, rule, snapshot, cfg)...)
 	}
+	applyConfig(findings, cfg)
 	sort.SliceStable(findings, func(i, j int) bool {
 		if findings[i].RuleID == findings[j].RuleID {
 			return findings[i].Path < findings[j].Path
@@ -221,6 +238,23 @@ func Run(ctx context.Context, snapshot repo.Snapshot, ruleSet []Rule) Report {
 		return findings[i].RuleID < findings[j].RuleID
 	})
 	return Report{OK: len(findings) == 0, Findings: findings}
+}
+
+type configuredRule interface {
+	CheckWithConfig(context.Context, repo.Snapshot, config.Config) []Finding
+}
+
+func checkRule(ctx context.Context, rule Rule, snapshot repo.Snapshot, cfg config.Config) []Finding {
+	if configured, ok := rule.(configuredRule); ok {
+		return configured.CheckWithConfig(ctx, snapshot, cfg)
+	}
+	return rule.Check(ctx, snapshot)
+}
+
+func applyConfig(findings []Finding, cfg config.Config) {
+	for i := range findings {
+		findings[i].Severity = Severity(cfg.RuleSeverity(findings[i].RuleID, string(findings[i].Severity)))
+	}
 }
 
 func Find(ruleSet []Rule, id string) (Metadata, bool) {
@@ -260,18 +294,19 @@ func ruleFromDefinition(definition Definition) Rule {
 type ruleFactory func(Definition) Rule
 
 var ruleFactories = map[string]ruleFactory{
-	ReadmeRequiredRuleID:       newRequiredFileRule,
-	AgentsRequiredRuleID:       newRequiredFileRule,
-	CIRequiredRuleID:           newCIRequiredRule,
-	GoModuleRequiredRuleID:     newGoModuleRule,
-	GoTestsRequiredRuleID:      newGoTestsRule,
-	GoVetRequiredRuleID:        newGoVetRule,
-	GoLintRequiredRuleID:       newGoLintRule,
-	GoCoverageRequiredRuleID:   newGoCoverageRule,
-	GoComplexityRequiredRuleID: newGoComplexityRule,
-	GoDryRequiredRuleID:        newGoDryRule,
-	GoCRAPRequiredRuleID:       newGoCRAPRule,
-	GoMutationRequiredRuleID:   newGoMutationRule,
+	ReadmeRequiredRuleID:         newRequiredFileRule,
+	AgentsRequiredRuleID:         newRequiredFileRule,
+	CIRequiredRuleID:             newCIRequiredRule,
+	GoModuleRequiredRuleID:       newGoModuleRule,
+	GoTestsRequiredRuleID:        newGoTestsRule,
+	GoVetRequiredRuleID:          newGoVetRule,
+	GoLintRequiredRuleID:         newGoLintRule,
+	GoCoverageRequiredRuleID:     newGoCoverageRule,
+	GoComplexityRequiredRuleID:   newGoComplexityRule,
+	GoDryRequiredRuleID:          newGoDryRule,
+	GoCRAPRequiredRuleID:         newGoCRAPRule,
+	GoMutationRequiredRuleID:     newGoMutationRule,
+	GoDependencyBoundariesRuleID: newGoDependencyBoundariesRule,
 }
 
 type requiredFileRule struct {

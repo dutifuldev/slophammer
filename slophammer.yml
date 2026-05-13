@@ -1,0 +1,42 @@
+go:
+  coverage_threshold: 80
+  dry_max_candidates: 40
+  crap_max_score: 30
+  mutation_targets:
+    - go/internal/rules/rules.go
+  dependency_boundaries:
+    - from: go/cmd/slophammer
+      allow:
+        - go/internal/cli
+    - from: go/internal/cli
+      allow:
+        - go/internal/app
+        - go/internal/toolchecks
+    - from: go/internal/app
+      allow:
+        - go/internal/config
+        - go/internal/report
+        - go/internal/rules
+        - go/internal/scan
+        - go/internal/toolchecks
+    - from: go/internal/config
+      allow:
+        - go/internal/repo
+    - from: go/internal/report
+      allow:
+        - go/internal/rules
+    - from: go/internal/rules
+      allow:
+        - go/internal/config
+        - go/internal/gotools
+        - go/internal/repo
+    - from: go/internal/scan
+      allow:
+        - go/internal/repo
+    - from: go/internal/toolchecks
+      allow:
+        - go/internal/gotools
+    - from: go/internal/gotools
+      allow: []
+    - from: go/internal/repo
+      allow: []

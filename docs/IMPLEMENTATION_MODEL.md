@@ -252,6 +252,16 @@ Formatting is separate from linting. Use Go's normal tools and
 Do not describe these formatters as lint rules. They can run in the same CI
 workflow, but they solve a different problem.
 
+The formatter gate keeps the existing `gofmt` check and adds:
+
+```sh
+golangci-lint fmt --diff
+```
+
+Start with `gofmt` through `golangci-lint` formatters. Add `gofumpt`,
+`goimports`, or `gci` only when the expected import and formatting policy is
+spelled out in this document and the config.
+
 ## Static And Execute Modes
 
 The default mode should be static inspection.
@@ -481,13 +491,16 @@ The Go CLI should grow to:
 slophammer check <path>
 slophammer check <path> --format json
 slophammer check <path> --format text
+slophammer check <path> --format sarif
 slophammer check <path> --execute
 slophammer explain <rule-id>
 slophammer rules
 slophammer fixtures
 ```
 
-SARIF can come later after the JSON report contract is stable.
+JSON stays the stable internal report contract. SARIF is an output adapter so
+GitHub code scanning can consume Slophammer findings without forcing SARIF
+concerns into the rule engine.
 
 ## Go CI Target
 
@@ -495,6 +508,7 @@ The final CI for this repo should run:
 
 ```sh
 gofmt
+golangci-lint fmt --diff
 go vet
 go test
 coverage gate
@@ -518,20 +532,50 @@ sites without running the full mutation suite.
 
 ## Go Implementation Order
 
-Implement the Go plan in this order:
+The completed baseline is:
 
-1. Add `specs/rules.json` and verify the Go registry against it.
-2. Add Go baseline rules: module, tests, vet, lint, coverage, complexity.
-3. Add direct Uncle Bob tool rules: `dry4go`, `crap4go`, and `mutate4go`.
-4. Expand Go fixtures and expected reports for all rules above.
-5. Add a Slophammer self-check to CI.
-6. Add `slophammer.yml` config parsing.
-7. Add native dependency boundary checking.
-8. Add execution mode for direct tool runs.
-9. Add SARIF.
+1. `specs/rules.json` exists and the Go registry is verified against it.
+2. Go baseline rules cover module, tests, vet, lint, coverage, and complexity.
+3. Direct Uncle Bob tool checks cover `dry4go`, `crap4go`, and `mutate4go`.
+4. Shared fixtures and expected reports cover clean and failing Go repos.
+5. CI runs Slophammer's own self-check.
+6. The Go lint stack includes the stricter production linters and an 800-line
+   production file limit.
+7. `slophammer.yml` config parsing is implemented.
+8. Native dependency boundary checking is implemented.
+9. CI runs `golangci-lint fmt --diff`.
+10. SARIF output is implemented as a report adapter.
 
-This order keeps Slophammer from reinventing tools while still making the repo
-production-grade for agentic Go work.
+The implemented Go quality surface is:
+
+1. Keep `main` clean between tranches.
+   Commit and push completed work before starting the next slice so each change
+   can be reviewed against a known-green baseline.
+
+2. Use `slophammer.yml` config parsing.
+   Config tunes policy without hiding problems. It parses coverage
+   thresholds, DRY candidate budgets, CRAP score limits, mutation targets, and
+   dependency boundary declarations.
+
+3. Use native dependency boundary checking.
+   This is Slophammer-owned Go policy because import direction is project
+   policy, not generic Go tooling.
+
+4. Keep Go rule fixture tests split by concern.
+   Keep the shared fixture contract and organize tests around command parsing,
+   workflow scoping, `golangci-lint` config parsing, Go tool declarations, and
+   coverage gates.
+
+5. Run formatter checks through `golangci-lint` v2.
+   Keep the direct `gofmt` check and run `golangci-lint fmt --diff`.
+
+6. Keep SARIF as a report adapter.
+   SARIF is an output adapter over the existing findings model, not a
+   second rule model.
+
+Do not add more linters right now. The next quality gain should come from
+deeper config semantics, richer dependency boundary fixtures, and report output
+hardening.
 
 ## TypeScript Implementation
 

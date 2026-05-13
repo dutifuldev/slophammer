@@ -18,17 +18,18 @@ Go rules apply only when the target appears to be a Go project. A repo appears
 to be a Go project when it contains Go source, a `go.mod` file, or declared Go
 commands.
 
-| Rule ID                  | Severity | Finding path                   | Finding message                                           |
-| ------------------------ | -------- | ------------------------------ | --------------------------------------------------------- |
-| `go.module-required`     | `error`  | `go.mod`                       | `Go projects must include a go.mod file`                  |
-| `go.tests-required`      | `error`  | `.github/workflows`            | `Go projects must declare go test ./... in CI or scripts` |
-| `go.vet-required`        | `error`  | `.github/workflows`            | `Go projects must declare go vet ./... in CI or scripts`  |
-| `go.lint-required`       | `error`  | `.golangci.yml`                | `Go projects must configure and declare golangci-lint`    |
-| `go.coverage-required`   | `error`  | `scripts/check-go-coverage.sh` | `Go projects must declare a coverage gate`                |
-| `go.complexity-required` | `error`  | `.golangci.yml`                | `Go projects must enable a complexity linter`             |
-| `go.dry-required`        | `error`  | `.github/workflows`            | `Go projects must declare dry4go`                         |
-| `go.crap-required`       | `error`  | `.github/workflows`            | `Go projects must declare crap4go with a threshold`       |
-| `go.mutation-required`   | `error`  | `.github/workflows`            | `Go projects must declare mutate4go`                      |
+| Rule ID                             | Severity | Finding path                   | Finding message                                                |
+| ----------------------------------- | -------- | ------------------------------ | -------------------------------------------------------------- |
+| `go.module-required`                | `error`  | `go.mod`                       | `Go projects must include a go.mod file`                       |
+| `go.tests-required`                 | `error`  | `.github/workflows`            | `Go projects must declare go test ./... in CI or scripts`      |
+| `go.vet-required`                   | `error`  | `.github/workflows`            | `Go projects must declare go vet ./... in CI or scripts`       |
+| `go.lint-required`                  | `error`  | `.golangci.yml`                | `Go projects must configure and declare golangci-lint`         |
+| `go.coverage-required`              | `error`  | `scripts/check-go-coverage.sh` | `Go projects must declare a coverage gate`                     |
+| `go.complexity-required`            | `error`  | `.golangci.yml`                | `Go projects must enable a complexity linter`                  |
+| `go.dry-required`                   | `error`  | `.github/workflows`            | `Go projects must declare dry4go`                              |
+| `go.crap-required`                  | `error`  | `.github/workflows`            | `Go projects must declare crap4go with a threshold`            |
+| `go.mutation-required`              | `error`  | `.github/workflows`            | `Go projects must declare mutate4go`                           |
+| `go.dependency-boundaries-required` | `error`  | `slophammer.yml`               | `Go projects must respect configured dependency boundaries`    |
 
 ## Rule Descriptions
 
@@ -116,6 +117,19 @@ Go projects should declare `mutate4go` in an inspectable workflow or script.
 
 The mutation command may live in a normal CI workflow, nightly workflow, manual
 workflow, or script. Slophammer checks for a declaration in static mode.
+
+### `go.dependency-boundaries-required`
+
+Go projects should keep imports inside the dependency boundaries declared in
+`slophammer.yml`.
+
+The rule is active when `go.dependency_boundaries` contains at least one
+boundary. External imports are ignored. Local imports are checked by resolving
+the import path through the nearest `go.mod` module path.
+
+Boundary paths may be written relative to the repository root or relative to the
+Go module root. For example, both `go/internal/rules` and `internal/rules` can
+describe the same package when the module root is `go/`.
 
 ## Finding Order
 

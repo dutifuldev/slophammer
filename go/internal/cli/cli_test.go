@@ -39,6 +39,17 @@ func TestRunCheckParsesFormatAfterPath(t *testing.T) {
 	}
 }
 
+func TestRunCheckParsesSARIFFormat(t *testing.T) {
+	result := runCLI(t, "check", t.TempDir(), "--format", "sarif")
+
+	if result.code != app.ExitFindings {
+		t.Fatalf("code = %d, want %d; stderr=%q", result.code, app.ExitFindings, result.stderr)
+	}
+	if !strings.Contains(result.stdout, `"version": "2.1.0"`) {
+		t.Fatalf("stdout = %q", result.stdout)
+	}
+}
+
 func TestRunExplain(t *testing.T) {
 	result := runCLI(t, "explain", "repo.ci-required")
 

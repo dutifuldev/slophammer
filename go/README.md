@@ -7,6 +7,7 @@ Go implementation of the Slophammer repository quality checker.
 ```sh
 go run ./cmd/slophammer check ..
 go run ./cmd/slophammer check .. --format json
+go run ./cmd/slophammer check .. --format sarif
 go run ./cmd/slophammer explain repo.agents-required
 go run ./cmd/slophammer go dry . --max-candidates 40
 go run ./cmd/slophammer go dry . --max-candidates 40 --show-report
@@ -18,6 +19,7 @@ go run ./cmd/slophammer go mutate . --target internal/rules/rules.go --scan
 
 ```sh
 gofmt -w .
+go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.0 fmt --diff
 go vet ./...
 go test ./...
 ./scripts/check-go-coverage.sh

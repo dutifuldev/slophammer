@@ -128,6 +128,16 @@
       "description": "Go projects should declare mutate4go in an inspectable workflow or script.",
       "tool": "mutate4go",
       "status": "implemented"
+    },
+    {
+      "id": "go.dependency-boundaries-required",
+      "title": "Go dependency boundaries required",
+      "category": "go",
+      "severity": "error",
+      "path": "slophammer.yml",
+      "message": "Go projects must respect configured dependency boundaries",
+      "description": "Go projects should keep imports inside the dependency boundaries declared in slophammer.yml.",
+      "status": "implemented"
     }
   ]
 }
