@@ -94,7 +94,7 @@ func hasGoCoverageGate(snapshot repo.Snapshot) bool {
 	for _, file := range commandFiles(snapshot) {
 		for _, content := range commandSections(file) {
 			if strings.Contains(content, "-coverprofile") &&
-				strings.Contains(content, "go tool cover") &&
+				contentHasCommandLine(content, lineHasGoToolCoverCommand) &&
 				hasCoverageThreshold(content) {
 				return true
 			}
@@ -276,7 +276,7 @@ func commandTokens(line string) []string {
 		}
 		normalized.WriteRune(r)
 	}
-	return strings.Fields(normalized.String())
+	return strings.Fields(strings.ReplaceAll(normalized.String(), "$(", " ; "))
 }
 
 func isGoRunPackage(tokens []string, packageIndex int) bool {
@@ -1211,6 +1211,22 @@ func lineHasGolangCICommand(tokens []string) bool {
 		}
 		if isGoToolPackageToken(token, "github.com/golangci/golangci-lint") && isGoRunPackage(tokens, i) {
 			return hasArgumentBeforeSeparator(tokens[i+1:], "run")
+		}
+	}
+	return false
+}
+
+func lineHasGoToolCoverCommand(tokens []string) bool {
+	for i := 0; i < len(tokens); i++ {
+		if cleanCommandToken(tokens[i]) != "go" || !isCommandToken(tokens, i) {
+			continue
+		}
+		commandIndex := goCommandIndex(tokens, i+1)
+		if commandIndex == -1 || cleanCommandToken(tokens[commandIndex]) != "tool" {
+			continue
+		}
+		if hasArgumentBeforeSeparator(tokens[commandIndex+1:], "cover") {
+			return true
 		}
 	}
 	return false

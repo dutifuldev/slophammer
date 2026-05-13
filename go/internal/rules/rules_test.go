@@ -344,8 +344,13 @@ jobs:
 `,
 		},
 		"go/scripts/check-go-coverage.sh": {
-			Path:    "go/scripts/check-go-coverage.sh",
-			Content: strings.ReplaceAll(cleanCoverageScript, "go test -coverprofile=coverage.out ./...", "go -C . test -coverprofile=coverage.out ./..."),
+			Path: "go/scripts/check-go-coverage.sh",
+			Content: strings.NewReplacer(
+				"go test -coverprofile=coverage.out ./...",
+				"go -C . test -coverprofile=coverage.out ./...",
+				"go tool cover -func=coverage.out",
+				"go -C . tool cover -func=coverage.out",
+			).Replace(cleanCoverageScript),
 		},
 	})
 
@@ -1609,6 +1614,25 @@ func TestGoCoverageRuleRequiresCoverageOutputAndCoverTool(t *testing.T) {
 
 			assertRuleIDs(t, report.Findings, []string{GoCoverageRequiredRuleID})
 		})
+	}
+}
+
+func TestGoCoverageRuleAcceptsGoGlobalFlags(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		"go/scripts/check-go-coverage.sh": {
+			Path: "go/scripts/check-go-coverage.sh",
+			Content: `minimum_coverage="80"
+go -C . test -coverprofile=coverage.out ./...
+total="$(go -C . tool cover -func=coverage.out | awk '/^total:/ {print substr($3, 1, length($3)-1)}')"
+awk -v total="$total" -v minimum="$minimum_coverage" 'BEGIN { exit !(total + 0 >= minimum + 0) }'
+`,
+		},
+	})
+
+	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+	if !report.OK {
+		t.Fatalf("report.OK = false, findings = %#v", report.Findings)
 	}
 }
 
