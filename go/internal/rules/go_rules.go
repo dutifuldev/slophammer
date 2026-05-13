@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/dutifuldev/slophammer/go/internal/gotools"
 	"github.com/dutifuldev/slophammer/go/internal/repo"
 	"gopkg.in/yaml.v3"
 )
@@ -114,7 +115,7 @@ func hasGoComplexityLint(snapshot repo.Snapshot) bool {
 func hasDry4GoCommand(snapshot repo.Snapshot) bool {
 	for _, file := range commandFiles(snapshot) {
 		for _, content := range commandSections(file) {
-			if contentHasGoToolCommand(content, "dry4go", "github.com/unclebob/dry4go/cmd/dry4go") ||
+			if contentHasGoToolCommand(content, gotools.Dry4Go) ||
 				contentHasSlophammerGoCommand(content, "dry", "") {
 				return true
 			}
@@ -132,7 +133,7 @@ func hasCRAP4GoGate(snapshot repo.Snapshot) bool {
 			if !hasCRAPThreshold(content) {
 				continue
 			}
-			if contentHasGoToolCommand(content, "crap4go", "github.com/unclebob/crap4go/cmd/crap4go") {
+			if contentHasGoToolCommand(content, gotools.CRAP4Go) {
 				return true
 			}
 		}
@@ -178,7 +179,7 @@ func contentHasDirectMutate4GoCommand(content string) bool {
 func lineHasDirectMutate4GoCommand(tokens []string) bool {
 	for i, token := range tokens {
 		token = cleanCommandToken(token)
-		if isGoToolPackageToken(token, "github.com/unclebob/mutate4go/cmd/mutate4go") && isGoRunPackage(tokens, i) {
+		if isGoToolPackageToken(token, gotools.Mutate4Go.Package) && isGoRunPackage(tokens, i) {
 			if hasMutationTargetAfter(tokens, i) {
 				return true
 			}
@@ -191,25 +192,25 @@ func lineHasDirectMutate4GoCommand(tokens []string) bool {
 	return false
 }
 
-func contentHasGoToolCommand(content string, binaryName string, packageNeedle string) bool {
+func contentHasGoToolCommand(content string, tool gotools.Tool) bool {
 	for _, tokens := range commandTokensByLine(content) {
-		if lineHasGoToolCommand(tokens, binaryName, packageNeedle) {
+		if lineHasGoToolCommand(tokens, tool) {
 			return true
 		}
 	}
 	return false
 }
 
-func lineHasGoToolCommand(tokens []string, binaryName string, packageNeedle string) bool {
+func lineHasGoToolCommand(tokens []string, tool gotools.Tool) bool {
 	for i, token := range tokens {
 		token = cleanCommandToken(token)
-		if isGoToolPackageToken(token, packageNeedle) {
+		if isGoToolPackageToken(token, tool.Package) {
 			if isGoRunPackage(tokens, i) {
 				return true
 			}
 			continue
 		}
-		if isToolBinaryToken(token, binaryName) {
+		if isToolBinaryToken(token, tool.Binary) {
 			return isCommandToken(tokens, i)
 		}
 	}
@@ -327,7 +328,27 @@ func isCommandToken(tokens []string, commandIndex int) bool {
 		return true
 	}
 	previous := cleanCommandToken(tokens[commandIndex-1])
-	return isWorkflowRunToken(previous) || isShellSeparator(previous)
+	return isWorkflowRunToken(previous) || isShellSeparator(previous) || hasCommandPrefix(tokens, commandIndex)
+}
+
+func hasCommandPrefix(tokens []string, commandIndex int) bool {
+	prefixIndex := commandIndex - 1
+	for prefixIndex >= 0 && isEnvAssignmentToken(cleanCommandToken(tokens[prefixIndex])) {
+		prefixIndex--
+	}
+	if prefixIndex < 0 {
+		return true
+	}
+	prefix := cleanCommandToken(tokens[prefixIndex])
+	if isWorkflowRunToken(prefix) || isShellSeparator(prefix) {
+		return true
+	}
+	return prefix == "env" && isCommandToken(tokens, prefixIndex)
+}
+
+func isEnvAssignmentToken(token string) bool {
+	name, _, ok := strings.Cut(token, "=")
+	return ok && shellNamePattern.MatchString(name)
 }
 
 func hasMutationTargetAfter(tokens []string, commandIndex int) bool {
@@ -439,7 +460,7 @@ func hasUnscopedGoSignal(snapshot repo.Snapshot) bool {
 			return true
 		}
 	}
-	return hasCommandPattern(goProjectSnapshot(snapshot, "", []string{""}), goCommandPattern)
+	return hasRunnableCommandLine(goProjectSnapshot(snapshot, "", []string{""}), lineHasGoCommandSignal)
 }
 
 func hasGoSourceOutsideModuleRoots(snapshot repo.Snapshot, rootsByPath map[string]struct{}) bool {
@@ -1123,17 +1144,6 @@ func joinShellContinuations(content string) string {
 	return strings.ReplaceAll(content, "\\\n", " ")
 }
 
-func hasCommandPattern(snapshot repo.Snapshot, pattern *regexp.Regexp) bool {
-	for _, file := range commandFiles(snapshot) {
-		for _, content := range commandSections(file) {
-			if pattern.MatchString(content) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 func hasRunnableCommandLine(snapshot repo.Snapshot, match func([]string) bool) bool {
 	for _, file := range commandFiles(snapshot) {
 		for _, content := range commandSections(file) {
@@ -1172,6 +1182,19 @@ func lineHasGolangCICommand(tokens []string) bool {
 	return false
 }
 
+func lineHasGoCommandSignal(tokens []string) bool {
+	for i := 0; i+1 < len(tokens); i++ {
+		if cleanCommandToken(tokens[i]) != "go" || !isCommandToken(tokens, i) {
+			continue
+		}
+		switch cleanCommandToken(tokens[i+1]) {
+		case "build", "mod", "run", "test", "tool", "vet":
+			return true
+		}
+	}
+	return false
+}
+
 func hasArgumentBeforeSeparator(tokens []string, argument string) bool {
 	for _, token := range tokens {
 		token = cleanCommandToken(token)
@@ -1195,7 +1218,7 @@ func finding(definition Definition) Finding {
 }
 
 var (
-	goCommandPattern               = regexp.MustCompile(`(?m)\bgo\s+(test|vet|build|run|tool|mod)\b`)
+	shellNamePattern               = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 	coverageThresholdPattern       = regexp.MustCompile(`(?im)\b(total|cover|coverage|minimum|threshold|required)\b[^\n]*(>=|<=|-ge\b|-le\b|-gt\b|-lt\b)|(?:>=|<=|-ge\b|-le\b|-gt\b|-lt\b)[^\n]*\b(total|cover|coverage|minimum|threshold|required)\b`)
 	crapThresholdPattern           = regexp.MustCompile(`(?im)\b(crap|maximum|minimum|threshold|required|score)\b[^\n]*(>=|<=|-ge\b|-le\b|-gt\b|-lt\b)|(?:>=|<=|-ge\b|-le\b|-gt\b|-lt\b)[^\n]*\b(crap|maximum|minimum|threshold|required|score)\b`)
 	strictCoverageThresholdPattern = regexp.MustCompile(`(?im)\b(total|minimum|threshold|required)\b[^\n]*(>|<)[^\n]*(\b(total|minimum|threshold|required)\b|[0-9]+(?:\.[0-9]+)?)|([0-9]+(?:\.[0-9]+)?|\b(total|minimum|threshold|required)\b)[^\n]*(>|<)[^\n]*\b(total|minimum|threshold|required)\b`)

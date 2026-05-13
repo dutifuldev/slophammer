@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dutifuldev/slophammer/go/internal/gotools"
 	"github.com/dutifuldev/slophammer/go/internal/repo"
 )
 
@@ -287,11 +288,38 @@ jobs:
     steps:
       - run: cargo test
       - run: python manage.py django test
+      - run: echo "go test ./..."
 `,
 		},
 	})
 
 	report := Run(context.Background(), snapshot, DefaultRules())
+
+	if !report.OK {
+		t.Fatalf("report.OK = false, findings = %#v", report.Findings)
+	}
+}
+
+func TestGoCommandRulesAcceptEnvPrefixedCommands(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+defaults:
+  run:
+    working-directory: go
+jobs:
+  test:
+    steps:
+      - run: CGO_ENABLED=0 go test ./...
+      - run: GOFLAGS=-mod=readonly go vet ./...
+      - run: env GOLANGCI_LINT_CACHE=/tmp golangci-lint run
+      - run: ./scripts/check-go-coverage.sh
+`,
+		},
+	})
+
+	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
 
 	if !report.OK {
 		t.Fatalf("report.OK = false, findings = %#v", report.Findings)
@@ -1356,84 +1384,79 @@ jobs:
 
 func TestGoToolCommandDetectionRequiresRunnableCommand(t *testing.T) {
 	tests := []struct {
-		name          string
-		command       string
-		binaryName    string
-		packageNeedle string
-		want          bool
+		name    string
+		command string
+		tool    gotools.Tool
+		want    bool
 	}{
 		{
-			name:          "dry package run",
-			command:       "go run github.com/unclebob/dry4go/cmd/dry4go@latest --format json .",
-			binaryName:    "dry4go",
-			packageNeedle: "github.com/unclebob/dry4go/cmd/dry4go",
-			want:          true,
+			name:    "dry package run",
+			command: "go run github.com/unclebob/dry4go/cmd/dry4go@latest --format json .",
+			tool:    gotools.Dry4Go,
+			want:    true,
 		},
 		{
-			name:          "dry package run with flag",
-			command:       "go run -mod=readonly github.com/unclebob/dry4go/cmd/dry4go@latest --format json .",
-			binaryName:    "dry4go",
-			packageNeedle: "github.com/unclebob/dry4go/cmd/dry4go",
-			want:          true,
+			name:    "dry package run with flag",
+			command: "go run -mod=readonly github.com/unclebob/dry4go/cmd/dry4go@latest --format json .",
+			tool:    gotools.Dry4Go,
+			want:    true,
 		},
 		{
-			name:          "dry package run with flag value",
-			command:       "go run -mod readonly github.com/unclebob/dry4go/cmd/dry4go@latest --format json .",
-			binaryName:    "dry4go",
-			packageNeedle: "github.com/unclebob/dry4go/cmd/dry4go",
-			want:          true,
+			name:    "dry package run with flag value",
+			command: "go run -mod readonly github.com/unclebob/dry4go/cmd/dry4go@latest --format json .",
+			tool:    gotools.Dry4Go,
+			want:    true,
 		},
 		{
-			name:          "dry install only",
-			command:       "go install github.com/unclebob/dry4go/cmd/dry4go@latest",
-			binaryName:    "dry4go",
-			packageNeedle: "github.com/unclebob/dry4go/cmd/dry4go",
+			name:    "dry install only",
+			command: "go install github.com/unclebob/dry4go/cmd/dry4go@latest",
+			tool:    gotools.Dry4Go,
 		},
 		{
-			name:          "dry install then run",
-			command:       "go install github.com/unclebob/dry4go/cmd/dry4go@latest && dry4go .",
-			binaryName:    "dry4go",
-			packageNeedle: "github.com/unclebob/dry4go/cmd/dry4go",
-			want:          true,
+			name:    "dry install then run",
+			command: "go install github.com/unclebob/dry4go/cmd/dry4go@latest && dry4go .",
+			tool:    gotools.Dry4Go,
+			want:    true,
 		},
 		{
-			name:          "dry after semicolon",
-			command:       "cd go; dry4go .",
-			binaryName:    "dry4go",
-			packageNeedle: "github.com/unclebob/dry4go/cmd/dry4go",
-			want:          true,
+			name:    "dry after semicolon",
+			command: "cd go; dry4go .",
+			tool:    gotools.Dry4Go,
+			want:    true,
 		},
 		{
-			name:          "dry echo only",
-			command:       "echo go run github.com/unclebob/dry4go/cmd/dry4go@latest --format json .",
-			binaryName:    "dry4go",
-			packageNeedle: "github.com/unclebob/dry4go/cmd/dry4go",
+			name:    "dry after env assignment",
+			command: "DRY_CACHE=/tmp dry4go .",
+			tool:    gotools.Dry4Go,
+			want:    true,
 		},
 		{
-			name:          "crap binary run",
-			command:       "crap4go .",
-			binaryName:    "crap4go",
-			packageNeedle: "github.com/unclebob/crap4go/cmd/crap4go",
-			want:          true,
+			name:    "dry echo only",
+			command: "echo go run github.com/unclebob/dry4go/cmd/dry4go@latest --format json .",
+			tool:    gotools.Dry4Go,
 		},
 		{
-			name:          "crap package run with flag",
-			command:       "go run -mod=readonly github.com/unclebob/crap4go/cmd/crap4go@latest",
-			binaryName:    "crap4go",
-			packageNeedle: "github.com/unclebob/crap4go/cmd/crap4go",
-			want:          true,
+			name:    "crap binary run",
+			command: "crap4go .",
+			tool:    gotools.CRAP4Go,
+			want:    true,
 		},
 		{
-			name:          "crap echo only",
-			command:       "echo crap4go",
-			binaryName:    "crap4go",
-			packageNeedle: "github.com/unclebob/crap4go/cmd/crap4go",
+			name:    "crap package run with flag",
+			command: "go run -mod=readonly github.com/unclebob/crap4go/cmd/crap4go@latest",
+			tool:    gotools.CRAP4Go,
+			want:    true,
+		},
+		{
+			name:    "crap echo only",
+			command: "echo crap4go",
+			tool:    gotools.CRAP4Go,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := contentHasGoToolCommand(tt.command, tt.binaryName, tt.packageNeedle); got != tt.want {
+			if got := contentHasGoToolCommand(tt.command, tt.tool); got != tt.want {
 				t.Fatalf("contentHasGoToolCommand(%q) = %t, want %t", tt.command, got, tt.want)
 			}
 		})
@@ -1453,6 +1476,7 @@ func TestGoMutationRuleRequiresTargetForDirectMutate4Go(t *testing.T) {
 		{name: "install then run", command: "go install github.com/unclebob/mutate4go/cmd/mutate4go@latest && mutate4go main.go --scan", want: true},
 		{name: "package after semicolon", command: "cd go; go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan", want: true},
 		{name: "binary after semicolon", command: "cd go; mutate4go main.go --scan", want: true},
+		{name: "binary after env assignment", command: "MUTATE_CACHE=/tmp mutate4go main.go --scan", want: true},
 		{name: "package missing target", command: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest --scan"},
 		{name: "binary missing target", command: "mutate4go --scan"},
 		{name: "install only", command: "go install github.com/unclebob/mutate4go/cmd/mutate4go@latest"},

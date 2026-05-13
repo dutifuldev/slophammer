@@ -7,5 +7,5 @@ jobs:
       - run: go vet ./...
       - run: golangci-lint run
       - run: ./scripts/check-go-coverage.sh
-      - run: ./scripts/check-crap.sh
-      - run: ./scripts/check-mutation.sh
+      - run: slophammer go crap . --max-score 30
+      - run: slophammer go mutate . --target main.go --scan

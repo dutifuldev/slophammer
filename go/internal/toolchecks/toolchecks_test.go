@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/dutifuldev/slophammer/go/internal/gotools"
 )
 
 func TestCheckDryRunsDry4GoAndEnforcesCandidateBudget(t *testing.T) {
@@ -19,7 +21,7 @@ func TestCheckDryRunsDry4GoAndEnforcesCandidateBudget(t *testing.T) {
 	if code != 1 {
 		t.Fatalf("code = %d, want 1", code)
 	}
-	wantArgs := []string{"run", "github.com/unclebob/dry4go/cmd/dry4go@latest", "--format", "json", "."}
+	wantArgs := gotools.Dry4Go.GoRunArgs(gotools.Latest, "--format", "json", ".")
 	if runnerCall := runner.call; runnerCall.dir != "/repo" || runnerCall.name != "go" || !reflect.DeepEqual(runnerCall.args, wantArgs) {
 		t.Fatalf("call = %#v, want dir=/repo name=go args=%#v", runnerCall, wantArgs)
 	}
@@ -104,7 +106,7 @@ func TestCheckCRAPRunsCRAP4GoAndReportsViolations(t *testing.T) {
 	if code != 1 {
 		t.Fatalf("code = %d, want 1", code)
 	}
-	wantArgs := []string{"run", "github.com/unclebob/crap4go/cmd/crap4go@latest"}
+	wantArgs := gotools.CRAP4Go.GoRunArgs(gotools.Latest)
 	if runnerCall := runner.call; runnerCall.dir != "/repo" || runnerCall.name != "go" || !reflect.DeepEqual(runnerCall.args, wantArgs) {
 		t.Fatalf("call = %#v, want dir=/repo name=go args=%#v", runnerCall, wantArgs)
 	}
@@ -139,7 +141,7 @@ func TestCheckMutationRunsMutate4GoScan(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("code = %d, want 0", code)
 	}
-	wantArgs := []string{"run", "github.com/unclebob/mutate4go/cmd/mutate4go@latest", "main.go", "--scan"}
+	wantArgs := gotools.Mutate4Go.GoRunArgs(gotools.Latest, "main.go", "--scan")
 	if runnerCall := runner.call; runnerCall.dir != "/repo" || runnerCall.name != "go" || !reflect.DeepEqual(runnerCall.args, wantArgs) {
 		t.Fatalf("call = %#v, want dir=/repo name=go args=%#v", runnerCall, wantArgs)
 	}

@@ -106,6 +106,18 @@ func TestParseGoMutationArgsRequiresTarget(t *testing.T) {
 	}
 }
 
+func TestParseGoMutationArgsRejectsFlagTarget(t *testing.T) {
+	var errOut bytes.Buffer
+	_, ok := parseGoMutationArgs([]string{"/repo", "--target", "--scan"}, &errOut)
+
+	if ok {
+		t.Fatal("ok = true, want false")
+	}
+	if !strings.Contains(errOut.String(), "--target requires a file value") {
+		t.Fatalf("stderr = %q", errOut.String())
+	}
+}
+
 func TestParseGoToolArgsRejectInvalidNumbers(t *testing.T) {
 	tests := []struct {
 		name string

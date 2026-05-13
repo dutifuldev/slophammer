@@ -10,6 +10,8 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/dutifuldev/slophammer/go/internal/gotools"
 )
 
 const (
@@ -65,7 +67,7 @@ func CheckDry(ctx context.Context, options DryOptions, out io.Writer, errOut io.
 		maximumCandidates = DefaultMaximumDRYCandidates
 	}
 
-	result, err := runner.Run(ctx, root, "go", "run", "github.com/unclebob/dry4go/cmd/dry4go@latest", "--format", "json", ".")
+	result, err := runner.Run(ctx, root, "go", gotools.Dry4Go.GoRunArgs(gotools.Latest, "--format", "json", ".")...)
 	if options.ShowReport || err != nil {
 		writeBytes(out, result.Stdout)
 	}
@@ -94,7 +96,7 @@ func CheckCRAP(ctx context.Context, options CRAPOptions, out io.Writer, errOut i
 		maximumScore = DefaultMaximumCRAPScore
 	}
 
-	result, err := runner.Run(ctx, root, "go", "run", "github.com/unclebob/crap4go/cmd/crap4go@latest")
+	result, err := runner.Run(ctx, root, "go", gotools.CRAP4Go.GoRunArgs(gotools.Latest)...)
 	writeBytes(out, result.Stdout)
 	writeBytes(errOut, result.Stderr)
 	if err != nil {
@@ -123,7 +125,7 @@ func CheckMutation(ctx context.Context, options MutationOptions, out io.Writer, 
 		_, _ = fmt.Fprintln(errOut, "--target is required")
 		return 2
 	}
-	args := []string{"run", "github.com/unclebob/mutate4go/cmd/mutate4go@latest", target}
+	args := gotools.Mutate4Go.GoRunArgs(gotools.Latest, target)
 	if options.Scan {
 		args = append(args, "--scan")
 	}

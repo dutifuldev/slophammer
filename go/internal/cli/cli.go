@@ -196,6 +196,10 @@ func parseGoMutationArgs(args []string, errOut io.Writer) (toolchecks.MutationOp
 				return toolchecks.MutationOptions{}, false
 			}
 			i++
+			if args[i] == "" || args[i][0] == '-' {
+				_, _ = fmt.Fprintln(errOut, "--target requires a file value")
+				return toolchecks.MutationOptions{}, false
+			}
 			options.Target = args[i]
 		case "--scan":
 			options.Scan = true
