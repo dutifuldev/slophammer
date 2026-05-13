@@ -175,7 +175,10 @@ func lineHasDirectMutate4GoCommand(tokens []string) bool {
 	for i, token := range tokens {
 		token = cleanCommandToken(token)
 		if isGoToolPackageToken(token, "github.com/unclebob/mutate4go/cmd/mutate4go") && isGoRunPackage(tokens, i) {
-			return hasMutationTargetAfter(tokens, i)
+			if hasMutationTargetAfter(tokens, i) {
+				return true
+			}
+			continue
 		}
 		if isToolBinaryToken(token, "mutate4go") && isCommandToken(tokens, i) {
 			return hasMutationTargetAfter(tokens, i)
@@ -197,7 +200,10 @@ func lineHasGoToolCommand(tokens []string, binaryName string, packageNeedle stri
 	for i, token := range tokens {
 		token = cleanCommandToken(token)
 		if isGoToolPackageToken(token, packageNeedle) {
-			return isGoRunPackage(tokens, i)
+			if isGoRunPackage(tokens, i) {
+				return true
+			}
+			continue
 		}
 		if isToolBinaryToken(token, binaryName) {
 			return isCommandToken(tokens, i)
@@ -291,12 +297,23 @@ func lineHasRequiredFlag(tokens []string, requiredFlag string) bool {
 	if requiredFlag == "" {
 		return true
 	}
-	for _, token := range tokens {
+	for i, token := range tokens {
+		if isShellSeparator(cleanCommandToken(token)) {
+			return false
+		}
 		if cleanCommandToken(token) == requiredFlag {
-			return true
+			return hasFlagValue(tokens, i)
 		}
 	}
 	return false
+}
+
+func hasFlagValue(tokens []string, flagIndex int) bool {
+	if flagIndex+1 >= len(tokens) {
+		return false
+	}
+	value := cleanCommandToken(tokens[flagIndex+1])
+	return value != "" && !strings.HasPrefix(value, "-") && !isShellSeparator(value)
 }
 
 func isGoToolPackageToken(token string, packageNeedle string) bool {

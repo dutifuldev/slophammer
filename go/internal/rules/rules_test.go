@@ -1283,6 +1283,13 @@ func TestGoToolCommandDetectionRequiresRunnableCommand(t *testing.T) {
 			packageNeedle: "github.com/unclebob/dry4go/cmd/dry4go",
 		},
 		{
+			name:          "dry install then run",
+			command:       "go install github.com/unclebob/dry4go/cmd/dry4go@latest && dry4go .",
+			binaryName:    "dry4go",
+			packageNeedle: "github.com/unclebob/dry4go/cmd/dry4go",
+			want:          true,
+		},
+		{
 			name:          "dry echo only",
 			command:       "echo go run github.com/unclebob/dry4go/cmd/dry4go@latest --format json .",
 			binaryName:    "dry4go",
@@ -1321,6 +1328,7 @@ func TestGoMutationRuleRequiresTargetForDirectMutate4Go(t *testing.T) {
 		{name: "package target", command: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan", want: true},
 		{name: "binary target", command: "mutate4go main.go --scan", want: true},
 		{name: "flag before target", command: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest --scan internal/rules/rules.go", want: true},
+		{name: "install then run", command: "go install github.com/unclebob/mutate4go/cmd/mutate4go@latest && mutate4go main.go --scan", want: true},
 		{name: "package missing target", command: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest --scan"},
 		{name: "binary missing target", command: "mutate4go --scan"},
 		{name: "install only", command: "go install github.com/unclebob/mutate4go/cmd/mutate4go@latest"},
@@ -1330,6 +1338,31 @@ func TestGoMutationRuleRequiresTargetForDirectMutate4Go(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := contentHasDirectMutate4GoCommand(tt.command); got != tt.want {
 				t.Fatalf("contentHasDirectMutate4GoCommand(%q) = %t, want %t", tt.command, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSlophammerGoCommandRequiredFlagsNeedValues(t *testing.T) {
+	tests := []struct {
+		name        string
+		command     string
+		subcommand  string
+		required    string
+		expectMatch bool
+	}{
+		{name: "crap value", command: "slophammer go crap . --max-score 30", subcommand: "crap", required: "--max-score", expectMatch: true},
+		{name: "crap missing value", command: "slophammer go crap . --max-score", subcommand: "crap", required: "--max-score"},
+		{name: "crap flag after separator", command: "slophammer go crap . && echo --max-score 30", subcommand: "crap", required: "--max-score"},
+		{name: "mutate value", command: "slophammer go mutate . --target main.go --scan", subcommand: "mutate", required: "--target", expectMatch: true},
+		{name: "mutate missing value", command: "slophammer go mutate . --target --scan", subcommand: "mutate", required: "--target"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := contentHasSlophammerGoCommand(tt.command, tt.subcommand, tt.required)
+			if got != tt.expectMatch {
+				t.Fatalf("contentHasSlophammerGoCommand(%q) = %t, want %t", tt.command, got, tt.expectMatch)
 			}
 		})
 	}
