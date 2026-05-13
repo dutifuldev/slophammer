@@ -186,6 +186,10 @@ Do not copy those implementations into Slophammer just to reduce dependencies.
 Absorb behavior only with evidence that direct use is not production-ready for
 this repo.
 
+These are not later optional ideas. They belong in the Go production rule set.
+The first implementation should check that a Go repo declares these tools in its
+quality workflow. Native reimplementation is the later fallback, not the plan.
+
 Valid reasons to absorb a tool are:
 
 - it cannot be installed reliably in CI
@@ -215,7 +219,7 @@ Example static checks:
 - a coverage script or CI command enforces coverage
 - a `dry4go` check is present in CI or scripts
 - a `crap4go` check is present in CI or scripts
-- a mutation command exists in a slow, nightly, or manual workflow
+- a `mutate4go` command exists in a slow, nightly, or manual workflow
 
 Execution mode should be explicit:
 
@@ -257,35 +261,43 @@ Bob's Go tools.
 
 Use `dry4go` for structural duplicate detection.
 
-Slophammer should check that the repo has a declared `dry4go` command in CI or a
-script. Later, execution mode can run it and convert duplicate reports into
-Slophammer findings.
+Slophammer checks that the repo has a declared `dry4go` command in CI, a script,
+or the first-class `slophammer go dry` command. The Slophammer command runs
+`dry4go` directly, parses its JSON report, and applies the candidate budget in
+Go instead of in shell glue.
 
-The rule should be advisory first if the tool reports useful review prompts but
-has false positives. It should become a hard gate only after fixtures prove the
-threshold is stable for this repo.
+The static `go.dry-required` rule is a hard requirement: the repo must declare a
+DRY check somewhere Slophammer can inspect.
 
 ### `crap4go`
 
 Use `crap4go` for CRAP scoring.
 
-Slophammer should check that the repo has a declared CRAP command and a clear
-threshold. Later, execution mode can run it and convert high-risk functions into
-Slophammer findings.
+Slophammer checks that the repo has a declared CRAP command and a clear
+threshold. The first-class `slophammer go crap` command runs `crap4go` directly,
+parses its report, and fails when a function exceeds the configured maximum.
 
 Coverage and complexity already exist separately in Go tooling. CRAP is valuable
 because it combines them into one risk signal.
+
+The static `go.crap-required` rule is a hard requirement: the repo must declare
+`crap4go` or `slophammer go crap` with a threshold.
 
 ### `mutate4go`
 
 Use `mutate4go` for mutation testing.
 
-Mutation testing is expensive, so the production policy should not require it on
-every pull request. It should require a declared workflow slot: nightly, manual,
-release, or targeted execution for risky packages.
+Mutation testing is expensive, so the production policy should require a
+declared workflow slot rather than requiring it on every pull request. Valid
+slots are nightly, manual, release, or targeted execution for risky packages.
 
-Execution mode can support mutation later. It should start with changed or
-configured packages, not the whole repo by default.
+The first-class `slophammer go mutate` command runs `mutate4go` directly. Pull
+requests should use `--scan` against a configured target; full mutation testing
+belongs on slower scheduled or manual paths.
+
+The static `go.mutation-required` rule is a hard requirement: the repo must
+declare `mutate4go` or `slophammer go mutate` in an inspectable workflow or
+script.
 
 ## Native Slophammer Checks
 
@@ -375,6 +387,10 @@ Every production rule should have:
 - one failing fixture
 - one edge-case fixture when the rule has meaningful edge cases
 
+The next Go fixture tranche must cover both baseline Go tooling and Uncle Bob's
+tools. The clean fixture should declare `go test`, `go vet`, `golangci-lint`, a
+coverage gate, complexity linting, `dry4go`, `crap4go`, and `mutate4go`.
+
 ## Config
 
 Production config should use:
@@ -433,35 +449,35 @@ go test
 coverage gate
 golangci-lint
 slophammer check .
-slophammer check . --execute
-dry4go
-crap4go
+slophammer go dry . --max-candidates 40
+slophammer go crap . --max-score 30
+slophammer go mutate . --target internal/rules/rules.go --scan
 dependency boundary check
 ```
 
-Mutation should run on a slower schedule or targeted path:
+Full mutation testing should run on a slower schedule or targeted path:
 
 - nightly
 - release branches
 - risky packages
 - manual workflow dispatch
 
-It should not block every small pull request until the runtime cost is known.
+The pull request path may run `mutate4go --scan` because it inspects mutation
+sites without running the full mutation suite.
 
 ## Go Implementation Order
 
 Implement the Go plan in this order:
 
-1. Add Go baseline rules: module, tests, vet, lint, coverage, complexity.
-2. Add `specs/rules.json` and verify the Go registry against it.
-3. Expand Go fixtures and expected reports.
-4. Add `slophammer.yml` config parsing.
-5. Add native dependency boundary checking.
-6. Integrate `dry4go` directly.
-7. Integrate `crap4go` directly.
-8. Integrate `mutate4go` as a slow or targeted check.
-9. Add execution mode.
-10. Add SARIF.
+1. Add `specs/rules.json` and verify the Go registry against it.
+2. Add Go baseline rules: module, tests, vet, lint, coverage, complexity.
+3. Add direct Uncle Bob tool rules: `dry4go`, `crap4go`, and `mutate4go`.
+4. Expand Go fixtures and expected reports for all rules above.
+5. Add a Slophammer self-check to CI.
+6. Add `slophammer.yml` config parsing.
+7. Add native dependency boundary checking.
+8. Add execution mode for direct tool runs.
+9. Add SARIF.
 
 This order keeps Slophammer from reinventing tools while still making the repo
 production-grade for agentic Go work.

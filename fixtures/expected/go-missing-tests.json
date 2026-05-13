@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "go.tests-required",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Go projects must declare go test ./... in CI or scripts"
+    }
+  ]
+}

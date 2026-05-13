@@ -1,0 +1,133 @@
+{
+  "rules": [
+    {
+      "id": "repo.readme-required",
+      "title": "README required",
+      "category": "repo",
+      "severity": "error",
+      "path": "README.md",
+      "message": "README.md is required",
+      "description": "The target repo should have a README.md.",
+      "status": "implemented"
+    },
+    {
+      "id": "repo.agents-required",
+      "title": "Agent instructions required",
+      "category": "repo",
+      "severity": "error",
+      "path": "AGENTS.md",
+      "message": "AGENTS.md is required",
+      "description": "The target repo should have an AGENTS.md.",
+      "status": "implemented"
+    },
+    {
+      "id": "repo.ci-required",
+      "title": "CI workflow required",
+      "category": "repo",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": ".github/workflows must contain at least one .yml or .yaml workflow",
+      "description": "The target repo should have a CI workflow under .github/workflows.",
+      "status": "implemented"
+    },
+    {
+      "id": "go.module-required",
+      "title": "Go module required",
+      "category": "go",
+      "severity": "error",
+      "path": "go.mod",
+      "message": "Go projects must include a go.mod file",
+      "description": "Go projects should be Go modules.",
+      "tool": "go",
+      "status": "implemented"
+    },
+    {
+      "id": "go.tests-required",
+      "title": "Go tests required",
+      "category": "go",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Go projects must declare go test ./... in CI or scripts",
+      "description": "Go projects should run go test against ./... in an inspectable workflow or script.",
+      "tool": "go test",
+      "status": "implemented"
+    },
+    {
+      "id": "go.vet-required",
+      "title": "Go vet required",
+      "category": "go",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Go projects must declare go vet ./... in CI or scripts",
+      "description": "Go projects should run go vet ./... in an inspectable workflow or script.",
+      "tool": "go vet",
+      "status": "implemented"
+    },
+    {
+      "id": "go.lint-required",
+      "title": "Go lint required",
+      "category": "go",
+      "severity": "error",
+      "path": ".golangci.yml",
+      "message": "Go projects must configure and declare golangci-lint",
+      "description": "Go projects should configure golangci-lint and declare a lint check in CI or scripts.",
+      "tool": "golangci-lint",
+      "status": "implemented"
+    },
+    {
+      "id": "go.coverage-required",
+      "title": "Go coverage gate required",
+      "category": "go",
+      "severity": "error",
+      "path": "scripts/check-go-coverage.sh",
+      "message": "Go projects must declare a coverage gate",
+      "description": "Go projects should enforce coverage with go test coverage output, go tool cover, and a minimum threshold.",
+      "tool": "go test -coverprofile",
+      "status": "implemented"
+    },
+    {
+      "id": "go.complexity-required",
+      "title": "Go complexity linting required",
+      "category": "go",
+      "severity": "error",
+      "path": ".golangci.yml",
+      "message": "Go projects must enable a complexity linter",
+      "description": "Go projects should enable a complexity linter through golangci-lint.",
+      "tool": "golangci-lint",
+      "status": "implemented"
+    },
+    {
+      "id": "go.dry-required",
+      "title": "Go DRY check required",
+      "category": "go",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Go projects must declare dry4go",
+      "description": "Go projects should declare dry4go for structural duplicate detection.",
+      "tool": "dry4go",
+      "status": "implemented"
+    },
+    {
+      "id": "go.crap-required",
+      "title": "Go CRAP check required",
+      "category": "go",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Go projects must declare crap4go with a threshold",
+      "description": "Go projects should declare crap4go with a threshold for complexity and coverage risk scoring.",
+      "tool": "crap4go",
+      "status": "implemented"
+    },
+    {
+      "id": "go.mutation-required",
+      "title": "Go mutation check required",
+      "category": "go",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Go projects must declare mutate4go",
+      "description": "Go projects should declare mutate4go in an inspectable workflow or script.",
+      "tool": "mutate4go",
+      "status": "implemented"
+    }
+  ]
+}

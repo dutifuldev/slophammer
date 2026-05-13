@@ -2,6 +2,7 @@ package repo
 
 import (
 	"path"
+	"sort"
 	"strings"
 )
 
@@ -32,6 +33,63 @@ func (s Snapshot) HasFileFold(want string) bool {
 	return false
 }
 
+func (s Snapshot) HasFileNamedFold(want string) bool {
+	for filePath := range s.Files {
+		_, name := path.Split(filePath)
+		if strings.EqualFold(name, want) {
+			return true
+		}
+	}
+	return false
+}
+
+func (s Snapshot) FilesUnder(dir string) []File {
+	dir = normalizePath(dir)
+	if dir == "." {
+		dir = ""
+	}
+	if dir != "" && !strings.HasSuffix(dir, "/") {
+		dir += "/"
+	}
+	files := make([]File, 0)
+	for filePath, file := range s.Files {
+		if strings.HasPrefix(filePath, dir) {
+			files = append(files, file)
+		}
+	}
+	sortFiles(files)
+	return files
+}
+
+func (s Snapshot) FilesNamedFold(names ...string) []File {
+	files := make([]File, 0)
+	for filePath, file := range s.Files {
+		_, got := path.Split(filePath)
+		for _, want := range names {
+			if strings.EqualFold(got, want) {
+				files = append(files, file)
+				break
+			}
+		}
+	}
+	sortFiles(files)
+	return files
+}
+
+func (s Snapshot) FilesWithSuffix(suffixes ...string) []File {
+	files := make([]File, 0)
+	for filePath, file := range s.Files {
+		for _, suffix := range suffixes {
+			if strings.HasSuffix(filePath, suffix) {
+				files = append(files, file)
+				break
+			}
+		}
+	}
+	sortFiles(files)
+	return files
+}
+
 func (s Snapshot) WorkflowFiles() []File {
 	files := make([]File, 0)
 	for filePath, file := range s.Files {
@@ -43,7 +101,25 @@ func (s Snapshot) WorkflowFiles() []File {
 			files = append(files, file)
 		}
 	}
+	sortFiles(files)
 	return files
+}
+
+func ContainsAny(files []File, needles ...string) bool {
+	for _, file := range files {
+		for _, needle := range needles {
+			if strings.Contains(file.Content, needle) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func sortFiles(files []File) {
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].Path < files[j].Path
+	})
 }
 
 func normalizePath(value string) string {

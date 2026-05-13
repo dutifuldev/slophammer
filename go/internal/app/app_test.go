@@ -41,6 +41,16 @@ func TestCheckMatchesSharedFixtures(t *testing.T) {
 		{name: "missing-readme", code: ExitFindings},
 		{name: "missing-agents", code: ExitFindings},
 		{name: "missing-ci", code: ExitFindings},
+		{name: "go-clean", code: ExitOK},
+		{name: "go-missing-module", code: ExitFindings},
+		{name: "go-missing-tests", code: ExitFindings},
+		{name: "go-missing-vet", code: ExitFindings},
+		{name: "go-missing-lint", code: ExitFindings},
+		{name: "go-missing-coverage", code: ExitFindings},
+		{name: "go-missing-complexity", code: ExitFindings},
+		{name: "go-missing-dry", code: ExitFindings},
+		{name: "go-missing-crap", code: ExitFindings},
+		{name: "go-missing-mutation", code: ExitFindings},
 	}
 
 	for _, tt := range tests {

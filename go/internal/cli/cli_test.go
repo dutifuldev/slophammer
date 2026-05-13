@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,15 +13,13 @@ import (
 )
 
 func TestRunHelp(t *testing.T) {
-	var out bytes.Buffer
-	var errOut bytes.Buffer
-	code := Run(context.Background(), []string{"help"}, &out, &errOut)
+	result := runCLI(t, "help")
 
-	if code != app.ExitOK {
-		t.Fatalf("code = %d, want %d", code, app.ExitOK)
+	if result.code != app.ExitOK {
+		t.Fatalf("code = %d, want %d", result.code, app.ExitOK)
 	}
-	if !strings.Contains(out.String(), "slophammer check") {
-		t.Fatalf("stdout = %q", out.String())
+	if !strings.Contains(result.stdout, "slophammer check") {
+		t.Fatalf("stdout = %q", result.stdout)
 	}
 }
 
@@ -30,107 +29,191 @@ func TestRunCheckParsesFormatAfterPath(t *testing.T) {
 	writeFile(t, root, "AGENTS.md", "# Agents\n")
 	writeFile(t, root, ".github/workflows/ci.yml", "name: CI\n")
 
-	var out bytes.Buffer
-	var errOut bytes.Buffer
-	code := Run(context.Background(), []string{"check", root, "--format", "json"}, &out, &errOut)
+	result := runCLI(t, "check", root, "--format", "json")
 
-	if code != app.ExitOK {
-		t.Fatalf("code = %d, want %d; stderr=%q", code, app.ExitOK, errOut.String())
+	if result.code != app.ExitOK {
+		t.Fatalf("code = %d, want %d; stderr=%q", result.code, app.ExitOK, result.stderr)
 	}
-	if !strings.Contains(out.String(), `"ok": true`) {
-		t.Fatalf("stdout = %q", out.String())
+	if !strings.Contains(result.stdout, `"ok": true`) {
+		t.Fatalf("stdout = %q", result.stdout)
 	}
 }
 
 func TestRunExplain(t *testing.T) {
-	var out bytes.Buffer
-	var errOut bytes.Buffer
-	code := Run(context.Background(), []string{"explain", "repo.ci-required"}, &out, &errOut)
+	result := runCLI(t, "explain", "repo.ci-required")
 
-	if code != app.ExitOK {
-		t.Fatalf("code = %d, want %d; stderr=%q", code, app.ExitOK, errOut.String())
+	if result.code != app.ExitOK {
+		t.Fatalf("code = %d, want %d; stderr=%q", result.code, app.ExitOK, result.stderr)
 	}
-	if !strings.Contains(out.String(), "repo.ci-required") {
-		t.Fatalf("stdout = %q", out.String())
+	if !strings.Contains(result.stdout, "repo.ci-required") {
+		t.Fatalf("stdout = %q", result.stdout)
 	}
 }
 
 func TestRunExplainRejectsWrongArity(t *testing.T) {
-	var out bytes.Buffer
-	var errOut bytes.Buffer
-	code := Run(context.Background(), []string{"explain"}, &out, &errOut)
+	assertCLIError(t, []string{"explain"}, "usage: slophammer explain")
+}
 
-	if code != app.ExitError {
-		t.Fatalf("code = %d, want %d", code, app.ExitError)
+func TestRunGoRejectsMissingSubcommand(t *testing.T) {
+	assertCLIError(t, []string{"go"}, "slophammer go dry")
+}
+
+func TestParseGoDryArgs(t *testing.T) {
+	var errOut bytes.Buffer
+	options, ok := parseGoDryArgs([]string{"/repo", "--max-candidates", "12", "--show-report"}, &errOut)
+
+	if !ok {
+		t.Fatalf("ok = false; stderr=%q", errOut.String())
 	}
-	if !strings.Contains(errOut.String(), "usage: slophammer explain") {
+	if options.Root != "/repo" || options.MaximumCandidates != 12 || !options.MaximumSet || !options.ShowReport {
+		t.Fatalf("options = %#v", options)
+	}
+}
+
+func TestParseGoCRAPArgs(t *testing.T) {
+	var errOut bytes.Buffer
+	options, ok := parseGoCRAPArgs([]string{"/repo", "--max-score", "25.5"}, &errOut)
+
+	if !ok {
+		t.Fatalf("ok = false; stderr=%q", errOut.String())
+	}
+	if options.Root != "/repo" || options.MaximumScore != 25.5 || !options.MaximumSet {
+		t.Fatalf("options = %#v", options)
+	}
+}
+
+func TestParseGoMutationArgs(t *testing.T) {
+	var errOut bytes.Buffer
+	options, ok := parseGoMutationArgs([]string{"/repo", "--target", "main.go", "--scan"}, &errOut)
+
+	if !ok {
+		t.Fatalf("ok = false; stderr=%q", errOut.String())
+	}
+	if options.Root != "/repo" || options.Target != "main.go" || !options.Scan {
+		t.Fatalf("options = %#v", options)
+	}
+}
+
+func TestParseGoMutationArgsRequiresTarget(t *testing.T) {
+	var errOut bytes.Buffer
+	_, ok := parseGoMutationArgs([]string{"/repo", "--scan"}, &errOut)
+
+	if ok {
+		t.Fatal("ok = true, want false")
+	}
+	if !strings.Contains(errOut.String(), "--target cannot be empty") {
 		t.Fatalf("stderr = %q", errOut.String())
+	}
+}
+
+func TestParseGoMutationArgsRejectsFlagTarget(t *testing.T) {
+	var errOut bytes.Buffer
+	_, ok := parseGoMutationArgs([]string{"/repo", "--target", "--scan"}, &errOut)
+
+	if ok {
+		t.Fatal("ok = true, want false")
+	}
+	if !strings.Contains(errOut.String(), "--target requires a file value") {
+		t.Fatalf("stderr = %q", errOut.String())
+	}
+}
+
+func TestParseGoToolArgsRejectInvalidNumbers(t *testing.T) {
+	tests := []struct {
+		name string
+		run  func(io.Writer) bool
+		want string
+	}{
+		{
+			name: "dry",
+			run: func(errOut io.Writer) bool {
+				_, ok := parseGoDryArgs([]string{"--max-candidates", "x"}, errOut)
+				return ok
+			},
+			want: "--max-candidates must be a non-negative integer",
+		},
+		{
+			name: "crap",
+			run: func(errOut io.Writer) bool {
+				_, ok := parseGoCRAPArgs([]string{"--max-score", "-1"}, errOut)
+				return ok
+			},
+			want: "--max-score must be a non-negative number",
+		},
+		{
+			name: "crap NaN",
+			run: func(errOut io.Writer) bool {
+				_, ok := parseGoCRAPArgs([]string{"--max-score", "NaN"}, errOut)
+				return ok
+			},
+			want: "--max-score must be a non-negative number",
+		},
+		{
+			name: "crap infinity",
+			run: func(errOut io.Writer) bool {
+				_, ok := parseGoCRAPArgs([]string{"--max-score", "+Inf"}, errOut)
+				return ok
+			},
+			want: "--max-score must be a non-negative number",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var errOut bytes.Buffer
+			if tt.run(&errOut) {
+				t.Fatal("ok = true, want false")
+			}
+			if !strings.Contains(errOut.String(), tt.want) {
+				t.Fatalf("stderr = %q", errOut.String())
+			}
+		})
 	}
 }
 
 func TestRunCheckRejectsMissingFormatValue(t *testing.T) {
-	var out bytes.Buffer
-	var errOut bytes.Buffer
-	code := Run(context.Background(), []string{"check", ".", "--format"}, &out, &errOut)
-
-	if code != app.ExitError {
-		t.Fatalf("code = %d, want %d", code, app.ExitError)
-	}
-	if !strings.Contains(errOut.String(), "--format requires a value") {
-		t.Fatalf("stderr = %q", errOut.String())
-	}
+	assertCLIError(t, []string{"check", ".", "--format"}, "--format requires a value")
 }
 
 func TestRunCheckRejectsUnknownOption(t *testing.T) {
-	var out bytes.Buffer
-	var errOut bytes.Buffer
-	code := Run(context.Background(), []string{"check", "--wat", "."}, &out, &errOut)
-
-	if code != app.ExitError {
-		t.Fatalf("code = %d, want %d", code, app.ExitError)
-	}
-	if !strings.Contains(errOut.String(), "unknown check option") {
-		t.Fatalf("stderr = %q", errOut.String())
-	}
+	assertCLIError(t, []string{"check", "--wat", "."}, "unknown check option")
 }
 
 func TestRunCheckRejectsDuplicatePath(t *testing.T) {
-	var out bytes.Buffer
-	var errOut bytes.Buffer
-	code := Run(context.Background(), []string{"check", ".", ".."}, &out, &errOut)
-
-	if code != app.ExitError {
-		t.Fatalf("code = %d, want %d", code, app.ExitError)
-	}
-	if !strings.Contains(errOut.String(), "exactly one path") {
-		t.Fatalf("stderr = %q", errOut.String())
-	}
+	assertCLIError(t, []string{"check", ".", ".."}, "exactly one path")
 }
 
 func TestRunCheckRejectsMissingPath(t *testing.T) {
-	var out bytes.Buffer
-	var errOut bytes.Buffer
-	code := Run(context.Background(), []string{"check"}, &out, &errOut)
-
-	if code != app.ExitError {
-		t.Fatalf("code = %d, want %d", code, app.ExitError)
-	}
-	if !strings.Contains(errOut.String(), "usage: slophammer check") {
-		t.Fatalf("stderr = %q", errOut.String())
-	}
+	assertCLIError(t, []string{"check"}, "usage: slophammer check")
 }
 
 func TestRunRejectsUnknownCommand(t *testing.T) {
+	assertCLIError(t, []string{"wat"}, "unknown command")
+}
+
+func assertCLIError(t *testing.T, args []string, stderr string) {
+	t.Helper()
+	result := runCLI(t, args...)
+	if result.code != app.ExitError {
+		t.Fatalf("code = %d, want %d", result.code, app.ExitError)
+	}
+	if !strings.Contains(result.stderr, stderr) {
+		t.Fatalf("stderr = %q", result.stderr)
+	}
+}
+
+func runCLI(t *testing.T, args ...string) cliResult {
+	t.Helper()
 	var out bytes.Buffer
 	var errOut bytes.Buffer
-	code := Run(context.Background(), []string{"wat"}, &out, &errOut)
+	code := Run(context.Background(), args, &out, &errOut)
+	return cliResult{code: code, stdout: out.String(), stderr: errOut.String()}
+}
 
-	if code != app.ExitError {
-		t.Fatalf("code = %d, want %d", code, app.ExitError)
-	}
-	if !strings.Contains(errOut.String(), "unknown command") {
-		t.Fatalf("stderr = %q", errOut.String())
-	}
+type cliResult struct {
+	code   int
+	stdout string
+	stderr string
 }
 
 func writeFile(t *testing.T, root, name, content string) {

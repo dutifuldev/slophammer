@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "go.lint-required",
+      "severity": "error",
+      "path": ".golangci.yml",
+      "message": "Go projects must configure and declare golangci-lint"
+    }
+  ]
+}

@@ -25,8 +25,11 @@ jobs:
           test -f specs/CONFIG.md
           test -f specs/REPORT_FORMAT.md
           test -f specs/EXIT_CODES.md
+          test -f specs/rules.json
           test -f fixtures/repos/clean/README.md
+          test -f fixtures/repos/go-clean/README.md
           test -f fixtures/expected/clean.json
+          test -f fixtures/expected/go-clean.json
       - run: npx -y @simpledoc/simpledoc check
 
   go-template:
@@ -65,6 +68,10 @@ jobs:
           version: v2.11.0
           working-directory: go
       - run: go build ./cmd/slophammer
+      - run: go run ./cmd/slophammer go dry . --max-candidates 40
+      - run: go run ./cmd/slophammer go crap . --max-score 30
+      - run: go run ./cmd/slophammer go mutate . --target internal/rules/rules.go --scan
+      - run: go run ./cmd/slophammer check ..
 
   python-template:
     runs-on: ubuntu-latest
