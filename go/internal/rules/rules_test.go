@@ -1454,6 +1454,28 @@ jobs:
 	}
 }
 
+func TestWorkflowCommandSectionsIgnorePostRunYamlBlocks(t *testing.T) {
+	sections := commandSections(repo.File{
+		Path: ".github/workflows/ci.yml",
+		Content: `name: CI
+jobs:
+  test:
+    steps:
+      - run: |
+          echo noop
+        env:
+          SCRIPT: |
+            go test ./...
+            go vet ./...
+`,
+	})
+
+	want := []string{"echo noop"}
+	if !reflect.DeepEqual(sections, want) {
+		t.Fatalf("workflow run sections = %#v, want %#v", sections, want)
+	}
+}
+
 func TestGoCommandRulesIgnoreWorkflowStepMetadata(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
 		".github/workflows/ci.yml": {

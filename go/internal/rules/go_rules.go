@@ -1146,31 +1146,37 @@ type workflowRunScan struct {
 	foldedLines   []string
 	inRunBlock    bool
 	inFoldedBlock bool
+	runIndent     int
+	contentIndent int
 }
 
 func (s *workflowRunScan) visitLine(line string) {
 	trimmed := strings.TrimSpace(line)
+	if s.inRunBlock {
+		if s.recordRunBlockLine(line, trimmed) {
+			return
+		}
+		s.endRunBlock()
+	}
 	runLine, ok := workflowRunLine(trimmed)
 	if ok {
-		s.startRun(runLine)
+		s.startRun(line, runLine)
 		return
-	}
-	if s.inRunBlock {
-		s.recordRunLine(trimmed)
 	}
 }
 
-func (s *workflowRunScan) startRun(runLine string) {
+func (s *workflowRunScan) startRun(line, runLine string) {
 	s.flushFolded()
 	folded, block := workflowRunBlockScalar(runLine)
 	if block {
 		s.inRunBlock = true
 		s.inFoldedBlock = folded
+		s.runIndent = leadingSpaceCount(line)
+		s.contentIndent = 0
 		return
 	}
 	s.kept = append(s.kept, runLine)
-	s.inRunBlock = false
-	s.inFoldedBlock = false
+	s.endRunBlock()
 }
 
 func workflowRunBlockScalar(value string) (folded bool, ok bool) {
@@ -1194,6 +1200,24 @@ func workflowRunBlockScalar(value string) (folded bool, ok bool) {
 	return folded, true
 }
 
+func (s *workflowRunScan) recordRunBlockLine(line, trimmed string) bool {
+	if trimmed == "" {
+		return true
+	}
+	indent := leadingSpaceCount(line)
+	if s.contentIndent == 0 {
+		if indent <= s.runIndent {
+			return false
+		}
+		s.contentIndent = indent
+	}
+	if indent < s.contentIndent {
+		return false
+	}
+	s.recordRunLine(trimmed)
+	return true
+}
+
 func (s *workflowRunScan) recordRunLine(line string) {
 	if s.inFoldedBlock {
 		if line != "" {
@@ -1202,6 +1226,13 @@ func (s *workflowRunScan) recordRunLine(line string) {
 		return
 	}
 	s.kept = append(s.kept, line)
+}
+
+func (s *workflowRunScan) endRunBlock() {
+	s.inRunBlock = false
+	s.inFoldedBlock = false
+	s.runIndent = 0
+	s.contentIndent = 0
 }
 
 func (s *workflowRunScan) content() string {
@@ -1215,6 +1246,10 @@ func (s *workflowRunScan) flushFolded() {
 	}
 	s.kept = append(s.kept, strings.TrimSpace(strings.Join(s.foldedLines, " ")))
 	s.foldedLines = s.foldedLines[:0]
+}
+
+func leadingSpaceCount(line string) int {
+	return len(line) - len(strings.TrimLeft(line, " "))
 }
 
 func workflowRunLine(trimmed string) (string, bool) {
