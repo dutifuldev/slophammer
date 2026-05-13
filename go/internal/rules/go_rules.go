@@ -355,7 +355,7 @@ func isCommandToken(tokens []string, commandIndex int) bool {
 		return true
 	}
 	previous := cleanCommandToken(tokens[commandIndex-1])
-	return isWorkflowRunToken(previous) || isShellSeparator(previous) || hasCommandPrefix(tokens, commandIndex)
+	return isShellSeparator(previous) || hasCommandPrefix(tokens, commandIndex)
 }
 
 func hasCommandPrefix(tokens []string, commandIndex int) bool {
@@ -367,7 +367,7 @@ func hasCommandPrefix(tokens []string, commandIndex int) bool {
 		return true
 	}
 	prefix := cleanCommandToken(tokens[prefixIndex])
-	if isWorkflowRunToken(prefix) || isShellSeparator(prefix) {
+	if isShellSeparator(prefix) {
 		return true
 	}
 	return prefix == "env" && isCommandToken(tokens, prefixIndex)
@@ -431,10 +431,6 @@ func isToolBinaryToken(token string, binaryName string) bool {
 func isSlophammerCommandToken(token string) bool {
 	base := path.Base(token)
 	return base == "slophammer" || base == "slophammer.exe"
-}
-
-func isWorkflowRunToken(token string) bool {
-	return strings.TrimSuffix(token, ":") == "run"
 }
 
 func cleanCommandToken(token string) string {

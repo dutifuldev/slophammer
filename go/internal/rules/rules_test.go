@@ -1474,6 +1474,38 @@ jobs:
 	})
 }
 
+func TestGoCommandRulesIgnoreRunnerArguments(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+defaults:
+  run:
+    working-directory: go
+jobs:
+  test:
+    steps:
+      - run: npm run go test ./...
+      - run: npm run go vet ./...
+      - run: npm run golangci-lint run
+      - run: ./scripts/check-go-coverage.sh
+`,
+		},
+		"go/scripts/check-go-coverage.sh": {
+			Path:    "go/scripts/check-go-coverage.sh",
+			Content: strings.ReplaceAll(cleanCoverageScript, "go test -coverprofile=coverage.out ./...", "go test -coverprofile=coverage.out ./internal/..."),
+		},
+	})
+
+	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+	assertRuleIDs(t, report.Findings, []string{
+		GoLintRequiredRuleID,
+		GoTestsRequiredRuleID,
+		GoVetRequiredRuleID,
+	})
+}
+
 func TestGoToolCommandDetectionRequiresRunnableCommand(t *testing.T) {
 	tests := []struct {
 		name    string
