@@ -1209,6 +1209,39 @@ jobs:
 	}
 }
 
+func TestGoCommandRulesIgnoreWorkflowStepMetadata(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+jobs:
+  test:
+    steps:
+      - name: go test ./...
+        run: echo no tests
+      - name: go vet ./...
+        run: echo no vet
+      - name: golangci-lint run
+        run: echo no lint
+`,
+		},
+	})
+
+	checks := []struct {
+		name  string
+		check func(repo.Snapshot) bool
+	}{
+		{name: "go test", check: hasGoTestCommand},
+		{name: "go vet", check: hasGoVetCommand},
+		{name: "golangci-lint", check: hasGolangCICommand},
+	}
+	for _, check := range checks {
+		if check.check(snapshot) {
+			t.Fatalf("%s command accepted workflow step metadata", check.name)
+		}
+	}
+}
+
 func TestGoToolCommandDetectionRequiresRunnableCommand(t *testing.T) {
 	tests := []struct {
 		name          string

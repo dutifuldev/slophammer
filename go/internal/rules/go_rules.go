@@ -962,8 +962,10 @@ func joinShellContinuations(content string) string {
 
 func hasCommandPattern(snapshot repo.Snapshot, pattern *regexp.Regexp) bool {
 	for _, file := range commandFiles(snapshot) {
-		if pattern.MatchString(file.Content) {
-			return true
+		for _, content := range commandSections(file) {
+			if pattern.MatchString(content) {
+				return true
+			}
 		}
 	}
 	return false
