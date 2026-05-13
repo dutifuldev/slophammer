@@ -54,6 +54,38 @@ func TestDryOptionsForModuleExpandsProductionFiles(t *testing.T) {
 	}
 }
 
+func TestDryOptionsForModuleSkipsNestedModuleFiles(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"go.mod":          {Path: "go.mod"},
+		"main.go":         {Path: "main.go"},
+		"tools/go.mod":    {Path: "tools/go.mod"},
+		"tools/main.go":   {Path: "tools/main.go"},
+		"tools/helper.go": {Path: "tools/helper.go"},
+	})
+
+	parent, ok := dryOptionsForModule(toolchecks.DryOptions{
+		Root:    ".",
+		Exclude: []string{"**/*_test.go"},
+	}, snapshot, ".")
+	if !ok {
+		t.Fatal("parent ok = false, want true")
+	}
+	if !reflect.DeepEqual(parent.Paths, []string{"main.go"}) {
+		t.Fatalf("parent paths = %#v, want only parent module files", parent.Paths)
+	}
+
+	child, ok := dryOptionsForModule(toolchecks.DryOptions{
+		Root:    ".",
+		Exclude: []string{"**/*_test.go"},
+	}, snapshot, "tools")
+	if !ok {
+		t.Fatal("child ok = false, want true")
+	}
+	if !reflect.DeepEqual(child.Paths, []string{"helper.go", "main.go"}) {
+		t.Fatalf("child paths = %#v, want child module files", child.Paths)
+	}
+}
+
 func TestMutationOptionsForModulesTrimsConfiguredTargets(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
 		"go/go.mod": {Path: "go/go.mod"},

@@ -135,9 +135,13 @@ func dryOptionsForModule(options toolchecks.DryOptions, snapshot repo.Snapshot, 
 
 func dryFilePathsForModule(snapshot repo.Snapshot, moduleRoot string, includes []string, excludes []string) []string {
 	roots := dryIncludeRoots(moduleRoot, includes)
+	moduleRoots := goModuleRoots(snapshot)
 	files := make([]string, 0)
 	for filePath := range snapshot.Files {
-		if !strings.HasSuffix(filePath, ".go") || !isUnderDryRoot(filePath, roots) || isDryExcluded(filePath, moduleRoot, excludes) {
+		if !strings.HasSuffix(filePath, ".go") ||
+			isUnderOtherModuleRoot(filePath, moduleRoot, moduleRoots) ||
+			!isUnderDryRoot(filePath, roots) ||
+			isDryExcluded(filePath, moduleRoot, excludes) {
 			continue
 		}
 		files = append(files, trimModuleRoot(filePath, moduleRoot))
@@ -169,6 +173,21 @@ func dryIncludeRoots(moduleRoot string, includes []string) []string {
 func isUnderDryRoot(filePath string, roots []string) bool {
 	for _, root := range roots {
 		if root == "." || filePath == root || strings.HasPrefix(filePath, root+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+func isUnderOtherModuleRoot(filePath string, moduleRoot string, moduleRoots []string) bool {
+	for _, otherRoot := range moduleRoots {
+		if otherRoot == "." || otherRoot == moduleRoot {
+			continue
+		}
+		if moduleRoot != "." && !strings.HasPrefix(otherRoot, moduleRoot+"/") {
+			continue
+		}
+		if strings.HasPrefix(filePath, otherRoot+"/") {
 			return true
 		}
 	}
