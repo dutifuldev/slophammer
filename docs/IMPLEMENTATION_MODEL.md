@@ -201,6 +201,57 @@ Valid reasons to absorb a tool are:
 
 Until one of those is true, Slophammer should call the tool.
 
+## Go Lint Policy
+
+The current Go implementation uses `golangci-lint` as the lint runner. That is
+the right integration point because it lets the project compose normal Go
+linters without turning Slophammer into another lint framework.
+
+The current baseline stays focused on high-signal checks:
+
+- `staticcheck`
+- `unused`
+- `errcheck`
+- `ineffassign`
+- `cyclop`
+- `gocognit`
+- `revive`
+- `gosec` for security mistakes
+- `errorlint` for error wrapping and matching mistakes
+- `nilerr` and `nilnesserr` for nil-related mistakes
+- `exhaustive` for missing enum-style cases
+- `bodyclose` for leaked HTTP response bodies
+- `noctx` for HTTP calls without context
+- `unconvert` for unnecessary conversions
+- `whitespace` for noisy formatting drift
+- `nolintlint` for uncontrolled suppressions
+
+`revive` enforces `file-length-limit`, because oversized source files are easy
+for agents to keep growing and hard for humans to review. The Go implementation
+uses an 800-line production limit and excludes test files from that specific
+rule. Use the rule as refactoring pressure, not as a reason to hide logic in
+worse places.
+
+Add noisier linters only after the core signal is stable:
+
+- `gocritic`
+- `prealloc`
+- `dupl`
+
+`dupl` overlaps with the intent of `dry4go`, so it should be treated as a
+cheap lint-time hint, not the source of truth for structural duplication.
+
+Formatting is separate from linting. Use Go's normal tools and
+`golangci-lint` formatters for formatting:
+
+- `gofmt`
+- `gofumpt`
+- `goimports`
+- `gci`
+
+Do not describe these formatters as lint rules. They can run in the same CI
+workflow, but they solve a different problem.
+
 ## Static And Execute Modes
 
 The default mode should be static inspection.

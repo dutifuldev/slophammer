@@ -77,6 +77,7 @@ func readSmallTextFile(filePath string, entry os.DirEntry) (string, error) {
 	if info.Size() > maxFileBytes {
 		return "", nil
 	}
+	// #nosec G304 -- filePath comes from filepath.WalkDir rooted at the target repository.
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return "", err

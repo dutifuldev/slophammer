@@ -27,3 +27,18 @@ go run ./cmd/slophammer go mutate . --target internal/rules/rules.go --scan
 go build ./cmd/slophammer
 go run ./cmd/slophammer check ..
 ```
+
+## Lint Policy
+
+The Go implementation uses `golangci-lint` as the lint runner. The current
+baseline covers unused code, unchecked errors, ineffective assignments,
+complexity, cognitive complexity, security mistakes, error wrapping, nil
+handling, exhaustive switches, HTTP cleanup, context use, unnecessary
+conversions, whitespace, and `nolint` discipline.
+
+`revive` enforces an 800-line production file limit. Test files are excluded
+from that file-length rule because fixture-heavy tests can be long without
+creating the same production maintenance risk.
+
+See [Implementation Model](../docs/IMPLEMENTATION_MODEL.md) for the full Go
+lint policy.

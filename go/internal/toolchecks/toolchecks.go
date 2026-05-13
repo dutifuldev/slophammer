@@ -31,6 +31,7 @@ type CommandResult struct {
 }
 
 func (ExecRunner) Run(ctx context.Context, dir string, name string, args ...string) (CommandResult, error) {
+	// #nosec G204 -- callers provide tool commands intentionally through the runner boundary.
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Dir = dir
 	var stdout bytes.Buffer

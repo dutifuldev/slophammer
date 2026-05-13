@@ -132,12 +132,13 @@ func parseGoDryArgs(args []string, errOut io.Writer) (toolchecks.DryOptions, boo
 		case "--show-report":
 			options.ShowReport = true
 		case "--max-candidates":
-			if i+1 >= len(args) {
+			valueText, ok := nextArg(args, i)
+			if !ok {
 				_, _ = fmt.Fprintln(errOut, "--max-candidates requires a value")
 				return toolchecks.DryOptions{}, false
 			}
 			i++
-			value, err := strconv.Atoi(args[i])
+			value, err := strconv.Atoi(valueText)
 			if err != nil || value < 0 {
 				_, _ = fmt.Fprintln(errOut, "--max-candidates must be a non-negative integer")
 				return toolchecks.DryOptions{}, false
@@ -161,12 +162,13 @@ func parseGoCRAPArgs(args []string, errOut io.Writer) (toolchecks.CRAPOptions, b
 		arg := args[i]
 		switch arg {
 		case "--max-score":
-			if i+1 >= len(args) {
+			valueText, ok := nextArg(args, i)
+			if !ok {
 				_, _ = fmt.Fprintln(errOut, "--max-score requires a value")
 				return toolchecks.CRAPOptions{}, false
 			}
 			i++
-			value, err := strconv.ParseFloat(args[i], 64)
+			value, err := strconv.ParseFloat(valueText, 64)
 			if err != nil || value < 0 || math.IsNaN(value) || math.IsInf(value, 0) {
 				_, _ = fmt.Fprintln(errOut, "--max-score must be a non-negative number")
 				return toolchecks.CRAPOptions{}, false
@@ -190,16 +192,17 @@ func parseGoMutationArgs(args []string, errOut io.Writer) (toolchecks.MutationOp
 		arg := args[i]
 		switch arg {
 		case "--target":
-			if i+1 >= len(args) {
+			value, ok := nextArg(args, i)
+			if !ok {
 				_, _ = fmt.Fprintln(errOut, "--target requires a value")
 				return toolchecks.MutationOptions{}, false
 			}
 			i++
-			if args[i] == "" || args[i][0] == '-' {
+			if value == "" || value[0] == '-' {
 				_, _ = fmt.Fprintln(errOut, "--target requires a file value")
 				return toolchecks.MutationOptions{}, false
 			}
-			options.Target = args[i]
+			options.Target = value
 		case "--scan":
 			options.Scan = true
 		default:
@@ -215,6 +218,13 @@ func parseGoMutationArgs(args []string, errOut io.Writer) (toolchecks.MutationOp
 		return toolchecks.MutationOptions{}, false
 	}
 	return options, true
+}
+
+func nextArg(args []string, index int) (string, bool) {
+	if index+1 >= len(args) {
+		return "", false
+	}
+	return args[index+1], true
 }
 
 func parseSinglePathOption(currentRoot string, arg string, command string, errOut io.Writer) (string, bool) {

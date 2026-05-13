@@ -1,22 +1,23 @@
 # Slophammer
 
-Multi-language reference implementations of the same repository quality checker
-for agent-assisted software projects.
+Reference implementations and templates for repository quality checks in
+agent-assisted software projects.
 
 `slophammer` checks whether a project has the basic constraints needed to keep
 AI-generated code under control: agent instructions, CI, tests, strict typing,
 linting, coverage, documentation conventions, and project structure that humans
 can still review.
 
-The point of this repository is not to ship one blessed implementation. The
-point is to show the same small tool implemented cleanly in multiple languages
-so agents can copy patterns from real, working code.
+The point of this repository is to show a small tool implemented cleanly, with
+language templates beside it, so agents can copy patterns from real, working
+code.
 
 ## What This Is
 
 - A small product spec for a repo quality checker.
-- Parallel Go, TypeScript, and Python implementations of that same product.
-- A reference for project structure, testing, errors, config, reporting, and CI.
+- A production Go implementation of that product.
+- Go, TypeScript, and Python project templates with strict local checks.
+- A reference for project structure, testing, errors, reporting, and CI.
 - A source of patterns for agents working in different language ecosystems.
 
 ## What This Is Not
@@ -34,6 +35,14 @@ Each implementation should support the same basic commands:
 slophammer check <path>
 slophammer check <path> --format json
 slophammer explain <rule-id>
+```
+
+The Go implementation also includes direct checks for Uncle Bob's Go tools:
+
+```sh
+slophammer go dry [path] [--max-candidates n] [--show-report]
+slophammer go crap [path] [--max-score n]
+slophammer go mutate [path] --target file [--scan]
 ```
 
 The checker should scan a target repository and report findings such as:
@@ -65,7 +74,7 @@ The shared report model should stay simple:
 }
 ```
 
-## Target Repository Layout
+## Repository Layout
 
 ```text
 .
@@ -85,25 +94,47 @@ The shared report model should stay simple:
 │   ├── repos/
 │   └── expected/
 ├── go/
-├── python/
-└── typescript/
+│   ├── cmd/slophammer/
+│   ├── internal/
+│   └── scripts/
+└── templates/
+    ├── go/
+    ├── python/
+    └── typescript/
 ```
 
-The repo currently contains transitional language template directories. New work
-should move toward this top-level language layout so each implementation follows
-the same product contract.
+`go/` is the working Slophammer implementation.
+
+`templates/` contains language project references that agents can copy from.
+Those templates are not full Slophammer implementations yet.
 
 ## Implementation Status
 
 | Language   | Status                                           |
 | ---------- | ------------------------------------------------ |
-| Go         | Repo and Go guardrail rules with shared fixtures |
-| TypeScript | Planned: same contract as the Go implementation  |
-| Python     | Planned: same contract as the Go implementation  |
+| Go         | Implemented checker, CLI, tool checks, fixtures, CI |
+| TypeScript | Template only; checker implementation planned       |
+| Python     | Template only; checker implementation planned       |
+
+The Go implementation currently provides:
+
+- repo rules for `README.md`, `AGENTS.md`, and CI
+- Go rules for module, tests, vet, lint, coverage, and complexity
+- static declarations for `dry4go`, `crap4go`, and `mutate4go`
+- direct commands that run `dry4go`, `crap4go`, and `mutate4go`
+- shared fixtures and expected reports for clean and failing repos
+- CI gates for formatting, tests, vet, lint, coverage, tool checks, and
+  Slophammer's own self-check
+
+The Go implementation now tightens `golangci-lint` with `revive`, including an
+800-line production file limit, and focused production linters for security,
+errors, nil handling, exhaustiveness, HTTP cleanup, context use, conversions,
+whitespace, and `nolint` discipline. See
+[Implementation Model](docs/IMPLEMENTATION_MODEL.md) for the detailed policy.
 
 ## Shared Rule Set
 
-Start with a small common rule set:
+The current shared rule set is:
 
 | Rule ID                  | Meaning                                       |
 | ------------------------ | --------------------------------------------- |
@@ -144,6 +175,9 @@ Each language implementation should demonstrate the same boundaries:
 The implementations should be boring on purpose. Agents should be able to copy
 the shape without copying accidental complexity.
 
+The Go implementation does not have config parsing yet. That belongs in a later
+slice.
+
 ## Guardrail Principles
 
 1. Keep the core boring.
@@ -172,7 +206,7 @@ Start with [Uncle Bob Concepts](docs/UNCLE_BOB_CONCEPTS.md) for the wiki-style
 notes behind the guardrails.
 
 See [Implementation Model](docs/IMPLEMENTATION_MODEL.md) for the shared
-architecture that Go, TypeScript, and Python should follow.
+architecture and the Go production plan.
 
 See [Product](specs/PRODUCT.md), [Report Format](specs/REPORT_FORMAT.md), and
 [Exit Codes](specs/EXIT_CODES.md) for the shared compatibility contract.
