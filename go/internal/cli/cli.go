@@ -34,11 +34,7 @@ func Run(ctx context.Context, args []string, out io.Writer, errOut io.Writer) in
 }
 
 func runCheck(ctx context.Context, args []string, out io.Writer, errOut io.Writer) int {
-	options, ok := parseCheckArgs(args, errOut)
-	if !ok {
-		return app.ExitError
-	}
-	return app.Check(ctx, options, out, errOut)
+	return runParsed(ctx, args, out, errOut, parseCheckArgs, app.Check)
 }
 
 func runExplain(args []string, out io.Writer, errOut io.Writer) int {
@@ -69,27 +65,30 @@ func runGo(ctx context.Context, args []string, out io.Writer, errOut io.Writer) 
 }
 
 func runGoDry(ctx context.Context, args []string, out io.Writer, errOut io.Writer) int {
-	options, ok := parseGoDryArgs(args, errOut)
-	if !ok {
-		return app.ExitError
-	}
-	return app.CheckGoDry(ctx, options, out, errOut)
+	return runParsed(ctx, args, out, errOut, parseGoDryArgs, app.CheckGoDry)
 }
 
 func runGoCRAP(ctx context.Context, args []string, out io.Writer, errOut io.Writer) int {
-	options, ok := parseGoCRAPArgs(args, errOut)
-	if !ok {
-		return app.ExitError
-	}
-	return app.CheckGoCRAP(ctx, options, out, errOut)
+	return runParsed(ctx, args, out, errOut, parseGoCRAPArgs, app.CheckGoCRAP)
 }
 
 func runGoMutation(ctx context.Context, args []string, out io.Writer, errOut io.Writer) int {
-	options, ok := parseGoMutationArgs(args, errOut)
+	return runParsed(ctx, args, out, errOut, parseGoMutationArgs, app.CheckGoMutation)
+}
+
+func runParsed[T any](
+	ctx context.Context,
+	args []string,
+	out io.Writer,
+	errOut io.Writer,
+	parse func([]string, io.Writer) (T, bool),
+	check func(context.Context, T, io.Writer, io.Writer) int,
+) int {
+	options, ok := parse(args, errOut)
 	if !ok {
 		return app.ExitError
 	}
-	return app.CheckGoMutation(ctx, options, out, errOut)
+	return check(ctx, options, out, errOut)
 }
 
 func parseCheckArgs(args []string, errOut io.Writer) (app.CheckOptions, bool) {
