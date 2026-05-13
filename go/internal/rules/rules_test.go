@@ -1794,6 +1794,40 @@ go tool cover -html=coverage.out > coverage.html
 	assertRuleIDs(t, report.Findings, []string{GoCoverageRequiredRuleID})
 }
 
+func TestGoCoverageRuleRequiresCoverProfileOnRunnableGoTest(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		"go/scripts/check-go-coverage.sh": {
+			Path: "go/scripts/check-go-coverage.sh",
+			Content: `echo "go test will add -coverprofile later"
+go tool cover -func=coverage.out
+awk -v total="100" -v minimum="80" 'BEGIN { exit !(total + 0 >= minimum + 0) }'
+`,
+		},
+	})
+
+	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+	assertRuleIDs(t, report.Findings, []string{GoCoverageRequiredRuleID})
+}
+
+func TestGoCoverageRuleAcceptsSpaceSeparatedCoverProfileFlag(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		"go/scripts/check-go-coverage.sh": {
+			Path: "go/scripts/check-go-coverage.sh",
+			Content: `go test -coverprofile coverage.out ./...
+total="$(go tool cover -func=coverage.out | awk '/^total:/ {print substr($3, 1, length($3)-1)}')"
+awk -v total="$total" -v minimum="80" 'BEGIN { exit !(total + 0 >= minimum + 0) }'
+`,
+		},
+	})
+
+	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+	if !report.OK {
+		t.Fatalf("report.OK = false, findings = %#v", report.Findings)
+	}
+}
+
 func TestGoThresholdPatternsAcceptStrictComparisons(t *testing.T) {
 	if !hasCoverageThreshold(`awk -v total="$total" -v minimum="80" 'BEGIN { exit (total + 0 < minimum + 0) }'`) {
 		t.Fatal("coverage threshold pattern rejected strict minimum comparison")

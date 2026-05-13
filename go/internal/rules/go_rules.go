@@ -93,7 +93,7 @@ func hasGoLintConfigAndCommand(snapshot repo.Snapshot) bool {
 func hasGoCoverageGate(snapshot repo.Snapshot) bool {
 	for _, file := range commandFiles(snapshot) {
 		for _, content := range commandSections(file) {
-			if strings.Contains(content, "-coverprofile") &&
+			if contentHasCommandLine(content, lineHasGoTestCoverageProfileCommand) &&
 				contentHasCommandLine(content, lineHasGoToolCoverCommand) &&
 				hasCoverageThreshold(content) {
 				return true
@@ -1274,6 +1274,22 @@ func lineHasGoToolCoverCommand(tokens []string) bool {
 	return false
 }
 
+func lineHasGoTestCoverageProfileCommand(tokens []string) bool {
+	for i := 0; i < len(tokens); i++ {
+		if cleanCommandToken(tokens[i]) != "go" || !isCommandToken(tokens, i) {
+			continue
+		}
+		commandIndex := goCommandIndex(tokens, i+1)
+		if commandIndex == -1 || cleanCommandToken(tokens[commandIndex]) != "test" {
+			continue
+		}
+		if hasCoverageProfileFlag(tokens[commandIndex+1:]) {
+			return true
+		}
+	}
+	return false
+}
+
 func lineHasGoCommandSignal(tokens []string) bool {
 	for i := 0; i < len(tokens); i++ {
 		if cleanCommandToken(tokens[i]) != "go" || !isCommandToken(tokens, i) {
@@ -1286,6 +1302,22 @@ func lineHasGoCommandSignal(tokens []string) bool {
 		switch cleanCommandToken(tokens[commandIndex]) {
 		case "build", "mod", "run", "test", "tool", "vet":
 			return true
+		}
+	}
+	return false
+}
+
+func hasCoverageProfileFlag(tokens []string) bool {
+	for i, token := range tokens {
+		token = cleanCommandToken(token)
+		if isShellSeparator(token) {
+			return false
+		}
+		if strings.HasPrefix(token, "-coverprofile=") && strings.TrimPrefix(token, "-coverprofile=") != "" {
+			return true
+		}
+		if token == "-coverprofile" {
+			return hasFlagValue(tokens, i)
 		}
 	}
 	return false
