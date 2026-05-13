@@ -326,6 +326,36 @@ jobs:
 	}
 }
 
+func TestGoCommandRulesAcceptGoGlobalFlags(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+defaults:
+  run:
+    working-directory: go
+jobs:
+  test:
+    steps:
+      - run: go -C . test ./...
+      - run: go -C=. vet ./...
+      - run: golangci-lint run
+      - run: ./scripts/check-go-coverage.sh
+`,
+		},
+		"go/scripts/check-go-coverage.sh": {
+			Path:    "go/scripts/check-go-coverage.sh",
+			Content: strings.ReplaceAll(cleanCoverageScript, "go test -coverprofile=coverage.out ./...", "go -C . test -coverprofile=coverage.out ./..."),
+		},
+	})
+
+	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+	if !report.OK {
+		t.Fatalf("report.OK = false, findings = %#v", report.Findings)
+	}
+}
+
 func TestGoRulesScopeWorkflowEvidenceToModuleRoots(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
 		"README.md":                                    {Path: "README.md"},
@@ -1396,6 +1426,12 @@ func TestGoToolCommandDetectionRequiresRunnableCommand(t *testing.T) {
 			want:    true,
 		},
 		{
+			name:    "dry package run with go global flag",
+			command: "go -C tools run github.com/unclebob/dry4go/cmd/dry4go@latest --format json .",
+			tool:    gotools.Dry4Go,
+			want:    true,
+		},
+		{
 			name:    "dry package run with flag",
 			command: "go run -mod=readonly github.com/unclebob/dry4go/cmd/dry4go@latest --format json .",
 			tool:    gotools.Dry4Go,
@@ -1473,6 +1509,7 @@ func TestGoMutationRuleRequiresTargetForDirectMutate4Go(t *testing.T) {
 		{name: "binary target", command: "mutate4go main.go --scan", want: true},
 		{name: "flag before target", command: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest --scan internal/rules/rules.go", want: true},
 		{name: "go run flag before package", command: "go run -mod=readonly github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan", want: true},
+		{name: "go global flag before run", command: "go -C tools run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan", want: true},
 		{name: "install then run", command: "go install github.com/unclebob/mutate4go/cmd/mutate4go@latest && mutate4go main.go --scan", want: true},
 		{name: "package after semicolon", command: "cd go; go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan", want: true},
 		{name: "binary after semicolon", command: "cd go; mutate4go main.go --scan", want: true},

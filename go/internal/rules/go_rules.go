@@ -280,17 +280,44 @@ func commandTokens(line string) []string {
 }
 
 func isGoRunPackage(tokens []string, packageIndex int) bool {
-	for goIndex := 0; goIndex+1 < packageIndex; goIndex++ {
-		if cleanCommandToken(tokens[goIndex]) != "go" ||
-			cleanCommandToken(tokens[goIndex+1]) != "run" ||
-			!isCommandToken(tokens, goIndex) {
+	for goIndex := 0; goIndex < packageIndex; goIndex++ {
+		if cleanCommandToken(tokens[goIndex]) != "go" || !isCommandToken(tokens, goIndex) {
 			continue
 		}
-		if goRunPackageIndex(tokens, goIndex+2) == packageIndex {
+		commandIndex := goCommandIndex(tokens, goIndex+1)
+		if commandIndex == -1 || cleanCommandToken(tokens[commandIndex]) != "run" {
+			continue
+		}
+		if goRunPackageIndex(tokens, commandIndex+1) == packageIndex {
 			return true
 		}
 	}
 	return false
+}
+
+func goCommandIndex(tokens []string, start int) int {
+	for i := start; i < len(tokens); i++ {
+		token := cleanCommandToken(tokens[i])
+		if token == "" {
+			continue
+		}
+		if isShellSeparator(token) {
+			return -1
+		}
+		if strings.HasPrefix(token, "-") {
+			if goGlobalFlagNeedsValue(token) && !strings.Contains(token, "=") {
+				i++
+			}
+			continue
+		}
+		return i
+	}
+	return -1
+}
+
+func goGlobalFlagNeedsValue(token string) bool {
+	flag, _, _ := strings.Cut(token, "=")
+	return flag == "-C"
 }
 
 func goRunPackageIndex(tokens []string, start int) int {
@@ -1156,13 +1183,15 @@ func hasRunnableCommandLine(snapshot repo.Snapshot, match func([]string) bool) b
 }
 
 func lineHasGoSubcommandAllPackages(tokens []string, subcommand string) bool {
-	for i := 0; i+1 < len(tokens); i++ {
-		if cleanCommandToken(tokens[i]) != "go" ||
-			cleanCommandToken(tokens[i+1]) != subcommand ||
-			!isCommandToken(tokens, i) {
+	for i := 0; i < len(tokens); i++ {
+		if cleanCommandToken(tokens[i]) != "go" || !isCommandToken(tokens, i) {
 			continue
 		}
-		if hasArgumentBeforeSeparator(tokens[i+2:], "./...") {
+		commandIndex := goCommandIndex(tokens, i+1)
+		if commandIndex == -1 || cleanCommandToken(tokens[commandIndex]) != subcommand {
+			continue
+		}
+		if hasArgumentBeforeSeparator(tokens[commandIndex+1:], "./...") {
 			return true
 		}
 	}
@@ -1183,11 +1212,15 @@ func lineHasGolangCICommand(tokens []string) bool {
 }
 
 func lineHasGoCommandSignal(tokens []string) bool {
-	for i := 0; i+1 < len(tokens); i++ {
+	for i := 0; i < len(tokens); i++ {
 		if cleanCommandToken(tokens[i]) != "go" || !isCommandToken(tokens, i) {
 			continue
 		}
-		switch cleanCommandToken(tokens[i+1]) {
+		commandIndex := goCommandIndex(tokens, i+1)
+		if commandIndex == -1 {
+			continue
+		}
+		switch cleanCommandToken(tokens[commandIndex]) {
 		case "build", "mod", "run", "test", "tool", "vet":
 			return true
 		}
