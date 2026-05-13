@@ -805,6 +805,7 @@ func workflowMentionsGoRoot(content, root string, roots []string) bool {
 	normalized := strings.ReplaceAll(content, "\\", "/")
 	return workflowReferencesRootExact(normalized, root, roots, workingDirectoryPattern(root)) ||
 		workflowReferencesRootExact(normalized, root, roots, cdRootPattern(root)) ||
+		workflowReferencesRootExact(normalized, root, roots, goCFlagRootPattern(root)) ||
 		workflowReferencesRootSubpath(normalized, root, roots)
 }
 
@@ -856,6 +857,10 @@ func workingDirectoryPattern(root string) *regexp.Regexp {
 
 func cdRootPattern(root string) *regexp.Regexp {
 	return regexp.MustCompile(`(?m)(?:^|[[:space:];&|])cd\s+['"]?(?:\./)?` + regexp.QuoteMeta(root) + `['"]?(?:[[:space:];&|]|$)`)
+}
+
+func goCFlagRootPattern(root string) *regexp.Regexp {
+	return regexp.MustCompile(`(?m)(?:^|[[:space:];&|])go\s+-C(?:=|\s+)['"]?(?:\./)?` + regexp.QuoteMeta(root) + `['"]?(?:[[:space:];&|]|$)`)
 }
 
 func rootSubpathPattern(root string) *regexp.Regexp {

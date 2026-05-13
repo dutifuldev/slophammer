@@ -356,6 +356,37 @@ jobs:
 	}
 }
 
+func TestGoRulesScopeGoCFlagCommandsToNestedModule(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"README.md":                       {Path: "README.md"},
+		"AGENTS.md":                       {Path: "AGENTS.md"},
+		"go/go.mod":                       {Path: "go/go.mod"},
+		"go/main.go":                      {Path: "go/main.go"},
+		"go/.golangci.yml":                {Path: "go/.golangci.yml", Content: "linters:\n  enable:\n    - cyclop\n"},
+		"go/scripts/check-go-coverage.sh": {Path: "go/scripts/check-go-coverage.sh", Content: cleanCoverageScript},
+		"go/scripts/check-dry.sh":         {Path: "go/scripts/check-dry.sh", Content: "go run github.com/unclebob/dry4go/cmd/dry4go@latest --format json .\n"},
+		"go/scripts/check-crap.sh":        {Path: "go/scripts/check-crap.sh", Content: cleanCRAPScript},
+		"go/scripts/check-mutation.sh":    {Path: "go/scripts/check-mutation.sh", Content: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan\n"},
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+jobs:
+  test:
+    steps:
+      - run: go -C go test ./...
+      - run: go -C=go vet ./...
+      - run: go -C go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.0 run
+`,
+		},
+	})
+
+	report := Run(context.Background(), snapshot, DefaultRules())
+
+	if !report.OK {
+		t.Fatalf("report.OK = false, findings = %#v", report.Findings)
+	}
+}
+
 func TestGoRulesScopeWorkflowEvidenceToModuleRoots(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
 		"README.md":                                    {Path: "README.md"},
