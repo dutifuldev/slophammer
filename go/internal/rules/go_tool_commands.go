@@ -162,7 +162,7 @@ func lineHasConfigRootArgument(prefix []string, tokens []string, configRootPath 
 		}
 		return pathIsConfigRootArgument(token, configRootPath)
 	}
-	return false
+	return path.Clean(configRootPath) == "."
 }
 
 func priorCDWorkingDirectory(tokens []string) (string, bool) {
