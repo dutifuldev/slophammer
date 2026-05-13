@@ -15,7 +15,6 @@ import (
 const (
 	DefaultMaximumDRYCandidates = 40
 	DefaultMaximumCRAPScore     = 30
-	DefaultMutationTarget       = "internal/rules/rules.go"
 )
 
 type Runner interface {
@@ -121,7 +120,8 @@ func CheckMutation(ctx context.Context, options MutationOptions, out io.Writer, 
 	root := defaultRoot(options.Root)
 	target := options.Target
 	if target == "" {
-		target = DefaultMutationTarget
+		_, _ = fmt.Fprintln(errOut, "--target is required")
+		return 2
 	}
 	args := []string{"run", "github.com/unclebob/mutate4go/cmd/mutate4go@latest", target}
 	if options.Scan {

@@ -128,7 +128,17 @@ func hasCRAP4GoGate(snapshot repo.Snapshot) bool {
 }
 
 func hasMutate4GoCommand(snapshot repo.Snapshot) bool {
-	return hasCommand(snapshot, "mutate4go", "github.com/unclebob/mutate4go/cmd/mutate4go", "slophammer go mutate")
+	if hasCommand(snapshot, "mutate4go", "github.com/unclebob/mutate4go/cmd/mutate4go") {
+		return true
+	}
+	for _, file := range commandFiles(snapshot) {
+		for _, content := range commandSections(file) {
+			if strings.Contains(content, "slophammer go mutate") && strings.Contains(content, "--target") {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func goProjectRoots(snapshot repo.Snapshot) []string {
@@ -350,27 +360,39 @@ type workflowStepScan struct {
 	jobContext    []string
 	current       []string
 	inJobs        bool
+	inSteps       bool
 	seenJob       bool
 }
 
 func (s *workflowStepScan) visitLine(line string) {
-	if s.enterJobs(line) {
-		return
-	}
-	if s.inJobs && isWorkflowJobStart(line) {
-		s.startJob()
+	if s.visitWorkflowStructure(line) {
 		return
 	}
 	if len(s.current) == 0 && isWorkflowWorkingDirectory(line) {
 		s.recordWorkingDirectory(line)
 	}
-	if s.inJobs && isWorkflowStepStart(line) {
+	if s.inJobs && s.inSteps && isWorkflowStepStart(line) {
 		s.startStep(line)
 		return
 	}
 	if len(s.current) > 0 {
 		s.current = append(s.current, line)
 	}
+}
+
+func (s *workflowStepScan) visitWorkflowStructure(line string) bool {
+	if s.enterJobs(line) {
+		return true
+	}
+	if s.inJobs && isWorkflowJobStart(line) {
+		s.startJob()
+		return true
+	}
+	if s.inJobs && isWorkflowStepsStart(line) {
+		s.inSteps = true
+		return true
+	}
+	return false
 }
 
 func (s *workflowStepScan) enterJobs(line string) bool {
@@ -385,6 +407,7 @@ func (s *workflowStepScan) startJob() {
 	s.blocks = appendWorkflowStepBlock(s.blocks, s.current)
 	s.current = nil
 	s.jobContext = append([]string{}, s.globalContext...)
+	s.inSteps = false
 	s.seenJob = true
 }
 
@@ -482,6 +505,10 @@ func rootSubpathPattern(root string) *regexp.Regexp {
 func isWorkflowStepStart(line string) bool {
 	trimmed := strings.TrimSpace(line)
 	return strings.HasPrefix(trimmed, "- ")
+}
+
+func isWorkflowStepsStart(line string) bool {
+	return strings.TrimSpace(line) == "steps:"
 }
 
 func isWorkflowJobStart(line string) bool {

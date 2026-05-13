@@ -592,6 +592,36 @@ jobs:
 	}
 }
 
+func TestGoRulesIgnoreWorkflowListsBeforeSteps(t *testing.T) {
+	blocks := workflowStepBlocks(`name: CI
+jobs:
+  go:
+    strategy:
+      matrix:
+        include:
+          - go: "1.23"
+    defaults:
+      run:
+        working-directory: go
+    steps:
+      - run: go test ./...
+      - run: go vet ./...
+      - run: golangci-lint run
+`)
+
+	if len(blocks) != 3 {
+		t.Fatalf("len(blocks) = %d, want 3: %#v", len(blocks), blocks)
+	}
+	for _, block := range blocks {
+		if !strings.Contains(block, "working-directory: go") {
+			t.Fatalf("block missing working directory context: %q", block)
+		}
+		if strings.Contains(block, `- go: "1.23"`) {
+			t.Fatalf("block included matrix list item before steps: %q", block)
+		}
+	}
+}
+
 func TestGoRulesKeepTopLevelDefaultWorkingDirectoryWithWorkflowSteps(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
 		"README.md":                       {Path: "README.md"},
@@ -1134,6 +1164,24 @@ jobs:
 
 	if !report.OK {
 		t.Fatalf("report.OK = false, findings = %#v", report.Findings)
+	}
+}
+
+func TestGoMutationRuleRequiresTargetForSlophammerCommand(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+jobs:
+  test:
+    steps:
+      - run: go run ./cmd/slophammer go mutate . --scan
+`,
+		},
+	})
+
+	if hasMutate4GoCommand(snapshot) {
+		t.Fatal("hasMutate4GoCommand = true, want false without --target")
 	}
 }
 

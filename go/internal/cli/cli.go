@@ -185,7 +185,7 @@ func parseGoCRAPArgs(args []string, errOut io.Writer) (toolchecks.CRAPOptions, b
 }
 
 func parseGoMutationArgs(args []string, errOut io.Writer) (toolchecks.MutationOptions, bool) {
-	options := toolchecks.MutationOptions{Target: toolchecks.DefaultMutationTarget}
+	options := toolchecks.MutationOptions{}
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch arg {
@@ -231,12 +231,12 @@ func printUsage(out io.Writer) {
 	_, _ = fmt.Fprintln(out, "  slophammer explain <rule-id>")
 	_, _ = fmt.Fprintln(out, "  slophammer go dry [path] [--max-candidates n] [--show-report]")
 	_, _ = fmt.Fprintln(out, "  slophammer go crap [path] [--max-score n]")
-	_, _ = fmt.Fprintln(out, "  slophammer go mutate [path] [--target file] [--scan]")
+	_, _ = fmt.Fprintln(out, "  slophammer go mutate [path] --target file [--scan]")
 }
 
 func printGoUsage(out io.Writer) {
 	_, _ = fmt.Fprintln(out, "usage:")
 	_, _ = fmt.Fprintln(out, "  slophammer go dry [path] [--max-candidates n] [--show-report]")
 	_, _ = fmt.Fprintln(out, "  slophammer go crap [path] [--max-score n]")
-	_, _ = fmt.Fprintln(out, "  slophammer go mutate [path] [--target file] [--scan]")
+	_, _ = fmt.Fprintln(out, "  slophammer go mutate [path] --target file [--scan]")
 }

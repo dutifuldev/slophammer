@@ -129,11 +129,25 @@ func TestCheckMutationRunsMutate4GoScan(t *testing.T) {
 	}
 }
 
+func TestCheckMutationRequiresTarget(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckMutation(context.Background(), MutationOptions{}, &out, &errOut, &fakeRunner{})
+
+	if code != 2 {
+		t.Fatalf("code = %d, want 2", code)
+	}
+	if !strings.Contains(errOut.String(), "--target is required") {
+		t.Fatalf("stderr = %q", errOut.String())
+	}
+}
+
 func TestToolFailureReturnsInfrastructureError(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 
-	code := CheckMutation(context.Background(), MutationOptions{}, &out, &errOut, &fakeRunner{err: errors.New("boom")})
+	code := CheckMutation(context.Background(), MutationOptions{Target: "main.go"}, &out, &errOut, &fakeRunner{err: errors.New("boom")})
 
 	if code != 2 {
 		t.Fatalf("code = %d, want 2", code)
