@@ -779,7 +779,31 @@ func appendWorkflowStepBlock(blocks []string, lines []string) []string {
 	if len(lines) == 0 {
 		return blocks
 	}
+	if !workflowBlockHasRun(lines) {
+		lines = withoutWorkflowRunDefaults(lines)
+	}
+	if len(lines) == 0 {
+		return blocks
+	}
 	return append(blocks, strings.Join(lines, "\n"))
+}
+
+func workflowBlockHasRun(lines []string) bool {
+	for _, line := range lines {
+		if _, ok := workflowRunLine(strings.TrimSpace(line)); ok {
+			return true
+		}
+	}
+	return false
+}
+
+func withoutWorkflowRunDefaults(lines []string) []string {
+	for i, line := range lines {
+		if isWorkflowStepStart(line) {
+			return lines[i:]
+		}
+	}
+	return lines
 }
 
 func workflowMentionsOtherGoRoot(content, root string, roots []string) bool {
@@ -1274,9 +1298,9 @@ func finding(definition Definition) Finding {
 var (
 	shellNamePattern               = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 	coverageThresholdPattern       = regexp.MustCompile(`(?im)\b(total|cover|coverage|minimum|threshold|required)\b[^\n]*(>=|<=|-ge\b|-le\b|-gt\b|-lt\b)|(?:>=|<=|-ge\b|-le\b|-gt\b|-lt\b)[^\n]*\b(total|cover|coverage|minimum|threshold|required)\b`)
-	crapThresholdPattern           = regexp.MustCompile(`(?im)\b(crap|maximum|minimum|threshold|required|score)\b[^\n]*(>=|<=|-ge\b|-le\b|-gt\b|-lt\b)|(?:>=|<=|-ge\b|-le\b|-gt\b|-lt\b)[^\n]*\b(crap|maximum|minimum|threshold|required|score)\b`)
+	crapThresholdPattern           = regexp.MustCompile(`(?im)\b(crap|maximum|max|score)\b[^\n]*(>=|<=|-ge\b|-le\b|-gt\b|-lt\b)|(?:>=|<=|-ge\b|-le\b|-gt\b|-lt\b)[^\n]*\b(crap|maximum|max|score)\b`)
 	strictCoverageThresholdPattern = regexp.MustCompile(`(?im)\b(total|minimum|threshold|required)\b[^\n]*(>|<)[^\n]*(\b(total|minimum|threshold|required)\b|[0-9]+(?:\.[0-9]+)?)|([0-9]+(?:\.[0-9]+)?|\b(total|minimum|threshold|required)\b)[^\n]*(>|<)[^\n]*\b(total|minimum|threshold|required)\b`)
-	strictCRAPThresholdPattern     = regexp.MustCompile(`(?im)\b(score|maximum|minimum|threshold|required)\b[^\n]*(>|<)[^\n]*(\b(score|maximum|minimum|threshold|required)\b|[0-9]+(?:\.[0-9]+)?)|([0-9]+(?:\.[0-9]+)?|\b(score|maximum|minimum|threshold|required)\b)[^\n]*(>|<)[^\n]*\b(score|maximum|minimum|threshold|required)\b`)
+	strictCRAPThresholdPattern     = regexp.MustCompile(`(?im)\b(crap|score|maximum|max)\b[^\n]*(>|<)[^\n]*(\b(score|maximum|max)\b|[0-9]+(?:\.[0-9]+)?)`)
 )
 
 const workflowStepBoundary = "\nSLOPHAMMER_WORKFLOW_STEP_BOUNDARY\n"

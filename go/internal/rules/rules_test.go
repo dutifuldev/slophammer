@@ -787,6 +787,29 @@ jobs:
 	}
 }
 
+func TestGoRulesDoNotApplyRunDefaultsToActionSteps(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+jobs:
+  test:
+    defaults:
+      run:
+        working-directory: go
+    steps:
+      - run: go test ./...
+      - run: go vet ./...
+      - uses: golangci/golangci-lint-action@v8
+`,
+		},
+	})
+
+	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+	assertRuleIDs(t, report.Findings, []string{GoLintRequiredRuleID})
+}
+
 func TestGoRulesIgnoreWorkflowListsBeforeJobs(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
 		"README.md":                       {Path: "README.md"},
@@ -1238,37 +1261,23 @@ func TestGoRulesDetectRootGoSourceWithNestedModule(t *testing.T) {
 	})
 }
 
-func TestGoCRAPRuleRequiresThreshold(t *testing.T) {
-	files := cleanGoGuardrailFiles(map[string]repo.File{
-		"go/scripts/check-crap.sh": {
-			Path:    "go/scripts/check-crap.sh",
-			Content: "go run github.com/unclebob/crap4go/cmd/crap4go@latest\n",
+func TestGoCRAPRuleRequiresMetricThreshold(t *testing.T) {
+	tests := []struct {
+		name      string
+		workflow  string
+		crapCheck string
+	}{
+		{
+			name:      "missing threshold",
+			crapCheck: "go run github.com/unclebob/crap4go/cmd/crap4go@latest\n",
 		},
-	})
-
-	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
-
-	assertRuleIDs(t, report.Findings, []string{GoCRAPRequiredRuleID})
-}
-
-func TestGoCRAPRuleRejectsReportRedirectionWithoutThreshold(t *testing.T) {
-	files := cleanGoGuardrailFiles(map[string]repo.File{
-		"go/scripts/check-crap.sh": {
-			Path:    "go/scripts/check-crap.sh",
-			Content: "go run github.com/unclebob/crap4go/cmd/crap4go@latest > crap-report.txt\n",
+		{
+			name:      "report redirection",
+			crapCheck: "go run github.com/unclebob/crap4go/cmd/crap4go@latest > crap-report.txt\n",
 		},
-	})
-
-	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
-
-	assertRuleIDs(t, report.Findings, []string{GoCRAPRequiredRuleID})
-}
-
-func TestGoCRAPRuleRequiresThresholdInSameCheck(t *testing.T) {
-	files := cleanGoGuardrailFiles(map[string]repo.File{
-		".github/workflows/ci.yml": {
-			Path: ".github/workflows/ci.yml",
-			Content: `name: CI
+		{
+			name: "threshold in different workflow step",
+			workflow: `name: CI
 defaults:
   run:
     working-directory: go
@@ -1282,16 +1291,33 @@ jobs:
       - run: crap4go .
       - run: echo "minimum coverage >= 80"
 `,
+			crapCheck: "go run github.com/unclebob/crap4go/cmd/crap4go@latest\n",
 		},
-		"go/scripts/check-crap.sh": {
-			Path:    "go/scripts/check-crap.sh",
-			Content: "go run github.com/unclebob/crap4go/cmd/crap4go@latest\n",
+		{
+			name: "unrelated coverage threshold",
+			crapCheck: `go test -coverprofile=coverage.out ./...
+go tool cover -func=coverage.out
+minimum_coverage="80"
+awk -v total="90" -v minimum="$minimum_coverage" 'BEGIN { exit !(total + 0 >= minimum + 0) }'
+go run github.com/unclebob/crap4go/cmd/crap4go@latest
+`,
 		},
-	})
+	}
 
-	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			overrides := map[string]repo.File{
+				"go/scripts/check-crap.sh": {Path: "go/scripts/check-crap.sh", Content: tt.crapCheck},
+			}
+			if tt.workflow != "" {
+				overrides[".github/workflows/ci.yml"] = repo.File{Path: ".github/workflows/ci.yml", Content: tt.workflow}
+			}
+			files := cleanGoGuardrailFiles(overrides)
+			report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
 
-	assertRuleIDs(t, report.Findings, []string{GoCRAPRequiredRuleID})
+			assertRuleIDs(t, report.Findings, []string{GoCRAPRequiredRuleID})
+		})
+	}
 }
 
 func TestGoToolRulesAcceptSlophammerGoCommands(t *testing.T) {
