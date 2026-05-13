@@ -128,6 +128,22 @@ func TestParseGoToolArgsRejectInvalidNumbers(t *testing.T) {
 			},
 			want: "--max-score must be a non-negative number",
 		},
+		{
+			name: "crap NaN",
+			run: func(errOut io.Writer) bool {
+				_, ok := parseGoCRAPArgs([]string{"--max-score", "NaN"}, errOut)
+				return ok
+			},
+			want: "--max-score must be a non-negative number",
+		},
+		{
+			name: "crap infinity",
+			run: func(errOut io.Writer) bool {
+				_, ok := parseGoCRAPArgs([]string{"--max-score", "+Inf"}, errOut)
+				return ok
+			},
+			want: "--max-score must be a non-negative number",
+		},
 	}
 
 	for _, tt := range tests {

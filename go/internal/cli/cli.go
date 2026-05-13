@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"strconv"
 
 	"github.com/dutifuldev/slophammer/go/internal/app"
@@ -167,7 +168,7 @@ func parseGoCRAPArgs(args []string, errOut io.Writer) (toolchecks.CRAPOptions, b
 			}
 			i++
 			value, err := strconv.ParseFloat(args[i], 64)
-			if err != nil || value < 0 {
+			if err != nil || value < 0 || math.IsNaN(value) || math.IsInf(value, 0) {
 				_, _ = fmt.Fprintln(errOut, "--max-score must be a non-negative number")
 				return toolchecks.CRAPOptions{}, false
 			}

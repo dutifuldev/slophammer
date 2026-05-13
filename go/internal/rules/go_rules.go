@@ -74,11 +74,15 @@ func hasGoModule(snapshot repo.Snapshot) bool {
 }
 
 func hasGoTestCommand(snapshot repo.Snapshot) bool {
-	return hasCommandPattern(snapshot, goTestAllPackagesPattern)
+	return hasRunnableCommandLine(snapshot, func(tokens []string) bool {
+		return lineHasGoSubcommandAllPackages(tokens, "test")
+	})
 }
 
 func hasGoVetCommand(snapshot repo.Snapshot) bool {
-	return hasCommandPattern(snapshot, goVetAllPackagesPattern)
+	return hasRunnableCommandLine(snapshot, func(tokens []string) bool {
+		return lineHasGoSubcommandAllPackages(tokens, "vet")
+	})
 }
 
 func hasGoLintConfigAndCommand(snapshot repo.Snapshot) bool {
@@ -875,7 +879,7 @@ func hasGolangCICommand(snapshot repo.Snapshot) bool {
 	if hasCommand(snapshot, "golangci/golangci-lint-action") {
 		return true
 	}
-	return hasCommandPattern(snapshot, golangCILintRunPattern)
+	return hasRunnableCommandLine(snapshot, lineHasGolangCICommand)
 }
 
 func golangCIConfigFiles(snapshot repo.Snapshot) []repo.File {
@@ -1130,6 +1134,57 @@ func hasCommandPattern(snapshot repo.Snapshot, pattern *regexp.Regexp) bool {
 	return false
 }
 
+func hasRunnableCommandLine(snapshot repo.Snapshot, match func([]string) bool) bool {
+	for _, file := range commandFiles(snapshot) {
+		for _, content := range commandSections(file) {
+			if contentHasCommandLine(content, match) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func lineHasGoSubcommandAllPackages(tokens []string, subcommand string) bool {
+	for i := 0; i+1 < len(tokens); i++ {
+		if cleanCommandToken(tokens[i]) != "go" ||
+			cleanCommandToken(tokens[i+1]) != subcommand ||
+			!isCommandToken(tokens, i) {
+			continue
+		}
+		if hasArgumentBeforeSeparator(tokens[i+2:], "./...") {
+			return true
+		}
+	}
+	return false
+}
+
+func lineHasGolangCICommand(tokens []string) bool {
+	for i, token := range tokens {
+		token = cleanCommandToken(token)
+		if isToolBinaryToken(token, "golangci-lint") && isCommandToken(tokens, i) {
+			return hasArgumentBeforeSeparator(tokens[i+1:], "run")
+		}
+		if isGoToolPackageToken(token, "github.com/golangci/golangci-lint") && isGoRunPackage(tokens, i) {
+			return hasArgumentBeforeSeparator(tokens[i+1:], "run")
+		}
+	}
+	return false
+}
+
+func hasArgumentBeforeSeparator(tokens []string, argument string) bool {
+	for _, token := range tokens {
+		token = cleanCommandToken(token)
+		if isShellSeparator(token) {
+			return false
+		}
+		if token == argument {
+			return true
+		}
+	}
+	return false
+}
+
 func finding(definition Definition) Finding {
 	return Finding{
 		RuleID:   definition.ID,
@@ -1141,9 +1196,6 @@ func finding(definition Definition) Finding {
 
 var (
 	goCommandPattern               = regexp.MustCompile(`(?m)\bgo\s+(test|vet|build|run|tool|mod)\b`)
-	goTestAllPackagesPattern       = regexp.MustCompile(`(?m)\bgo\s+test\b[^\n#;&|]*\./\.\.`)
-	goVetAllPackagesPattern        = regexp.MustCompile(`(?m)\bgo\s+vet\b[^\n#;&|]*\./\.\.`)
-	golangCILintRunPattern         = regexp.MustCompile(`(?m)(?:^|[[:space:];&|])golangci-lint\s+run(?:[[:space:];&|]|$)|\bgo\s+run\b[^\n#;&|]*github\.com/golangci/golangci-lint(?:/v[0-9]+)?/cmd/golangci-lint[^\n#;&|]*\srun(?:[[:space:];&|]|$)`)
 	coverageThresholdPattern       = regexp.MustCompile(`(?im)\b(total|cover|coverage|minimum|threshold|required)\b[^\n]*(>=|<=|-ge\b|-le\b|-gt\b|-lt\b)|(?:>=|<=|-ge\b|-le\b|-gt\b|-lt\b)[^\n]*\b(total|cover|coverage|minimum|threshold|required)\b`)
 	crapThresholdPattern           = regexp.MustCompile(`(?im)\b(crap|maximum|minimum|threshold|required|score)\b[^\n]*(>=|<=|-ge\b|-le\b|-gt\b|-lt\b)|(?:>=|<=|-ge\b|-le\b|-gt\b|-lt\b)[^\n]*\b(crap|maximum|minimum|threshold|required|score)\b`)
 	strictCoverageThresholdPattern = regexp.MustCompile(`(?im)\b(total|minimum|threshold|required)\b[^\n]*(>|<)[^\n]*(\b(total|minimum|threshold|required)\b|[0-9]+(?:\.[0-9]+)?)|([0-9]+(?:\.[0-9]+)?|\b(total|minimum|threshold|required)\b)[^\n]*(>|<)[^\n]*\b(total|minimum|threshold|required)\b`)
