@@ -92,15 +92,49 @@ func hasGoLintConfigAndCommand(snapshot repo.Snapshot) bool {
 
 func hasGoCoverageGate(snapshot repo.Snapshot) bool {
 	for _, file := range commandFiles(snapshot) {
-		for _, content := range commandSections(file) {
-			if contentHasCommandLine(content, lineHasGoTestCoverageProfileCommand) &&
-				contentHasCommandLine(content, lineHasGoToolCoverCommand) &&
-				hasCoverageThreshold(content) {
-				return true
-			}
+		if fileHasGoCoverageGate(file) {
+			return true
 		}
 	}
 	return false
+}
+
+func fileHasGoCoverageGate(file repo.File) bool {
+	combined := goCoverageEvidence{}
+	for _, content := range commandSections(file) {
+		section := coverageEvidence(content)
+		if section.complete() {
+			return true
+		}
+		combined = combined.merge(section)
+	}
+	return isWorkflowFilePath(file.Path) && combined.complete()
+}
+
+type goCoverageEvidence struct {
+	hasProfile   bool
+	hasCoverTool bool
+	hasThreshold bool
+}
+
+func coverageEvidence(content string) goCoverageEvidence {
+	return goCoverageEvidence{
+		hasProfile:   contentHasCommandLine(content, lineHasGoTestCoverageProfileCommand),
+		hasCoverTool: contentHasCommandLine(content, lineHasGoToolCoverCommand),
+		hasThreshold: hasCoverageGateThreshold(content),
+	}
+}
+
+func (e goCoverageEvidence) merge(other goCoverageEvidence) goCoverageEvidence {
+	return goCoverageEvidence{
+		hasProfile:   e.hasProfile || other.hasProfile,
+		hasCoverTool: e.hasCoverTool || other.hasCoverTool,
+		hasThreshold: e.hasThreshold || other.hasThreshold,
+	}
+}
+
+func (e goCoverageEvidence) complete() bool {
+	return e.hasProfile && e.hasCoverTool && e.hasThreshold
 }
 
 func hasGoComplexityLint(snapshot repo.Snapshot) bool {
@@ -961,6 +995,16 @@ func golangCIConfigFiles(snapshot repo.Snapshot) []repo.File {
 
 func hasCoverageThreshold(content string) bool {
 	return coverageThresholdPattern.MatchString(content) || strictCoverageThresholdPattern.MatchString(content)
+}
+
+func hasCoverageGateThreshold(content string) bool {
+	if !hasCoverageThreshold(content) {
+		return false
+	}
+	lower := strings.ToLower(content)
+	return strings.Contains(lower, "cover") ||
+		strings.Contains(lower, "coverage") ||
+		strings.Contains(lower, "total")
 }
 
 func hasCRAPThreshold(content string) bool {

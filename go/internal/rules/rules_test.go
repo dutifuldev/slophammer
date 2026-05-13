@@ -1794,6 +1794,38 @@ go tool cover -html=coverage.out > coverage.html
 	assertRuleIDs(t, report.Findings, []string{GoCoverageRequiredRuleID})
 }
 
+func TestGoCoverageRuleAcceptsWorkflowGateSplitAcrossSteps(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+defaults:
+  run:
+    working-directory: go
+jobs:
+  test:
+    steps:
+      - run: go test ./...
+      - run: go vet ./...
+      - run: golangci-lint run
+      - run: go test -coverprofile=coverage.out ./...
+      - run: total="$(go tool cover -func=coverage.out | awk '/^total:/ {print substr($3, 1, length($3)-1)}')"
+      - run: awk -v total="$total" -v minimum_coverage="80" 'BEGIN { exit !(total + 0 >= minimum_coverage + 0) }'
+`,
+		},
+		"go/scripts/check-go-coverage.sh": {
+			Path:    "go/scripts/check-go-coverage.sh",
+			Content: "echo coverage lives in the workflow\n",
+		},
+	})
+
+	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+	if !report.OK {
+		t.Fatalf("report.OK = false, findings = %#v", report.Findings)
+	}
+}
+
 func TestGoCoverageRuleRequiresCoverProfileOnRunnableGoTest(t *testing.T) {
 	files := cleanGoGuardrailFiles(map[string]repo.File{
 		"go/scripts/check-go-coverage.sh": {
