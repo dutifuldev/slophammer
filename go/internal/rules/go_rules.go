@@ -185,7 +185,7 @@ func lineHasDirectMutate4GoCommand(tokens []string) bool {
 			}
 			continue
 		}
-		if isToolBinaryToken(token, "mutate4go") && isCommandToken(tokens, i) {
+		if isToolBinaryToken(token, gotools.Mutate4Go.Binary) && isCommandToken(tokens, i) {
 			return hasMutationTargetAfter(tokens, i)
 		}
 	}
@@ -1118,14 +1118,36 @@ func (s *workflowRunScan) visitLine(line string) {
 
 func (s *workflowRunScan) startRun(runLine string) {
 	s.flushFolded()
-	if runLine == "|" || runLine == ">" {
+	folded, block := workflowRunBlockScalar(runLine)
+	if block {
 		s.inRunBlock = true
-		s.inFoldedBlock = runLine == ">"
+		s.inFoldedBlock = folded
 		return
 	}
 	s.kept = append(s.kept, runLine)
 	s.inRunBlock = false
 	s.inFoldedBlock = false
+}
+
+func workflowRunBlockScalar(value string) (folded bool, ok bool) {
+	if len(value) == 0 {
+		return false, false
+	}
+	switch value[0] {
+	case '|':
+		folded = false
+	case '>':
+		folded = true
+	default:
+		return false, false
+	}
+	for _, indicator := range value[1:] {
+		if indicator == '-' || indicator == '+' || (indicator >= '1' && indicator <= '9') {
+			continue
+		}
+		return false, false
+	}
+	return folded, true
 }
 
 func (s *workflowRunScan) recordRunLine(line string) {

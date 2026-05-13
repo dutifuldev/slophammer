@@ -1,5 +1,7 @@
 package gotools
 
+import "strings"
+
 type Tool struct {
 	Binary  string
 	Package string
@@ -12,6 +14,10 @@ func (tool Tool) PackageVersion(version string) string {
 func (tool Tool) GoRunArgs(version string, args ...string) []string {
 	runArgs := []string{"run", tool.PackageVersion(version)}
 	return append(runArgs, args...)
+}
+
+func (tool Tool) GoRunLine(version string, args ...string) string {
+	return "go " + strings.Join(tool.GoRunArgs(version, args...), " ")
 }
 
 const Latest = "latest"

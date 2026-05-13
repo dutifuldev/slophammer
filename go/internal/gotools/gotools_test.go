@@ -12,3 +12,11 @@ func TestGoRunArgsUsesVersionedPackage(t *testing.T) {
 		t.Fatalf("GoRunArgs() = %#v, want %#v", got, want)
 	}
 }
+
+func TestGoRunLineUsesVersionedPackage(t *testing.T) {
+	got := Mutate4Go.GoRunLine(Latest, "main.go", "--scan")
+	want := "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan"
+	if got != want {
+		t.Fatalf("GoRunLine() = %q, want %q", got, want)
+	}
+}
