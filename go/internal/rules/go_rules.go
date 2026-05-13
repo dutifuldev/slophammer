@@ -128,7 +128,7 @@ func hasCRAP4GoGate(snapshot repo.Snapshot) bool {
 }
 
 func hasMutate4GoCommand(snapshot repo.Snapshot) bool {
-	if hasCommand(snapshot, "mutate4go", "github.com/unclebob/mutate4go/cmd/mutate4go") {
+	if hasDirectMutate4GoCommand(snapshot) {
 		return true
 	}
 	for _, file := range commandFiles(snapshot) {
@@ -139,6 +139,67 @@ func hasMutate4GoCommand(snapshot repo.Snapshot) bool {
 		}
 	}
 	return false
+}
+
+func hasDirectMutate4GoCommand(snapshot repo.Snapshot) bool {
+	for _, file := range commandFiles(snapshot) {
+		for _, content := range commandSections(file) {
+			if contentHasDirectMutate4GoCommand(content) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func contentHasDirectMutate4GoCommand(content string) bool {
+	tokens := strings.Fields(content)
+	for i, token := range tokens {
+		token = cleanCommandToken(token)
+		if isMutate4GoPackageToken(token) && isGoRunPackage(tokens, i) {
+			return hasMutationTargetAfter(tokens, i)
+		}
+		if isMutate4GoBinaryToken(token) {
+			return hasMutationTargetAfter(tokens, i)
+		}
+	}
+	return false
+}
+
+func isGoRunPackage(tokens []string, packageIndex int) bool {
+	if packageIndex < 2 {
+		return false
+	}
+	return cleanCommandToken(tokens[packageIndex-2]) == "go" && cleanCommandToken(tokens[packageIndex-1]) == "run"
+}
+
+func hasMutationTargetAfter(tokens []string, commandIndex int) bool {
+	if commandIndex+1 >= len(tokens) {
+		return false
+	}
+	target := cleanCommandToken(tokens[commandIndex+1])
+	return target != "" && !strings.HasPrefix(target, "-") && !isShellSeparator(target)
+}
+
+func isMutate4GoPackageToken(token string) bool {
+	return strings.Contains(token, "github.com/unclebob/mutate4go/cmd/mutate4go")
+}
+
+func isMutate4GoBinaryToken(token string) bool {
+	return path.Base(token) == "mutate4go"
+}
+
+func cleanCommandToken(token string) string {
+	return strings.Trim(token, " \t\r\n'\";")
+}
+
+func isShellSeparator(token string) bool {
+	switch token {
+	case "|", "||", "&", "&&":
+		return true
+	default:
+		return false
+	}
 }
 
 func goProjectRoots(snapshot repo.Snapshot) []string {
