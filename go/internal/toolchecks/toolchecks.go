@@ -19,19 +19,25 @@ const (
 )
 
 type Runner interface {
-	Run(ctx context.Context, dir string, name string, args ...string) ([]byte, error)
+	Run(ctx context.Context, dir string, name string, args ...string) (CommandResult, error)
 }
 
 type ExecRunner struct{}
 
-func (ExecRunner) Run(ctx context.Context, dir string, name string, args ...string) ([]byte, error) {
+type CommandResult struct {
+	Stdout []byte
+	Stderr []byte
+}
+
+func (ExecRunner) Run(ctx context.Context, dir string, name string, args ...string) (CommandResult, error) {
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Dir = dir
-	var combined bytes.Buffer
-	cmd.Stdout = &combined
-	cmd.Stderr = &combined
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 	err := cmd.Run()
-	return combined.Bytes(), err
+	return CommandResult{Stdout: stdout.Bytes(), Stderr: stderr.Bytes()}, err
 }
 
 type DryOptions struct {
@@ -60,16 +66,17 @@ func CheckDry(ctx context.Context, options DryOptions, out io.Writer, errOut io.
 		maximumCandidates = DefaultMaximumDRYCandidates
 	}
 
-	output, err := runner.Run(ctx, root, "go", "run", "github.com/unclebob/dry4go/cmd/dry4go@latest", "--format", "json", ".")
+	result, err := runner.Run(ctx, root, "go", "run", "github.com/unclebob/dry4go/cmd/dry4go@latest", "--format", "json", ".")
 	if options.ShowReport || err != nil {
-		writeBytes(out, output)
+		writeBytes(out, result.Stdout)
 	}
+	writeBytes(errOut, result.Stderr)
 	if err != nil {
 		_, _ = fmt.Fprintf(errOut, "dry4go failed: %v\n", err)
 		return 2
 	}
 
-	candidateCount, err := CountDRYCandidates(output)
+	candidateCount, err := CountDRYCandidates(result.Stdout)
 	if err != nil {
 		_, _ = fmt.Fprintf(errOut, "dry4go report parse failed: %v\n", err)
 		return 2
@@ -88,14 +95,15 @@ func CheckCRAP(ctx context.Context, options CRAPOptions, out io.Writer, errOut i
 		maximumScore = DefaultMaximumCRAPScore
 	}
 
-	output, err := runner.Run(ctx, root, "go", "run", "github.com/unclebob/crap4go/cmd/crap4go@latest")
-	writeBytes(out, output)
+	result, err := runner.Run(ctx, root, "go", "run", "github.com/unclebob/crap4go/cmd/crap4go@latest")
+	writeBytes(out, result.Stdout)
+	writeBytes(errOut, result.Stderr)
 	if err != nil {
 		_, _ = fmt.Fprintf(errOut, "crap4go failed: %v\n", err)
 		return 2
 	}
 
-	violations, err := CRAPViolations(output, maximumScore)
+	violations, err := CRAPViolations(result.Stdout, maximumScore)
 	if err != nil {
 		_, _ = fmt.Fprintf(errOut, "crap4go report parse failed: %v\n", err)
 		return 2
@@ -120,8 +128,9 @@ func CheckMutation(ctx context.Context, options MutationOptions, out io.Writer, 
 		args = append(args, "--scan")
 	}
 
-	output, err := runner.Run(ctx, root, "go", args...)
-	writeBytes(out, output)
+	result, err := runner.Run(ctx, root, "go", args...)
+	writeBytes(out, result.Stdout)
+	writeBytes(errOut, result.Stderr)
 	if err != nil {
 		_, _ = fmt.Fprintf(errOut, "mutate4go failed: %v\n", err)
 		return 2

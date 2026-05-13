@@ -44,6 +44,26 @@ func TestCheckDryHonorsExplicitZeroBudget(t *testing.T) {
 	}
 }
 
+func TestCheckDryParsesStdoutWhenGoRunWritesToStderr(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckDry(context.Background(), DryOptions{MaximumCandidates: 1, MaximumSet: true}, &out, &errOut, &fakeRunner{
+		output: []byte(`{"candidates":[]}`),
+		stderr: []byte("go: downloading github.com/unclebob/dry4go v0.0.0\n"),
+	})
+
+	if code != 0 {
+		t.Fatalf("code = %d, want 0", code)
+	}
+	if !strings.Contains(out.String(), "DRY candidates: 0; maximum: 1") {
+		t.Fatalf("stdout = %q", out.String())
+	}
+	if !strings.Contains(errOut.String(), "go: downloading") {
+		t.Fatalf("stderr = %q", errOut.String())
+	}
+}
+
 func TestCheckDryRejectsInvalidReport(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer
@@ -126,12 +146,13 @@ func TestToolFailureReturnsInfrastructureError(t *testing.T) {
 type fakeRunner struct {
 	call   fakeCall
 	output []byte
+	stderr []byte
 	err    error
 }
 
-func (runner *fakeRunner) Run(_ context.Context, dir string, name string, args ...string) ([]byte, error) {
+func (runner *fakeRunner) Run(_ context.Context, dir string, name string, args ...string) (CommandResult, error) {
 	runner.call = fakeCall{dir: dir, name: name, args: args}
-	return runner.output, runner.err
+	return CommandResult{Stdout: runner.output, Stderr: runner.stderr}, runner.err
 }
 
 type fakeCall struct {
