@@ -86,6 +86,39 @@ func TestDryOptionsForModuleSkipsNestedModuleFiles(t *testing.T) {
 	}
 }
 
+func TestDryOptionsForModuleKeepsDotIncludePath(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"go.mod":      {Path: "go.mod"},
+		"main.go":     {Path: "main.go"},
+		"go/go.mod":   {Path: "go/go.mod"},
+		"go/main.go":  {Path: "go/main.go"},
+		"go/other.go": {Path: "go/other.go"},
+	})
+
+	got, ok := dryOptionsForModule(toolchecks.DryOptions{
+		Root:  ".",
+		Paths: []string{"."},
+	}, snapshot, ".")
+
+	if !ok {
+		t.Fatal("ok = false, want true")
+	}
+	if !reflect.DeepEqual(got.Paths, []string{"main.go"}) {
+		t.Fatalf("paths = %#v, want whole module", got.Paths)
+	}
+
+	nested, ok := dryOptionsForModule(toolchecks.DryOptions{
+		Root:  ".",
+		Paths: []string{"."},
+	}, snapshot, "go")
+	if !ok {
+		t.Fatal("nested ok = false, want true")
+	}
+	if !reflect.DeepEqual(nested.Paths, []string{"main.go", "other.go"}) {
+		t.Fatalf("nested paths = %#v, want whole nested module", nested.Paths)
+	}
+}
+
 func TestMutationOptionsForModulesTrimsConfiguredTargets(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
 		"go/go.mod": {Path: "go/go.mod"},
