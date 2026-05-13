@@ -556,8 +556,11 @@ func scopedWorkflowStepBlock(content, root string, roots []string) (string, bool
 	}
 	lines := strings.Split(content, "\n")
 	kept := make([]string, 0, len(lines))
+	inRootBlock := false
 	for _, line := range lines {
-		if workflowMentionsGoRoot(line, root, roots) {
+		keep, active := scopedWorkflowStepLine(line, root, roots, inRootBlock)
+		inRootBlock = active
+		if keep {
 			kept = append(kept, line)
 			continue
 		}
@@ -568,6 +571,16 @@ func scopedWorkflowStepBlock(content, root string, roots []string) (string, bool
 	}
 	scoped := strings.Join(kept, "\n")
 	return scoped, strings.TrimSpace(scoped) != ""
+}
+
+func scopedWorkflowStepLine(line string, root string, roots []string, inRootBlock bool) (bool, bool) {
+	if workflowMentionsOtherGoRoot(line, root, roots) || (inRootBlock && lineHasCDCommand(line)) {
+		return false, false
+	}
+	if workflowMentionsGoRoot(line, root, roots) {
+		return true, true
+	}
+	return inRootBlock, inRootBlock
 }
 
 func workflowStepBlocks(content string) []string {
@@ -664,6 +677,16 @@ func appendWorkflowStepBlock(blocks []string, lines []string) []string {
 func workflowMentionsOtherGoRoot(content, root string, roots []string) bool {
 	for _, otherRoot := range roots {
 		if otherRoot != "" && otherRoot != root && workflowMentionsGoRoot(content, otherRoot, roots) {
+			return true
+		}
+	}
+	return false
+}
+
+func lineHasCDCommand(line string) bool {
+	tokens := strings.Fields(line)
+	for i, token := range tokens {
+		if cleanCommandToken(token) == "cd" && isCommandToken(tokens, i) {
 			return true
 		}
 	}
@@ -934,26 +957,65 @@ func workflowCommandSections(content string) []string {
 }
 
 func workflowRunContent(block string) string {
-	lines := strings.Split(block, "\n")
-	kept := make([]string, 0, len(lines))
-	inRunBlock := false
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		runLine, ok := workflowRunLine(trimmed)
-		if ok {
-			if runLine == "|" || runLine == ">" {
-				inRunBlock = true
-				continue
-			}
-			kept = append(kept, runLine)
-			inRunBlock = false
-			continue
-		}
-		if inRunBlock {
-			kept = append(kept, trimmed)
-		}
+	scan := workflowRunScan{}
+	for _, line := range strings.Split(block, "\n") {
+		scan.visitLine(line)
 	}
-	return strings.Join(kept, "\n")
+	return scan.content()
+}
+
+type workflowRunScan struct {
+	kept          []string
+	foldedLines   []string
+	inRunBlock    bool
+	inFoldedBlock bool
+}
+
+func (s *workflowRunScan) visitLine(line string) {
+	trimmed := strings.TrimSpace(line)
+	runLine, ok := workflowRunLine(trimmed)
+	if ok {
+		s.startRun(runLine)
+		return
+	}
+	if s.inRunBlock {
+		s.recordRunLine(trimmed)
+	}
+}
+
+func (s *workflowRunScan) startRun(runLine string) {
+	s.flushFolded()
+	if runLine == "|" || runLine == ">" {
+		s.inRunBlock = true
+		s.inFoldedBlock = runLine == ">"
+		return
+	}
+	s.kept = append(s.kept, runLine)
+	s.inRunBlock = false
+	s.inFoldedBlock = false
+}
+
+func (s *workflowRunScan) recordRunLine(line string) {
+	if s.inFoldedBlock {
+		if line != "" {
+			s.foldedLines = append(s.foldedLines, line)
+		}
+		return
+	}
+	s.kept = append(s.kept, line)
+}
+
+func (s *workflowRunScan) content() string {
+	s.flushFolded()
+	return strings.Join(s.kept, "\n")
+}
+
+func (s *workflowRunScan) flushFolded() {
+	if len(s.foldedLines) == 0 {
+		return
+	}
+	s.kept = append(s.kept, strings.TrimSpace(strings.Join(s.foldedLines, " ")))
+	s.foldedLines = s.foldedLines[:0]
 }
 
 func workflowRunLine(trimmed string) (string, bool) {

@@ -415,7 +415,11 @@ jobs:
 func TestScopedWorkflowStepBlockFiltersMixedModuleCommands(t *testing.T) {
 	block := `      - run: |
           cd services/worker && go test ./...
-          cd services/api && go vet ./...
+          cd services/api
+          go vet ./...
+          golangci-lint run
+          cd ../worker
+          go vet ./...
 `
 
 	scoped, ok := scopedWorkflowStepBlock(block, "services/api", []string{"services/api", "services/worker"})
@@ -426,7 +430,13 @@ func TestScopedWorkflowStepBlockFiltersMixedModuleCommands(t *testing.T) {
 	if strings.Contains(scoped, "go test ./...") {
 		t.Fatalf("scoped block leaked worker command: %q", scoped)
 	}
-	if !strings.Contains(scoped, "- run: |") || !strings.Contains(scoped, "cd services/api && go vet ./...") {
+	if strings.Contains(scoped, "cd ../worker") {
+		t.Fatalf("scoped block kept command after leaving api: %q", scoped)
+	}
+	if !strings.Contains(scoped, "- run: |") ||
+		!strings.Contains(scoped, "cd services/api") ||
+		!strings.Contains(scoped, "go vet ./...") ||
+		!strings.Contains(scoped, "golangci-lint run") {
 		t.Fatalf("scoped block lost api run content: %q", scoped)
 	}
 }
@@ -1225,6 +1235,24 @@ jobs:
 	}
 	if !strings.Contains(joined, "echo ok") || !strings.Contains(joined, "echo still ok") {
 		t.Fatalf("workflow run content missing from command sections: %q", joined)
+	}
+}
+
+func TestWorkflowCommandSectionsFoldRunBlocks(t *testing.T) {
+	sections := commandSections(repo.File{
+		Path: ".github/workflows/ci.yml",
+		Content: `name: CI
+jobs:
+  test:
+    steps:
+      - run: >
+          go vet
+          ./...
+`,
+	})
+
+	if len(sections) != 1 || sections[0] != "go vet ./..." {
+		t.Fatalf("workflow folded run sections = %#v", sections)
 	}
 }
 
