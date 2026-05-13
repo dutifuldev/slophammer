@@ -63,7 +63,11 @@ jobs:
       - name: Check gofmt
         run: |
           test -z "$(gofmt -l .)"
-      - run: go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.0 fmt --diff
+      - uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.11.0
+          working-directory: go
+          args: fmt --diff
       - run: go vet ./...
       - run: go test ./...
       - run: ./scripts/check-go-coverage.sh

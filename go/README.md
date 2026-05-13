@@ -19,7 +19,7 @@ go run ./cmd/slophammer go mutate . --target internal/rules/rules.go --scan
 
 ```sh
 gofmt -w .
-go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.0 fmt --diff
+golangci-lint fmt --diff
 go vet ./...
 go test ./...
 ./scripts/check-go-coverage.sh
