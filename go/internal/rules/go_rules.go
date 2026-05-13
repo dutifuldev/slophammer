@@ -248,12 +248,30 @@ func commandTokensByLine(content string) [][]string {
 	lines := strings.Split(content, "\n")
 	tokenLines := make([][]string, 0, len(lines))
 	for _, line := range lines {
-		tokens := strings.Fields(line)
+		tokens := commandTokens(line)
 		if len(tokens) > 0 {
 			tokenLines = append(tokenLines, tokens)
 		}
 	}
 	return tokenLines
+}
+
+func commandTokens(line string) []string {
+	var normalized strings.Builder
+	var quote rune
+	for _, r := range line {
+		switch {
+		case quote == 0 && (r == '\'' || r == '"'):
+			quote = r
+		case quote == r:
+			quote = 0
+		case quote == 0 && r == ';':
+			normalized.WriteString(" ; ")
+			continue
+		}
+		normalized.WriteRune(r)
+	}
+	return strings.Fields(normalized.String())
 }
 
 func isGoRunPackage(tokens []string, packageIndex int) bool {
@@ -334,12 +352,12 @@ func isWorkflowRunToken(token string) bool {
 }
 
 func cleanCommandToken(token string) string {
-	return strings.Trim(token, " \t\r\n'\";")
+	return strings.Trim(token, " \t\r\n'\"")
 }
 
 func isShellSeparator(token string) bool {
 	switch token {
-	case "|", "||", "&", "&&":
+	case ";", "|", "||", "&", "&&":
 		return true
 	default:
 		return false

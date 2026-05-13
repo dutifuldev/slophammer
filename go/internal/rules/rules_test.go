@@ -1318,6 +1318,13 @@ func TestGoToolCommandDetectionRequiresRunnableCommand(t *testing.T) {
 			want:          true,
 		},
 		{
+			name:          "dry after semicolon",
+			command:       "cd go; dry4go .",
+			binaryName:    "dry4go",
+			packageNeedle: "github.com/unclebob/dry4go/cmd/dry4go",
+			want:          true,
+		},
+		{
 			name:          "dry echo only",
 			command:       "echo go run github.com/unclebob/dry4go/cmd/dry4go@latest --format json .",
 			binaryName:    "dry4go",
@@ -1357,6 +1364,8 @@ func TestGoMutationRuleRequiresTargetForDirectMutate4Go(t *testing.T) {
 		{name: "binary target", command: "mutate4go main.go --scan", want: true},
 		{name: "flag before target", command: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest --scan internal/rules/rules.go", want: true},
 		{name: "install then run", command: "go install github.com/unclebob/mutate4go/cmd/mutate4go@latest && mutate4go main.go --scan", want: true},
+		{name: "package after semicolon", command: "cd go; go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan", want: true},
+		{name: "binary after semicolon", command: "cd go; mutate4go main.go --scan", want: true},
 		{name: "package missing target", command: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest --scan"},
 		{name: "binary missing target", command: "mutate4go --scan"},
 		{name: "install only", command: "go install github.com/unclebob/mutate4go/cmd/mutate4go@latest"},
@@ -1380,9 +1389,11 @@ func TestSlophammerGoCommandRequiredFlagsNeedValues(t *testing.T) {
 		expectMatch bool
 	}{
 		{name: "crap value", command: "slophammer go crap . --max-score 30", subcommand: "crap", required: "--max-score", expectMatch: true},
+		{name: "crap after semicolon", command: "cd go; slophammer go crap . --max-score 30", subcommand: "crap", required: "--max-score", expectMatch: true},
 		{name: "crap missing value", command: "slophammer go crap . --max-score", subcommand: "crap", required: "--max-score"},
 		{name: "crap flag after separator", command: "slophammer go crap . && echo --max-score 30", subcommand: "crap", required: "--max-score"},
 		{name: "mutate value", command: "slophammer go mutate . --target main.go --scan", subcommand: "mutate", required: "--target", expectMatch: true},
+		{name: "mutate after semicolon", command: "cd go; slophammer go mutate . --target main.go --scan", subcommand: "mutate", required: "--target", expectMatch: true},
 		{name: "mutate missing value", command: "slophammer go mutate . --target --scan", subcommand: "mutate", required: "--target"},
 	}
 
