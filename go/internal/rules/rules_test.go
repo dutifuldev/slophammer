@@ -1185,6 +1185,51 @@ jobs:
 	}
 }
 
+func TestGoToolCommandDetectionRequiresRunnableCommand(t *testing.T) {
+	tests := []struct {
+		name          string
+		command       string
+		binaryName    string
+		packageNeedle string
+		want          bool
+	}{
+		{
+			name:          "dry package run",
+			command:       "go run github.com/unclebob/dry4go/cmd/dry4go@latest --format json .",
+			binaryName:    "dry4go",
+			packageNeedle: "github.com/unclebob/dry4go/cmd/dry4go",
+			want:          true,
+		},
+		{
+			name:          "dry install only",
+			command:       "go install github.com/unclebob/dry4go/cmd/dry4go@latest",
+			binaryName:    "dry4go",
+			packageNeedle: "github.com/unclebob/dry4go/cmd/dry4go",
+		},
+		{
+			name:          "crap binary run",
+			command:       "crap4go .",
+			binaryName:    "crap4go",
+			packageNeedle: "github.com/unclebob/crap4go/cmd/crap4go",
+			want:          true,
+		},
+		{
+			name:          "crap echo only",
+			command:       "echo crap4go",
+			binaryName:    "crap4go",
+			packageNeedle: "github.com/unclebob/crap4go/cmd/crap4go",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := contentHasGoToolCommand(tt.command, tt.binaryName, tt.packageNeedle); got != tt.want {
+				t.Fatalf("contentHasGoToolCommand(%q) = %t, want %t", tt.command, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestGoMutationRuleRequiresTargetForDirectMutate4Go(t *testing.T) {
 	tests := []struct {
 		name    string

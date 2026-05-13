@@ -108,18 +108,27 @@ func hasGoComplexityLint(snapshot repo.Snapshot) bool {
 }
 
 func hasDry4GoCommand(snapshot repo.Snapshot) bool {
-	return hasCommand(snapshot, "dry4go", "github.com/unclebob/dry4go/cmd/dry4go", "slophammer go dry")
+	for _, file := range commandFiles(snapshot) {
+		for _, content := range commandSections(file) {
+			if contentHasGoToolCommand(content, "dry4go", "github.com/unclebob/dry4go/cmd/dry4go") ||
+				contentHasSlophammerGoCommand(content, "dry", "") {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func hasCRAP4GoGate(snapshot repo.Snapshot) bool {
 	for _, file := range commandFiles(snapshot) {
 		for _, content := range commandSections(file) {
-			if strings.Contains(content, "crap4go") &&
-				hasCRAPThreshold(content) {
+			if contentHasSlophammerGoCommand(content, "crap", "--max-score") {
 				return true
 			}
-			if strings.Contains(content, "slophammer go crap") &&
-				strings.Contains(content, "--max-score") {
+			if !hasCRAPThreshold(content) {
+				continue
+			}
+			if contentHasGoToolCommand(content, "crap4go", "github.com/unclebob/crap4go/cmd/crap4go") {
 				return true
 			}
 		}
@@ -133,7 +142,7 @@ func hasMutate4GoCommand(snapshot repo.Snapshot) bool {
 	}
 	for _, file := range commandFiles(snapshot) {
 		for _, content := range commandSections(file) {
-			if strings.Contains(content, "slophammer go mutate") && strings.Contains(content, "--target") {
+			if contentHasSlophammerGoCommand(content, "mutate", "--target") {
 				return true
 			}
 		}
@@ -153,17 +162,92 @@ func hasDirectMutate4GoCommand(snapshot repo.Snapshot) bool {
 }
 
 func contentHasDirectMutate4GoCommand(content string) bool {
-	tokens := strings.Fields(content)
+	tokensByLine := commandTokensByLine(content)
+	for _, tokens := range tokensByLine {
+		if lineHasDirectMutate4GoCommand(tokens) {
+			return true
+		}
+	}
+	return false
+}
+
+func lineHasDirectMutate4GoCommand(tokens []string) bool {
 	for i, token := range tokens {
 		token = cleanCommandToken(token)
-		if isMutate4GoPackageToken(token) && isGoRunPackage(tokens, i) {
+		if isGoToolPackageToken(token, "github.com/unclebob/mutate4go/cmd/mutate4go") && isGoRunPackage(tokens, i) {
 			return hasMutationTargetAfter(tokens, i)
 		}
-		if isMutate4GoBinaryToken(token) {
+		if isToolBinaryToken(token, "mutate4go") && isCommandToken(tokens, i) {
 			return hasMutationTargetAfter(tokens, i)
 		}
 	}
 	return false
+}
+
+func contentHasGoToolCommand(content string, binaryName string, packageNeedle string) bool {
+	for _, tokens := range commandTokensByLine(content) {
+		if lineHasGoToolCommand(tokens, binaryName, packageNeedle) {
+			return true
+		}
+	}
+	return false
+}
+
+func lineHasGoToolCommand(tokens []string, binaryName string, packageNeedle string) bool {
+	for i, token := range tokens {
+		token = cleanCommandToken(token)
+		if isGoToolPackageToken(token, packageNeedle) {
+			return isGoRunPackage(tokens, i)
+		}
+		if isToolBinaryToken(token, binaryName) {
+			return isCommandToken(tokens, i)
+		}
+	}
+	return false
+}
+
+func contentHasSlophammerGoCommand(content string, subcommand string, requiredFlag string) bool {
+	return contentHasCommandLine(content, func(tokens []string) bool {
+		return lineHasSlophammerGoCommand(tokens, subcommand, requiredFlag)
+	})
+}
+
+func contentHasCommandLine(content string, match func([]string) bool) bool {
+	for _, tokens := range commandTokensByLine(content) {
+		if match(tokens) {
+			return true
+		}
+	}
+	return false
+}
+
+func lineHasSlophammerGoCommand(tokens []string, subcommand string, requiredFlag string) bool {
+	for i := 0; i+2 < len(tokens); i++ {
+		if !isSlophammerCommandToken(cleanCommandToken(tokens[i])) {
+			continue
+		}
+		if !isCommandToken(tokens, i) && !isGoRunPackage(tokens, i) {
+			continue
+		}
+		if cleanCommandToken(tokens[i+1]) == "go" &&
+			cleanCommandToken(tokens[i+2]) == subcommand &&
+			lineHasRequiredFlag(tokens[i+3:], requiredFlag) {
+			return true
+		}
+	}
+	return false
+}
+
+func commandTokensByLine(content string) [][]string {
+	lines := strings.Split(content, "\n")
+	tokenLines := make([][]string, 0, len(lines))
+	for _, line := range lines {
+		tokens := strings.Fields(line)
+		if len(tokens) > 0 {
+			tokenLines = append(tokenLines, tokens)
+		}
+	}
+	return tokenLines
 }
 
 func isGoRunPackage(tokens []string, packageIndex int) bool {
@@ -171,6 +255,14 @@ func isGoRunPackage(tokens []string, packageIndex int) bool {
 		return false
 	}
 	return cleanCommandToken(tokens[packageIndex-2]) == "go" && cleanCommandToken(tokens[packageIndex-1]) == "run"
+}
+
+func isCommandToken(tokens []string, commandIndex int) bool {
+	if commandIndex == 0 {
+		return true
+	}
+	previous := cleanCommandToken(tokens[commandIndex-1])
+	return isWorkflowRunToken(previous) || isShellSeparator(previous)
 }
 
 func hasMutationTargetAfter(tokens []string, commandIndex int) bool {
@@ -181,12 +273,33 @@ func hasMutationTargetAfter(tokens []string, commandIndex int) bool {
 	return target != "" && !strings.HasPrefix(target, "-") && !isShellSeparator(target)
 }
 
-func isMutate4GoPackageToken(token string) bool {
-	return strings.Contains(token, "github.com/unclebob/mutate4go/cmd/mutate4go")
+func lineHasRequiredFlag(tokens []string, requiredFlag string) bool {
+	if requiredFlag == "" {
+		return true
+	}
+	for _, token := range tokens {
+		if cleanCommandToken(token) == requiredFlag {
+			return true
+		}
+	}
+	return false
 }
 
-func isMutate4GoBinaryToken(token string) bool {
-	return path.Base(token) == "mutate4go"
+func isGoToolPackageToken(token string, packageNeedle string) bool {
+	return strings.Contains(token, packageNeedle)
+}
+
+func isToolBinaryToken(token string, binaryName string) bool {
+	return path.Base(token) == binaryName
+}
+
+func isSlophammerCommandToken(token string) bool {
+	base := path.Base(token)
+	return base == "slophammer" || base == "slophammer.exe"
+}
+
+func isWorkflowRunToken(token string) bool {
+	return strings.TrimSuffix(token, ":") == "run"
 }
 
 func cleanCommandToken(token string) string {
