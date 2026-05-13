@@ -510,8 +510,9 @@ func filterWorkflowContentForRoot(content, root string, roots []string) (string,
 	blocks := workflowStepBlocks(content)
 	kept := make([]string, 0, len(blocks))
 	for _, block := range blocks {
-		if workflowStepAppliesToRoot(block, root, roots) {
-			kept = append(kept, block)
+		scopedBlock, ok := scopedWorkflowStepBlock(block, root, roots)
+		if ok {
+			kept = append(kept, scopedBlock)
 		}
 	}
 	scoped := strings.Join(kept, workflowStepBoundary)
@@ -527,6 +528,29 @@ func workflowStepAppliesToRoot(content, root string, roots []string) bool {
 		return !workflowMentionsOtherGoRoot(content, root, roots)
 	}
 	return workflowMentionsGoRoot(content, root, roots)
+}
+
+func scopedWorkflowStepBlock(content, root string, roots []string) (string, bool) {
+	if !workflowStepAppliesToRoot(content, root, roots) {
+		return "", false
+	}
+	if root == "" || !workflowMentionsOtherGoRoot(content, root, roots) {
+		return content, true
+	}
+	lines := strings.Split(content, "\n")
+	kept := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if workflowMentionsGoRoot(line, root, roots) {
+			kept = append(kept, line)
+			continue
+		}
+		runLine, ok := workflowRunLine(strings.TrimSpace(line))
+		if ok && (runLine == "|" || runLine == ">") {
+			kept = append(kept, line)
+		}
+	}
+	scoped := strings.Join(kept, "\n")
+	return scoped, strings.TrimSpace(scoped) != ""
 }
 
 func workflowStepBlocks(content string) []string {

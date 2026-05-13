@@ -412,6 +412,25 @@ jobs:
 	assertRuleIDs(t, report.Findings, []string{GoVetRequiredRuleID})
 }
 
+func TestScopedWorkflowStepBlockFiltersMixedModuleCommands(t *testing.T) {
+	block := `      - run: |
+          cd services/worker && go test ./...
+          cd services/api && go vet ./...
+`
+
+	scoped, ok := scopedWorkflowStepBlock(block, "services/api", []string{"services/api", "services/worker"})
+
+	if !ok {
+		t.Fatal("scopedWorkflowStepBlock returned ok=false")
+	}
+	if strings.Contains(scoped, "go test ./...") {
+		t.Fatalf("scoped block leaked worker command: %q", scoped)
+	}
+	if !strings.Contains(scoped, "- run: |") || !strings.Contains(scoped, "cd services/api && go vet ./...") {
+		t.Fatalf("scoped block lost api run content: %q", scoped)
+	}
+}
+
 func TestGoRulesKeepRootWorkflowStepsWithNestedModules(t *testing.T) {
 	files := map[string]repo.File{
 		"README.md":                                 {Path: "README.md"},
