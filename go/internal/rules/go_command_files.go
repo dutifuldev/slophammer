@@ -44,10 +44,7 @@ func commandSections(file repo.File) []string {
 }
 
 func workflowCommandSections(content string) []string {
-	blocks := workflowStepBlocks(content)
-	if strings.Contains(content, workflowStepBoundary) {
-		blocks = splitNonEmpty(content, workflowStepBoundary)
-	}
+	blocks := workflowCommandBlocks(content)
 	sections := make([]string, 0, len(blocks))
 	for _, block := range blocks {
 		runContent := workflowRunContent(block)
@@ -56,6 +53,13 @@ func workflowCommandSections(content string) []string {
 		}
 	}
 	return sections
+}
+
+func workflowCommandBlocks(content string) []string {
+	if strings.Contains(content, workflowStepBoundary) {
+		return splitNonEmpty(content, workflowStepBoundary)
+	}
+	return workflowStepBlocks(content)
 }
 
 func workflowRunContent(block string) string {

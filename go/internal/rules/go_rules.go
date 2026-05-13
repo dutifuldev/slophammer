@@ -161,7 +161,7 @@ func hasCRAP4GoGate(snapshot repo.Snapshot) bool {
 	for _, file := range commandFiles(snapshot) {
 		for _, content := range commandSections(file) {
 			if contentHasSlophammerGoCommand(content, "crap", "--max-score") ||
-				(hasConfiguredThreshold && contentHasSlophammerGoCommand(content, "crap", "")) {
+				(hasConfiguredThreshold && fileHasConfigBackedSlophammerGoCommand(file, "crap")) {
 				return true
 			}
 			if !hasCRAPThreshold(content) {
@@ -183,7 +183,7 @@ func hasMutate4GoCommand(snapshot repo.Snapshot) bool {
 	for _, file := range commandFiles(snapshot) {
 		for _, content := range commandSections(file) {
 			if contentHasSlophammerGoCommand(content, "mutate", "--target") ||
-				(hasConfiguredTargets && contentHasSlophammerGoCommand(content, "mutate", "")) {
+				(hasConfiguredTargets && fileHasConfigBackedSlophammerGoCommand(file, "mutate")) {
 				return true
 			}
 		}

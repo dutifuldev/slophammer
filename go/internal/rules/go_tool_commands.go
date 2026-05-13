@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/dutifuldev/slophammer/go/internal/gotools"
+	"github.com/dutifuldev/slophammer/go/internal/repo"
 )
 
 func contentHasDirectMutate4GoCommand(content string) bool {
@@ -64,6 +65,41 @@ func contentHasSlophammerGoCommand(content string, subcommand string, requiredFl
 	})
 }
 
+func fileHasConfigBackedSlophammerGoCommand(file repo.File, subcommand string) bool {
+	if isWorkflowFilePath(file.Path) {
+		for _, block := range workflowCommandBlocks(file.Content) {
+			needsParentRoot := workflowBlockNeedsParentConfigPath(block)
+			if contentHasConfigBackedSlophammerGoCommand(workflowRunContent(block), subcommand, needsParentRoot) {
+				return true
+			}
+		}
+		return false
+	}
+	for _, content := range commandSections(file) {
+		if contentHasConfigBackedSlophammerGoCommand(content, subcommand, false) {
+			return true
+		}
+	}
+	return false
+}
+
+func contentHasConfigBackedSlophammerGoCommand(content string, subcommand string, needsParentRoot bool) bool {
+	matcher := configBackedSlophammerGoCommandMatcher{
+		subcommand:      subcommand,
+		needsParentRoot: needsParentRoot,
+	}
+	return contentHasCommandLine(content, matcher.match)
+}
+
+type configBackedSlophammerGoCommandMatcher struct {
+	subcommand      string
+	needsParentRoot bool
+}
+
+func (m configBackedSlophammerGoCommandMatcher) match(tokens []string) bool {
+	return lineHasConfigBackedSlophammerGoCommand(tokens, m.subcommand, m.needsParentRoot)
+}
+
 func contentHasCommandLine(content string, match func([]string) bool) bool {
 	for _, tokens := range commandTokensByLine(content) {
 		if match(tokens) {
@@ -75,19 +111,101 @@ func contentHasCommandLine(content string, match func([]string) bool) bool {
 
 func lineHasSlophammerGoCommand(tokens []string, subcommand string, requiredFlag string) bool {
 	for i := 0; i+2 < len(tokens); i++ {
-		if !isSlophammerCommandToken(cleanCommandToken(tokens[i])) {
-			continue
-		}
-		if !isCommandToken(tokens, i) && !isGoRunPackage(tokens, i) {
-			continue
-		}
-		if cleanCommandToken(tokens[i+1]) == "go" &&
-			cleanCommandToken(tokens[i+2]) == subcommand &&
+		if isSlophammerGoSubcommand(tokens, i, subcommand) &&
 			lineHasRequiredFlag(tokens[i+3:], requiredFlag) {
 			return true
 		}
 	}
 	return false
+}
+
+func lineHasConfigBackedSlophammerGoCommand(tokens []string, subcommand string, needsParentRoot bool) bool {
+	for i := 0; i+2 < len(tokens); i++ {
+		if !isSlophammerGoSubcommand(tokens, i, subcommand) {
+			continue
+		}
+		if lineHasConfigRootArgument(tokens[:i], tokens[i+3:], needsParentRoot) {
+			return true
+		}
+	}
+	return false
+}
+
+func isSlophammerGoSubcommand(tokens []string, commandIndex int, subcommand string) bool {
+	if !isSlophammerCommandToken(cleanCommandToken(tokens[commandIndex])) {
+		return false
+	}
+	if !isCommandToken(tokens, commandIndex) && !isGoRunPackage(tokens, commandIndex) {
+		return false
+	}
+	return cleanCommandToken(tokens[commandIndex+1]) == "go" &&
+		cleanCommandToken(tokens[commandIndex+2]) == subcommand
+}
+
+func lineHasConfigRootArgument(prefix []string, tokens []string, needsParentRoot bool) bool {
+	if lineHasPriorCDCommand(prefix) {
+		needsParentRoot = true
+	}
+	for i := 0; i < len(tokens); i++ {
+		token := cleanCommandToken(tokens[i])
+		if token == "" {
+			continue
+		}
+		if isShellSeparator(token) {
+			return false
+		}
+		if strings.HasPrefix(token, "-") {
+			if slophammerGoFlagNeedsValue(token) && !strings.Contains(token, "=") {
+				i++
+			}
+			continue
+		}
+		return pathIsConfigRootArgument(token, needsParentRoot)
+	}
+	return false
+}
+
+func lineHasPriorCDCommand(tokens []string) bool {
+	for i, token := range tokens {
+		if cleanCommandToken(token) == "cd" && isCommandToken(tokens, i) {
+			return true
+		}
+	}
+	return false
+}
+
+func slophammerGoFlagNeedsValue(token string) bool {
+	flag, _, _ := strings.Cut(token, "=")
+	switch flag {
+	case "--max-candidates", "--max-score", "--target":
+		return true
+	default:
+		return false
+	}
+}
+
+func pathIsConfigRootArgument(token string, needsParentRoot bool) bool {
+	cleaned := path.Clean(strings.ReplaceAll(token, "\\", "/"))
+	if cleaned == ".." || strings.HasPrefix(cleaned, "../") {
+		return true
+	}
+	return !needsParentRoot && cleaned == "."
+}
+
+func workflowBlockNeedsParentConfigPath(block string) bool {
+	workingDirectory := ""
+	for _, line := range strings.Split(block, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "working-directory:") {
+			continue
+		}
+		workingDirectory = strings.TrimSpace(strings.TrimPrefix(trimmed, "working-directory:"))
+	}
+	if workingDirectory == "" {
+		return false
+	}
+	workingDirectory = strings.Trim(cleanCommandToken(workingDirectory), "/")
+	return workingDirectory != "" && workingDirectory != "."
 }
 
 func commandTokensByLine(content string) [][]string {
