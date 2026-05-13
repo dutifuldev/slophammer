@@ -1185,6 +1185,30 @@ jobs:
 	}
 }
 
+func TestWorkflowCommandSectionsIgnoreStepMetadata(t *testing.T) {
+	sections := commandSections(repo.File{
+		Path: ".github/workflows/ci.yml",
+		Content: `name: CI
+jobs:
+  test:
+    steps:
+      - name: go test ./...
+        run: echo ok
+      - name: go vet ./...
+        run: |
+          echo still ok
+`,
+	})
+
+	joined := strings.Join(sections, "\n")
+	if strings.Contains(joined, "go test ./...") || strings.Contains(joined, "go vet ./...") {
+		t.Fatalf("workflow metadata leaked into command sections: %q", joined)
+	}
+	if !strings.Contains(joined, "echo ok") || !strings.Contains(joined, "echo still ok") {
+		t.Fatalf("workflow run content missing from command sections: %q", joined)
+	}
+}
+
 func TestGoToolCommandDetectionRequiresRunnableCommand(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -1203,6 +1227,12 @@ func TestGoToolCommandDetectionRequiresRunnableCommand(t *testing.T) {
 		{
 			name:          "dry install only",
 			command:       "go install github.com/unclebob/dry4go/cmd/dry4go@latest",
+			binaryName:    "dry4go",
+			packageNeedle: "github.com/unclebob/dry4go/cmd/dry4go",
+		},
+		{
+			name:          "dry echo only",
+			command:       "echo go run github.com/unclebob/dry4go/cmd/dry4go@latest --format json .",
 			binaryName:    "dry4go",
 			packageNeedle: "github.com/unclebob/dry4go/cmd/dry4go",
 		},

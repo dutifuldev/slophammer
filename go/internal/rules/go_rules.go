@@ -254,7 +254,10 @@ func isGoRunPackage(tokens []string, packageIndex int) bool {
 	if packageIndex < 2 {
 		return false
 	}
-	return cleanCommandToken(tokens[packageIndex-2]) == "go" && cleanCommandToken(tokens[packageIndex-1]) == "run"
+	goIndex := packageIndex - 2
+	return cleanCommandToken(tokens[goIndex]) == "go" &&
+		cleanCommandToken(tokens[packageIndex-1]) == "run" &&
+		isCommandToken(tokens, goIndex)
 }
 
 func isCommandToken(tokens []string, commandIndex int) bool {
@@ -868,13 +871,59 @@ func commandFiles(snapshot repo.Snapshot) []repo.File {
 }
 
 func commandSections(file repo.File) []string {
-	if isWorkflowFilePath(file.Path) && strings.Contains(file.Content, workflowStepBoundary) {
-		return splitNonEmpty(file.Content, workflowStepBoundary)
-	}
 	if isWorkflowFilePath(file.Path) {
-		return workflowStepBlocks(file.Content)
+		return workflowCommandSections(file.Content)
 	}
 	return []string{file.Content}
+}
+
+func workflowCommandSections(content string) []string {
+	blocks := workflowStepBlocks(content)
+	if strings.Contains(content, workflowStepBoundary) {
+		blocks = splitNonEmpty(content, workflowStepBoundary)
+	}
+	sections := make([]string, 0, len(blocks))
+	for _, block := range blocks {
+		runContent := workflowRunContent(block)
+		if strings.TrimSpace(runContent) != "" {
+			sections = append(sections, runContent)
+		}
+	}
+	return sections
+}
+
+func workflowRunContent(block string) string {
+	lines := strings.Split(block, "\n")
+	kept := make([]string, 0, len(lines))
+	inRunBlock := false
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		runLine, ok := workflowRunLine(trimmed)
+		if ok {
+			if runLine == "|" || runLine == ">" {
+				inRunBlock = true
+				continue
+			}
+			kept = append(kept, runLine)
+			inRunBlock = false
+			continue
+		}
+		if inRunBlock {
+			kept = append(kept, trimmed)
+		}
+	}
+	return strings.Join(kept, "\n")
+}
+
+func workflowRunLine(trimmed string) (string, bool) {
+	switch {
+	case strings.HasPrefix(trimmed, "- run:"):
+		return strings.TrimSpace(strings.TrimPrefix(trimmed, "- run:")), true
+	case strings.HasPrefix(trimmed, "run:"):
+		return strings.TrimSpace(strings.TrimPrefix(trimmed, "run:")), true
+	default:
+		return "", false
+	}
 }
 
 func splitNonEmpty(content string, separator string) []string {
