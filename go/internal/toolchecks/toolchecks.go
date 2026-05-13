@@ -139,16 +139,15 @@ func CheckMutation(ctx context.Context, options MutationOptions, out io.Writer, 
 }
 
 func CountDRYCandidates(report []byte) (int, error) {
-	var parsed struct {
-		Candidates []json.RawMessage `json:"candidates"`
-	}
+	var parsed map[string][]json.RawMessage
 	if err := json.Unmarshal(report, &parsed); err != nil {
 		return 0, err
 	}
-	if parsed.Candidates == nil {
+	candidates, ok := parsed["candidates"]
+	if !ok {
 		return 0, errors.New("missing candidates field")
 	}
-	return len(parsed.Candidates), nil
+	return len(candidates), nil
 }
 
 type CRAPViolation struct {

@@ -64,6 +64,22 @@ func TestCheckDryParsesStdoutWhenGoRunWritesToStderr(t *testing.T) {
 	}
 }
 
+func TestCheckDryAcceptsNullCandidates(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckDry(context.Background(), DryOptions{MaximumCandidates: 0, MaximumSet: true}, &out, &errOut, &fakeRunner{
+		output: []byte(`{"candidates":null}`),
+	})
+
+	if code != 0 {
+		t.Fatalf("code = %d, want 0; stderr=%q", code, errOut.String())
+	}
+	if !strings.Contains(out.String(), "DRY candidates: 0; maximum: 0") {
+		t.Fatalf("stdout = %q", out.String())
+	}
+}
+
 func TestCheckDryRejectsInvalidReport(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer
