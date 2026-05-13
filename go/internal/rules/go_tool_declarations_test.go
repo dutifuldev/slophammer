@@ -144,6 +144,9 @@ func TestGoToolRulesAcceptConfigBackedSlophammerCommands(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+defaults:
+  run:
+    working-directory: go
 jobs:
   test:
     steps:
@@ -191,6 +194,55 @@ jobs:
 	}
 	if hasMutate4GoCommand(snapshot) {
 		t.Fatal("hasMutate4GoCommand = true, want false for non-root parent path")
+	}
+}
+
+func TestGoToolRulesRequireConfigRootForDeepWorkingDirectory(t *testing.T) {
+	files := map[string]repo.File{
+		"slophammer.yml": {
+			Path: "slophammer.yml",
+			Content: `go:
+  crap_max_score: 30
+  mutation_targets:
+    - services/api/internal/rules/rules.go
+`,
+		},
+	}
+	for _, tt := range []struct {
+		name string
+		path string
+		want bool
+	}{
+		{name: "one parent", path: ".."},
+		{name: "repo root", path: "../..", want: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			snapshotFiles := map[string]repo.File{}
+			for path, file := range files {
+				snapshotFiles[path] = file
+			}
+			snapshotFiles[".github/workflows/ci.yml"] = repo.File{
+				Path: ".github/workflows/ci.yml",
+				Content: `name: CI
+defaults:
+  run:
+    working-directory: services/api
+jobs:
+  test:
+    steps:
+      - run: go run ./cmd/slophammer go crap ` + tt.path + `
+      - run: go run ./cmd/slophammer go mutate ` + tt.path + ` --scan
+`,
+			}
+			snapshot := repo.NewSnapshot("/repo", snapshotFiles)
+
+			if got := hasCRAP4GoGate(snapshot); got != tt.want {
+				t.Fatalf("hasCRAP4GoGate = %t, want %t", got, tt.want)
+			}
+			if got := hasMutate4GoCommand(snapshot); got != tt.want {
+				t.Fatalf("hasMutate4GoCommand = %t, want %t", got, tt.want)
+			}
+		})
 	}
 }
 
