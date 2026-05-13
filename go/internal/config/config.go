@@ -62,6 +62,13 @@ func (cfg Config) RuleSeverity(ruleID string, fallback string) string {
 }
 
 func configFile(snapshot repo.Snapshot) (repo.File, bool) {
+	for _, name := range []string{DefaultFileName, AltFileName} {
+		for filePath, file := range snapshot.Files {
+			if filePath == name {
+				return file, true
+			}
+		}
+	}
 	for _, file := range snapshot.FilesNamedFold(DefaultFileName, AltFileName) {
 		return file, true
 	}

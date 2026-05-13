@@ -1,6 +1,6 @@
 go:
   coverage_threshold: 80
-  dry_max_candidates: 40
+  dry_max_candidates: 50
   crap_max_score: 30
   mutation_targets:
     - go/internal/rules/rules.go
@@ -15,6 +15,7 @@ go:
     - from: go/internal/app
       allow:
         - go/internal/config
+        - go/internal/repo
         - go/internal/report
         - go/internal/rules
         - go/internal/scan

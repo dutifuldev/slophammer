@@ -81,7 +81,7 @@ jobs:
       - run: go vet ./...
       - run: golangci-lint run
       - run: ./scripts/check-go-coverage.sh
-      - run: go run ./cmd/slophammer go dry . --max-candidates 40
+      - run: go run ./cmd/slophammer go dry . --max-candidates 50
       - run: go run ./cmd/slophammer go crap . --max-score 30
       - run: go run ./cmd/slophammer go mutate . --target internal/rules/rules.go --scan
 `,

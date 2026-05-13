@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -11,7 +12,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dutifuldev/slophammer/go/internal/config"
 	"github.com/dutifuldev/slophammer/go/internal/rules"
+	"github.com/dutifuldev/slophammer/go/internal/toolchecks"
 )
 
 func TestCheckReturnsOKForCleanRepo(t *testing.T) {
@@ -117,6 +120,85 @@ func TestCheckRejectsInvalidConfig(t *testing.T) {
 	}
 }
 
+func TestCheckExecuteAddsToolFindings(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "README.md", "# Test\n")
+	writeFile(t, root, "AGENTS.md", "# Agents\n")
+	writeFile(t, root, ".github/workflows/ci.yml", "name: CI\n")
+	writeFile(t, root, "slophammer.yml", strings.Join([]string{
+		"go:",
+		"  dry_max_candidates: 1",
+		"  crap_max_score: 10",
+		"  mutation_targets:",
+		"    - internal/example.go",
+		"",
+	}, "\n"))
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	code := check(context.Background(), CheckOptions{Root: root, Format: "json", Execute: true}, &out, &errOut, executeFakeRunner{})
+
+	if code != ExitFindings {
+		t.Fatalf("code = %d, want %d; stderr=%q", code, ExitFindings, errOut.String())
+	}
+	report := unmarshalReport(t, out.Bytes(), "execute")
+	assertFinding(t, report, rules.GoDryRequiredRuleID)
+	assertFinding(t, report, rules.GoCRAPRequiredRuleID)
+	assertFinding(t, report, rules.GoMutationRequiredRuleID)
+}
+
+func TestApplyCommandConfigUsesConfiguredDefaults(t *testing.T) {
+	cfg := config.Config{Go: config.GoConfig{
+		DRYMaxCandidates: 7,
+		CRAPMaxScore:     8,
+		MutationTargets:  []string{"a.go", "b.go"},
+	}}
+
+	dry := toolchecks.DryOptions{}
+	applyDryConfig(&dry, cfg)
+	if dry.MaximumCandidates != 7 || !dry.MaximumSet {
+		t.Fatalf("dry = %#v", dry)
+	}
+
+	crap := toolchecks.CRAPOptions{}
+	applyCRAPConfig(&crap, cfg)
+	if crap.MaximumScore != 8 || !crap.MaximumSet {
+		t.Fatalf("crap = %#v", crap)
+	}
+
+	mutation := toolchecks.MutationOptions{}
+	applyMutationConfig(&mutation, cfg)
+	if !reflect.DeepEqual(mutation.Targets, []string{"a.go", "b.go"}) {
+		t.Fatalf("mutation = %#v", mutation)
+	}
+}
+
+func TestApplyCommandConfigKeepsExplicitValues(t *testing.T) {
+	cfg := config.Config{Go: config.GoConfig{
+		DRYMaxCandidates: 7,
+		CRAPMaxScore:     8,
+		MutationTargets:  []string{"configured.go"},
+	}}
+
+	dry := toolchecks.DryOptions{MaximumCandidates: 3, MaximumSet: true}
+	applyDryConfig(&dry, cfg)
+	if dry.MaximumCandidates != 3 {
+		t.Fatalf("dry = %#v", dry)
+	}
+
+	crap := toolchecks.CRAPOptions{MaximumScore: 4, MaximumSet: true}
+	applyCRAPConfig(&crap, cfg)
+	if crap.MaximumScore != 4 {
+		t.Fatalf("crap = %#v", crap)
+	}
+
+	mutation := toolchecks.MutationOptions{Target: "explicit.go"}
+	applyMutationConfig(&mutation, cfg)
+	if mutation.Target != "explicit.go" || len(mutation.Targets) != 0 {
+		t.Fatalf("mutation = %#v", mutation)
+	}
+}
+
 func TestExplain(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer
@@ -197,4 +279,30 @@ func unmarshalReport(t *testing.T, content []byte, label string) rules.Report {
 		t.Fatalf("unmarshal %s report: %v\n%s", label, err, string(content))
 	}
 	return report
+}
+
+func assertFinding(t *testing.T, report rules.Report, ruleID string) {
+	t.Helper()
+	for _, finding := range report.Findings {
+		if finding.RuleID == ruleID {
+			return
+		}
+	}
+	t.Fatalf("missing finding %s in %#v", ruleID, report.Findings)
+}
+
+type executeFakeRunner struct{}
+
+func (executeFakeRunner) Run(_ context.Context, _ string, _ string, args ...string) (toolchecks.CommandResult, error) {
+	command := strings.Join(args, " ")
+	switch {
+	case strings.Contains(command, "dry4go"):
+		return toolchecks.CommandResult{Stdout: []byte(`{"candidates":[{},{}]}`)}, nil
+	case strings.Contains(command, "crap4go"):
+		return toolchecks.CommandResult{Stdout: []byte("pkg.Func 1 2 3 10.1\n")}, nil
+	case strings.Contains(command, "mutate4go"):
+		return toolchecks.CommandResult{}, errors.New("boom")
+	default:
+		return toolchecks.CommandResult{}, errors.New("unexpected command")
+	}
 }

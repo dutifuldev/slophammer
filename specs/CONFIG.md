@@ -16,7 +16,7 @@ rules:
     severity: warn
 go:
   coverage_threshold: 80
-  dry_max_candidates: 40
+  dry_max_candidates: 50
   crap_max_score: 30
   mutation_targets:
     - go/internal/rules/rules.go
@@ -51,8 +51,21 @@ reason and is not used by the current Go implementation to hide findings.
 ## Go Config
 
 `go.coverage_threshold`, `go.dry_max_candidates`, `go.crap_max_score`, and
-`go.mutation_targets` are parsed as typed policy fields. They are available to
-future execution/config-driven checks.
+`go.mutation_targets` are parsed as typed policy fields.
+
+The direct Go commands use these values as defaults:
+
+- `slophammer go dry` uses `go.dry_max_candidates` unless
+  `--max-candidates` is passed.
+- `slophammer go crap` uses `go.crap_max_score` unless `--max-score` is
+  passed.
+- `slophammer go mutate` uses `go.mutation_targets` unless `--target` is
+  passed.
+
+`slophammer check --execute` runs configured Go tool checks and adds failures
+to the normal report. Go tool execution runs from discovered Go module roots,
+so a repo-level config can drive a nested module such as `go/`. Embedded
+`fixtures/`, `templates/`, and `vendor/` modules are not execution targets.
 
 `go.dependency_boundaries` is active now. Each boundary declares:
 

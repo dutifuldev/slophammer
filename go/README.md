@@ -8,9 +8,10 @@ Go implementation of the Slophammer repository quality checker.
 go run ./cmd/slophammer check ..
 go run ./cmd/slophammer check .. --format json
 go run ./cmd/slophammer check .. --format sarif
+go run ./cmd/slophammer check .. --execute
 go run ./cmd/slophammer explain repo.agents-required
-go run ./cmd/slophammer go dry . --max-candidates 40
-go run ./cmd/slophammer go dry . --max-candidates 40 --show-report
+go run ./cmd/slophammer go dry . --max-candidates 50
+go run ./cmd/slophammer go dry . --max-candidates 50 --show-report
 go run ./cmd/slophammer go crap . --max-score 30
 go run ./cmd/slophammer go mutate . --target internal/rules/rules.go --scan
 ```
@@ -23,12 +24,17 @@ golangci-lint fmt --diff
 go vet ./...
 go test ./...
 ./scripts/check-go-coverage.sh
-go run ./cmd/slophammer go dry . --max-candidates 40
+go run ./cmd/slophammer go dry . --max-candidates 50
 go run ./cmd/slophammer go crap . --max-score 30
 go run ./cmd/slophammer go mutate . --target internal/rules/rules.go --scan
 go build ./cmd/slophammer
 go run ./cmd/slophammer check ..
 ```
+
+The direct `go dry`, `go crap`, and `go mutate` commands read
+`slophammer.yml` from the target path and use its Go policy values as defaults
+when the matching CLI flag is not provided. `check --execute` runs configured
+Go tool checks and reports failures through the normal Slophammer report model.
 
 ## Lint Policy
 

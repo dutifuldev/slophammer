@@ -147,6 +147,26 @@ func TestCheckMutationRunsMutate4GoScan(t *testing.T) {
 	}
 }
 
+func TestCheckMutationRunsConfiguredTargets(t *testing.T) {
+	runner := &fakeRunner{}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckMutation(context.Background(), MutationOptions{Root: "/repo", Targets: []string{"a.go", "b.go"}, Scan: true}, &out, &errOut, runner)
+
+	if code != 0 {
+		t.Fatalf("code = %d, want 0", code)
+	}
+	if len(runner.calls) != 2 {
+		t.Fatalf("calls = %#v, want 2 calls", runner.calls)
+	}
+	wantFirst := gotools.Mutate4Go.GoRunArgs(gotools.Latest, "a.go", "--scan")
+	wantSecond := gotools.Mutate4Go.GoRunArgs(gotools.Latest, "b.go", "--scan")
+	if !reflect.DeepEqual(runner.calls[0].args, wantFirst) || !reflect.DeepEqual(runner.calls[1].args, wantSecond) {
+		t.Fatalf("calls = %#v, want args %#v and %#v", runner.calls, wantFirst, wantSecond)
+	}
+}
+
 func TestCheckMutationRequiresTarget(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer
@@ -177,6 +197,7 @@ func TestToolFailureReturnsInfrastructureError(t *testing.T) {
 
 type fakeRunner struct {
 	call   fakeCall
+	calls  []fakeCall
 	output []byte
 	stderr []byte
 	err    error
@@ -184,6 +205,7 @@ type fakeRunner struct {
 
 func (runner *fakeRunner) Run(_ context.Context, dir string, name string, args ...string) (CommandResult, error) {
 	runner.call = fakeCall{dir: dir, name: name, args: args}
+	runner.calls = append(runner.calls, runner.call)
 	return CommandResult{Stdout: runner.output, Stderr: runner.stderr}, runner.err
 }
 

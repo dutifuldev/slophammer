@@ -14,6 +14,7 @@ The public command surface is:
 slophammer check <path>
 slophammer check <path> --format json
 slophammer check <path> --format sarif
+slophammer check <path> --execute
 slophammer explain <rule-id>
 ```
 
@@ -24,6 +25,9 @@ report, and exits with a stable exit code.
 
 The default report format is text. JSON and SARIF report formats are selected
 with `--format json` and `--format sarif`.
+
+`--execute` is opt-in. It runs configured tool checks and adds tool failures to
+the same report model as static findings.
 
 ## Explain
 

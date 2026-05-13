@@ -1,0 +1,206 @@
+package app
+
+import (
+	"context"
+	"io"
+	"path"
+	"path/filepath"
+	"sort"
+	"strings"
+
+	"github.com/dutifuldev/slophammer/go/internal/repo"
+	"github.com/dutifuldev/slophammer/go/internal/toolchecks"
+)
+
+func checkDryInModules(
+	ctx context.Context,
+	snapshot repo.Snapshot,
+	options toolchecks.DryOptions,
+	out io.Writer,
+	errOut io.Writer,
+	runner toolchecks.Runner,
+) int {
+	return checkInModules(ctx, snapshot, options, out, errOut, runner, setDryRoot, toolchecks.CheckDry)
+}
+
+func checkCRAPInModules(
+	ctx context.Context,
+	snapshot repo.Snapshot,
+	options toolchecks.CRAPOptions,
+	out io.Writer,
+	errOut io.Writer,
+	runner toolchecks.Runner,
+) int {
+	return checkInModules(ctx, snapshot, options, out, errOut, runner, setCRAPRoot, toolchecks.CheckCRAP)
+}
+
+func checkInModules[T any](
+	ctx context.Context,
+	snapshot repo.Snapshot,
+	options T,
+	out io.Writer,
+	errOut io.Writer,
+	runner toolchecks.Runner,
+	setRoot func(*T, string),
+	check func(context.Context, T, io.Writer, io.Writer, toolchecks.Runner) int,
+) int {
+	exitCode := ExitOK
+	for _, root := range goToolRoots(optionRoot(options), snapshot) {
+		moduleOptions := options
+		setRoot(&moduleOptions, root)
+		code := check(ctx, moduleOptions, out, errOut, runner)
+		if code == ExitError {
+			return ExitError
+		}
+		if code == ExitFindings {
+			exitCode = ExitFindings
+		}
+	}
+	return exitCode
+}
+
+func optionRoot(options any) string {
+	switch typed := options.(type) {
+	case toolchecks.DryOptions:
+		return typed.Root
+	case toolchecks.CRAPOptions:
+		return typed.Root
+	default:
+		return ""
+	}
+}
+
+func setDryRoot(options *toolchecks.DryOptions, root string) {
+	options.Root = root
+}
+
+func setCRAPRoot(options *toolchecks.CRAPOptions, root string) {
+	options.Root = root
+}
+
+func checkMutationInModules(
+	ctx context.Context,
+	snapshot repo.Snapshot,
+	options toolchecks.MutationOptions,
+	out io.Writer,
+	errOut io.Writer,
+	runner toolchecks.Runner,
+) int {
+	exitCode := ExitOK
+	for _, moduleOptions := range mutationOptionsForModules(options, snapshot) {
+		code := toolchecks.CheckMutation(ctx, moduleOptions, out, errOut, runner)
+		if code == ExitError {
+			return ExitError
+		}
+		if code == ExitFindings {
+			exitCode = ExitFindings
+		}
+	}
+	return exitCode
+}
+
+func goToolRoots(root string, snapshot repo.Snapshot) []string {
+	moduleRoots := goModuleRoots(snapshot)
+	if len(moduleRoots) == 0 {
+		return []string{commandRoot(root)}
+	}
+	roots := make([]string, 0, len(moduleRoots))
+	for _, moduleRoot := range moduleRoots {
+		roots = append(roots, moduleToolRoot(root, moduleRoot))
+	}
+	return roots
+}
+
+func mutationOptionsForModules(options toolchecks.MutationOptions, snapshot repo.Snapshot) []toolchecks.MutationOptions {
+	targets := configuredMutationTargets(options)
+	if len(targets) == 0 {
+		options.Root = firstGoToolRoot(options.Root, snapshot)
+		return []toolchecks.MutationOptions{options}
+	}
+
+	moduleRoots := goModuleRoots(snapshot)
+	if len(moduleRoots) == 0 {
+		options.Target = ""
+		options.Targets = targets
+		return []toolchecks.MutationOptions{options}
+	}
+
+	byRoot := map[string][]string{}
+	for _, target := range targets {
+		moduleRoot := targetModuleRoot(target, moduleRoots)
+		toolRoot := moduleToolRoot(options.Root, moduleRoot)
+		byRoot[toolRoot] = append(byRoot[toolRoot], trimModuleRoot(target, moduleRoot))
+	}
+
+	roots := make([]string, 0, len(byRoot))
+	for root := range byRoot {
+		roots = append(roots, root)
+	}
+	sort.Strings(roots)
+
+	grouped := make([]toolchecks.MutationOptions, 0, len(roots))
+	for _, root := range roots {
+		grouped = append(grouped, toolchecks.MutationOptions{
+			Root:    root,
+			Targets: byRoot[root],
+			Scan:    options.Scan,
+		})
+	}
+	return grouped
+}
+
+func firstGoToolRoot(root string, snapshot repo.Snapshot) string {
+	roots := goToolRoots(root, snapshot)
+	return roots[0]
+}
+
+func moduleToolRoot(root string, moduleRoot string) string {
+	if moduleRoot == "." {
+		return commandRoot(root)
+	}
+	return filepath.Join(commandRoot(root), filepath.FromSlash(moduleRoot))
+}
+
+func goModuleRoots(snapshot repo.Snapshot) []string {
+	roots := make([]string, 0)
+	for filePath := range snapshot.Files {
+		if path.Base(filePath) != "go.mod" || isSkippedGoModulePath(filePath) {
+			continue
+		}
+		root := path.Dir(filePath)
+		roots = append(roots, root)
+	}
+	sort.Strings(roots)
+	return roots
+}
+
+func targetModuleRoot(target string, moduleRoots []string) string {
+	for i := len(moduleRoots) - 1; i >= 0; i-- {
+		moduleRoot := moduleRoots[i]
+		if moduleRoot == "." || target == moduleRoot || strings.HasPrefix(target, moduleRoot+"/") {
+			return moduleRoot
+		}
+	}
+	if len(moduleRoots) == 1 {
+		return moduleRoots[0]
+	}
+	return "."
+}
+
+func trimModuleRoot(target string, moduleRoot string) string {
+	if moduleRoot == "." {
+		return target
+	}
+	return strings.TrimPrefix(strings.TrimPrefix(target, moduleRoot), "/")
+}
+
+func configuredMutationTargets(options toolchecks.MutationOptions) []string {
+	return toolchecks.MutationTargets(options)
+}
+
+func isSkippedGoModulePath(filePath string) bool {
+	return filePath == "vendor/go.mod" ||
+		strings.Contains(filePath, "/vendor/") ||
+		strings.HasPrefix(filePath, "fixtures/") ||
+		strings.HasPrefix(filePath, "templates/")
+}

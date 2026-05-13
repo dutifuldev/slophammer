@@ -50,6 +50,18 @@ func TestRunCheckParsesSARIFFormat(t *testing.T) {
 	}
 }
 
+func TestParseCheckArgsAllowsExecute(t *testing.T) {
+	var errOut bytes.Buffer
+	options, ok := parseCheckArgs([]string{"/repo", "--format", "json", "--execute"}, &errOut)
+
+	if !ok {
+		t.Fatalf("ok = false; stderr=%q", errOut.String())
+	}
+	if options.Root != "/repo" || options.Format != "json" || !options.Execute {
+		t.Fatalf("options = %#v", options)
+	}
+}
+
 func TestRunExplain(t *testing.T) {
 	result := runCLI(t, "explain", "repo.ci-required")
 
@@ -105,15 +117,15 @@ func TestParseGoMutationArgs(t *testing.T) {
 	}
 }
 
-func TestParseGoMutationArgsRequiresTarget(t *testing.T) {
+func TestParseGoMutationArgsAllowsConfigTarget(t *testing.T) {
 	var errOut bytes.Buffer
-	_, ok := parseGoMutationArgs([]string{"/repo", "--scan"}, &errOut)
+	options, ok := parseGoMutationArgs([]string{"/repo", "--scan"}, &errOut)
 
-	if ok {
-		t.Fatal("ok = true, want false")
+	if !ok {
+		t.Fatalf("ok = false; stderr=%q", errOut.String())
 	}
-	if !strings.Contains(errOut.String(), "--target cannot be empty") {
-		t.Fatalf("stderr = %q", errOut.String())
+	if options.Root != "/repo" || options.Target != "" || !options.Scan {
+		t.Fatalf("options = %#v", options)
 	}
 }
 

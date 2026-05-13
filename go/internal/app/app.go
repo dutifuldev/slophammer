@@ -1,11 +1,14 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/dutifuldev/slophammer/go/internal/config"
+	"github.com/dutifuldev/slophammer/go/internal/repo"
 	"github.com/dutifuldev/slophammer/go/internal/report"
 	"github.com/dutifuldev/slophammer/go/internal/rules"
 	"github.com/dutifuldev/slophammer/go/internal/scan"
@@ -19,11 +22,16 @@ const (
 )
 
 type CheckOptions struct {
-	Root   string
-	Format string
+	Root    string
+	Format  string
+	Execute bool
 }
 
 func Check(ctx context.Context, options CheckOptions, out io.Writer, errOut io.Writer) int {
+	return check(ctx, options, out, errOut, toolchecks.ExecRunner{})
+}
+
+func check(ctx context.Context, options CheckOptions, out io.Writer, errOut io.Writer, runner toolchecks.Runner) int {
 	snapshot, err := scan.Repo(options.Root)
 	if err != nil {
 		_, _ = fmt.Fprintf(errOut, "scan failed: %v\n", err)
@@ -35,6 +43,11 @@ func Check(ctx context.Context, options CheckOptions, out io.Writer, errOut io.W
 		return ExitError
 	}
 	result := rules.RunWithConfig(ctx, snapshot, rules.DefaultRules(), cfg)
+	if options.Execute {
+		findings := append([]rules.Finding(nil), result.Findings...)
+		findings = append(findings, executeGoChecks(ctx, snapshot, options.Root, cfg, runner)...)
+		result = rules.NewReport(findings)
+	}
 	if err := writeReport(out, options.Format, result); err != nil {
 		_, _ = fmt.Fprintf(errOut, "report failed: %v\n", err)
 		return ExitError
@@ -60,15 +73,21 @@ func Explain(ruleID string, out io.Writer, errOut io.Writer) int {
 }
 
 func CheckGoDry(ctx context.Context, options toolchecks.DryOptions, out io.Writer, errOut io.Writer) int {
-	return toolchecks.CheckDry(ctx, options, out, errOut, toolchecks.ExecRunner{})
+	return runConfiguredGoCheck(options.Root, errOut, options, applyDryConfig, func(snapshot repo.Snapshot, options toolchecks.DryOptions) int {
+		return checkDryInModules(ctx, snapshot, options, out, errOut, toolchecks.ExecRunner{})
+	})
 }
 
 func CheckGoCRAP(ctx context.Context, options toolchecks.CRAPOptions, out io.Writer, errOut io.Writer) int {
-	return toolchecks.CheckCRAP(ctx, options, out, errOut, toolchecks.ExecRunner{})
+	return runConfiguredGoCheck(options.Root, errOut, options, applyCRAPConfig, func(snapshot repo.Snapshot, options toolchecks.CRAPOptions) int {
+		return checkCRAPInModules(ctx, snapshot, options, out, errOut, toolchecks.ExecRunner{})
+	})
 }
 
 func CheckGoMutation(ctx context.Context, options toolchecks.MutationOptions, out io.Writer, errOut io.Writer) int {
-	return toolchecks.CheckMutation(ctx, options, out, errOut, toolchecks.ExecRunner{})
+	return runConfiguredGoCheck(options.Root, errOut, options, applyMutationConfig, func(snapshot repo.Snapshot, options toolchecks.MutationOptions) int {
+		return checkMutationInModules(ctx, snapshot, options, out, errOut, toolchecks.ExecRunner{})
+	})
 }
 
 func writeReport(out io.Writer, format string, result rules.Report) error {
@@ -82,4 +101,129 @@ func writeReport(out io.Writer, format string, result rules.Report) error {
 	default:
 		return fmt.Errorf("unsupported format %q", format)
 	}
+}
+
+func runWithCommandConfig(root string, errOut io.Writer, run func(repo.Snapshot, config.Config) int) int {
+	snapshot, err := scan.Repo(commandRoot(root))
+	if err != nil {
+		_, _ = fmt.Fprintf(errOut, "config failed: %v\n", err)
+		return ExitError
+	}
+	cfg, err := config.Load(snapshot)
+	if err != nil {
+		_, _ = fmt.Fprintf(errOut, "config failed: %v\n", err)
+		return ExitError
+	}
+	return run(snapshot, cfg)
+}
+
+func runConfiguredGoCheck[T any](
+	root string,
+	errOut io.Writer,
+	options T,
+	apply func(*T, config.Config),
+	run func(repo.Snapshot, T) int,
+) int {
+	return runWithCommandConfig(root, errOut, func(snapshot repo.Snapshot, cfg config.Config) int {
+		apply(&options, cfg)
+		return run(snapshot, options)
+	})
+}
+
+func commandRoot(root string) string {
+	if root == "" {
+		return "."
+	}
+	return root
+}
+
+func applyDryConfig(options *toolchecks.DryOptions, cfg config.Config) {
+	if options.MaximumSet || cfg.Go.DRYMaxCandidates <= 0 {
+		return
+	}
+	options.MaximumCandidates = cfg.Go.DRYMaxCandidates
+	options.MaximumSet = true
+}
+
+func applyCRAPConfig(options *toolchecks.CRAPOptions, cfg config.Config) {
+	if options.MaximumSet || cfg.Go.CRAPMaxScore <= 0 {
+		return
+	}
+	options.MaximumScore = cfg.Go.CRAPMaxScore
+	options.MaximumSet = true
+}
+
+func applyMutationConfig(options *toolchecks.MutationOptions, cfg config.Config) {
+	if options.Target != "" || len(options.Targets) > 0 || len(cfg.Go.MutationTargets) == 0 {
+		return
+	}
+	options.Targets = append([]string(nil), cfg.Go.MutationTargets...)
+}
+
+func executeGoChecks(ctx context.Context, snapshot repo.Snapshot, root string, cfg config.Config, runner toolchecks.Runner) []rules.Finding {
+	var findings []rules.Finding
+	if cfg.Go.DRYMaxCandidates > 0 {
+		options := toolchecks.DryOptions{
+			Root:              commandRoot(root),
+			MaximumCandidates: cfg.Go.DRYMaxCandidates,
+			MaximumSet:        true,
+		}
+		findings = appendToolFinding(findings, rules.GoDryRequiredRuleID, cfg, "dry4go exceeded the configured candidate budget", func(out, errOut io.Writer) int {
+			return checkDryInModules(ctx, snapshot, options, out, errOut, runner)
+		})
+	}
+	if cfg.Go.CRAPMaxScore > 0 {
+		options := toolchecks.CRAPOptions{
+			Root:         commandRoot(root),
+			MaximumScore: cfg.Go.CRAPMaxScore,
+			MaximumSet:   true,
+		}
+		findings = appendToolFinding(findings, rules.GoCRAPRequiredRuleID, cfg, "crap4go found functions above the configured score", func(out, errOut io.Writer) int {
+			return checkCRAPInModules(ctx, snapshot, options, out, errOut, runner)
+		})
+	}
+	if len(cfg.Go.MutationTargets) > 0 {
+		options := toolchecks.MutationOptions{
+			Root:    commandRoot(root),
+			Targets: cfg.Go.MutationTargets,
+			Scan:    true,
+		}
+		findings = appendToolFinding(findings, rules.GoMutationRequiredRuleID, cfg, "mutate4go failed for at least one configured target", func(out, errOut io.Writer) int {
+			return checkMutationInModules(ctx, snapshot, options, out, errOut, runner)
+		})
+	}
+	return findings
+}
+
+func appendToolFinding(
+	findings []rules.Finding,
+	ruleID string,
+	cfg config.Config,
+	message string,
+	run func(io.Writer, io.Writer) int,
+) []rules.Finding {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	code := run(&out, &errOut)
+	if code == ExitOK {
+		return findings
+	}
+	if code == ExitError {
+		message = strings.TrimSpace(message + ": " + firstNonEmpty(errOut.String(), out.String()))
+	}
+	return append(findings, rules.Finding{
+		RuleID:   ruleID,
+		Severity: rules.Severity(cfg.RuleSeverity(ruleID, string(rules.SeverityError))),
+		Path:     "slophammer.yml",
+		Message:  message,
+	})
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return "tool returned an error"
 }

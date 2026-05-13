@@ -97,31 +97,41 @@ func parseCheckArgs(args []string, errOut io.Writer) (app.CheckOptions, bool) {
 		arg := args[i]
 		switch arg {
 		case "--format":
-			if i+1 >= len(args) {
+			value, ok := nextArg(args, i)
+			if !ok {
 				_, _ = fmt.Fprintln(errOut, "--format requires a value")
 				return app.CheckOptions{}, false
 			}
 			i++
-			options.Format = args[i]
+			options.Format = value
 		case "--json":
 			options.Format = "json"
+		case "--execute":
+			options.Execute = true
 		default:
-			if len(arg) > 0 && arg[0] == '-' {
-				_, _ = fmt.Fprintf(errOut, "unknown check option: %s\n", arg)
+			if !parseCheckPath(&options, arg, errOut) {
 				return app.CheckOptions{}, false
 			}
-			if options.Root != "" {
-				_, _ = fmt.Fprintln(errOut, "check accepts exactly one path")
-				return app.CheckOptions{}, false
-			}
-			options.Root = arg
 		}
 	}
 	if options.Root == "" {
-		_, _ = fmt.Fprintln(errOut, "usage: slophammer check <path> [--format text|json|sarif]")
+		_, _ = fmt.Fprintln(errOut, "usage: slophammer check <path> [--format text|json|sarif] [--execute]")
 		return app.CheckOptions{}, false
 	}
 	return options, true
+}
+
+func parseCheckPath(options *app.CheckOptions, arg string, errOut io.Writer) bool {
+	if len(arg) > 0 && arg[0] == '-' {
+		_, _ = fmt.Fprintf(errOut, "unknown check option: %s\n", arg)
+		return false
+	}
+	if options.Root != "" {
+		_, _ = fmt.Fprintln(errOut, "check accepts exactly one path")
+		return false
+	}
+	options.Root = arg
+	return true
 }
 
 func parseGoDryArgs(args []string, errOut io.Writer) (toolchecks.DryOptions, bool) {
@@ -213,10 +223,6 @@ func parseGoMutationArgs(args []string, errOut io.Writer) (toolchecks.MutationOp
 			options.Root = root
 		}
 	}
-	if options.Target == "" {
-		_, _ = fmt.Fprintln(errOut, "--target cannot be empty")
-		return toolchecks.MutationOptions{}, false
-	}
 	return options, true
 }
 
@@ -241,16 +247,16 @@ func parseSinglePathOption(currentRoot string, arg string, command string, errOu
 
 func printUsage(out io.Writer) {
 	_, _ = fmt.Fprintln(out, "usage:")
-	_, _ = fmt.Fprintln(out, "  slophammer check <path> [--format text|json|sarif]")
+	_, _ = fmt.Fprintln(out, "  slophammer check <path> [--format text|json|sarif] [--execute]")
 	_, _ = fmt.Fprintln(out, "  slophammer explain <rule-id>")
 	_, _ = fmt.Fprintln(out, "  slophammer go dry [path] [--max-candidates n] [--show-report]")
 	_, _ = fmt.Fprintln(out, "  slophammer go crap [path] [--max-score n]")
-	_, _ = fmt.Fprintln(out, "  slophammer go mutate [path] --target file [--scan]")
+	_, _ = fmt.Fprintln(out, "  slophammer go mutate [path] [--target file] [--scan]")
 }
 
 func printGoUsage(out io.Writer) {
 	_, _ = fmt.Fprintln(out, "usage:")
 	_, _ = fmt.Fprintln(out, "  slophammer go dry [path] [--max-candidates n] [--show-report]")
 	_, _ = fmt.Fprintln(out, "  slophammer go crap [path] [--max-score n]")
-	_, _ = fmt.Fprintln(out, "  slophammer go mutate [path] --target file [--scan]")
+	_, _ = fmt.Fprintln(out, "  slophammer go mutate [path] [--target file] [--scan]")
 }

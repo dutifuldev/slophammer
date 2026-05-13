@@ -35,6 +35,7 @@ Each implementation should support the same basic commands:
 slophammer check <path>
 slophammer check <path> --format json
 slophammer check <path> --format sarif
+slophammer check <path> --execute
 slophammer explain <rule-id>
 ```
 
@@ -43,8 +44,12 @@ The Go implementation also includes direct checks for Uncle Bob's Go tools:
 ```sh
 slophammer go dry [path] [--max-candidates n] [--show-report]
 slophammer go crap [path] [--max-score n]
-slophammer go mutate [path] --target file [--scan]
+slophammer go mutate [path] [--target file] [--scan]
 ```
+
+When `slophammer.yml` defines Go policy values, the direct Go commands use
+those values as defaults. Explicit CLI flags still win. `check --execute` runs
+the configured Go tool checks and folds tool failures into the normal report.
 
 The checker should scan a target repository and report findings such as:
 

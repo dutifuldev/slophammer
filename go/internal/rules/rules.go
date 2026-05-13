@@ -231,6 +231,10 @@ func RunWithConfig(ctx context.Context, snapshot repo.Snapshot, ruleSet []Rule, 
 		findings = append(findings, checkRule(ctx, rule, snapshot, cfg)...)
 	}
 	applyConfig(findings, cfg)
+	return NewReport(findings)
+}
+
+func NewReport(findings []Finding) Report {
 	sort.SliceStable(findings, func(i, j int) bool {
 		if findings[i].RuleID == findings[j].RuleID {
 			return findings[i].Path < findings[j].Path
