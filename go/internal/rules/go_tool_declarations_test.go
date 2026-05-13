@@ -161,6 +161,39 @@ jobs:
 	}
 }
 
+func TestGoToolRulesRejectConfigBackedNonRootParentPath(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"slophammer.yml": {
+			Path: "slophammer.yml",
+			Content: `go:
+  crap_max_score: 30
+  mutation_targets:
+    - go/internal/rules/rules.go
+`,
+		},
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+defaults:
+  run:
+    working-directory: go
+jobs:
+  test:
+    steps:
+      - run: go run ./cmd/slophammer go crap ../tmp
+      - run: go run ./cmd/slophammer go mutate ../tmp --scan
+`,
+		},
+	})
+
+	if hasCRAP4GoGate(snapshot) {
+		t.Fatal("hasCRAP4GoGate = true, want false for non-root parent path")
+	}
+	if hasMutate4GoCommand(snapshot) {
+		t.Fatal("hasMutate4GoCommand = true, want false for non-root parent path")
+	}
+}
+
 func TestGoToolRulesAcceptConfigBackedRootSlophammerCommands(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
 		"slophammer.yml": {

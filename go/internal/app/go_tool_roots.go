@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/dutifuldev/slophammer/go/internal/repo"
 	"github.com/dutifuldev/slophammer/go/internal/toolchecks"
 )
@@ -189,17 +190,7 @@ func isDryExcluded(filePath string, moduleRoot string, excludes []string) bool {
 }
 
 func pathMatchesDryPattern(filePath string, pattern string) bool {
-	if strings.HasPrefix(pattern, "**/") {
-		suffix := strings.TrimPrefix(pattern, "**/")
-		if matched, _ := path.Match(suffix, path.Base(filePath)); matched {
-			return true
-		}
-	}
-	if strings.HasSuffix(pattern, "/**") {
-		prefix := strings.TrimSuffix(pattern, "/**")
-		return filePath == prefix || strings.HasPrefix(filePath, prefix+"/")
-	}
-	matched, _ := path.Match(pattern, filePath)
+	matched, _ := doublestar.Match(pattern, filePath)
 	return matched
 }
 

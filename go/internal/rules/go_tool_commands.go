@@ -186,7 +186,7 @@ func slophammerGoFlagNeedsValue(token string) bool {
 
 func pathIsConfigRootArgument(token string, needsParentRoot bool) bool {
 	cleaned := path.Clean(strings.ReplaceAll(token, "\\", "/"))
-	if cleaned == ".." || strings.HasPrefix(cleaned, "../") {
+	if cleaned == ".." {
 		return true
 	}
 	return !needsParentRoot && cleaned == "."
