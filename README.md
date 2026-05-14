@@ -12,6 +12,12 @@ The point of this repository is to show a small tool implemented cleanly, with
 language templates beside it, so agents can copy patterns from real, working
 code.
 
+## Start Here For Agents
+
+If you are an agent applying Slophammer standards to an existing repository,
+start with [Agent Entrypoint](docs/AGENT_ENTRYPOINT.md). It explains what to
+add, which targets to enforce, how to wire CI, and how to report the result.
+
 ## What This Is
 
 - A small product spec for a repo quality checker.

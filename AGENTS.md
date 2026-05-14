@@ -2,6 +2,12 @@
 
 These instructions apply to this repository.
 
+## Agent Entrypoint
+
+If you are applying Slophammer standards to this or another repository, start
+with [Agent Entrypoint](docs/AGENT_ENTRYPOINT.md). It is the operational guide
+for turning an existing repo into one with enforceable quality gates.
+
 ## Baseline Rules
 
 - Keep generated code reviewable by humans.
@@ -31,4 +37,3 @@ These instructions apply to this repository.
 - Return errors with context.
 - Do not use global mutable state for domain behavior.
 - Keep interfaces near their consumers.
-
