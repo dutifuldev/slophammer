@@ -1,6 +1,10 @@
 package rules
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/dutifuldev/slophammer/go/internal/repo"
+)
 
 func TestLineHasGoCommandSignal(t *testing.T) {
 	tests := []struct {
@@ -69,6 +73,75 @@ func TestFirstSlophammerGoPathArgument(t *testing.T) {
 			got, ok := firstSlophammerGoPathArgument(commandTokens(tt.line))
 			if got != tt.want || ok != tt.wantOK {
 				t.Fatalf("firstSlophammerGoPathArgument(%q) = %q, %v; want %q, %v", tt.line, got, ok, tt.want, tt.wantOK)
+			}
+		})
+	}
+}
+
+func TestFileHasConfigBackedSlophammerGoCommand(t *testing.T) {
+	tests := []struct {
+		name       string
+		file       repo.File
+		subcommand string
+		want       bool
+	}{
+		{
+			name:       "workflow working directory root path",
+			subcommand: "crap",
+			file: repo.File{
+				Path: ".github/workflows/ci.yml",
+				Content: `name: CI
+jobs:
+  test:
+    steps:
+      - name: crap
+        working-directory: go
+        run: go run ./cmd/slophammer go crap ..
+`,
+			},
+			want: true,
+		},
+		{
+			name:       "workflow wrong config root path",
+			subcommand: "crap",
+			file: repo.File{
+				Path: ".github/workflows/ci.yml",
+				Content: `name: CI
+jobs:
+  test:
+    steps:
+      - name: crap
+        working-directory: go
+        run: go run ./cmd/slophammer go crap ../tmp
+`,
+			},
+			want: false,
+		},
+		{
+			name:       "script default root",
+			subcommand: "mutate",
+			file: repo.File{
+				Path:    "scripts/check.sh",
+				Content: "go run ./cmd/slophammer go mutate --scan\n",
+			},
+			want: true,
+		},
+		{
+			name:       "script wrong subcommand",
+			subcommand: "crap",
+			file: repo.File{
+				Path:    "scripts/check.sh",
+				Content: "go run ./cmd/slophammer go mutate --scan\n",
+			},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := fileHasConfigBackedSlophammerGoCommand(tt.file, tt.subcommand)
+			if got != tt.want {
+				t.Fatalf("fileHasConfigBackedSlophammerGoCommand = %v, want %v", got, tt.want)
 			}
 		})
 	}
