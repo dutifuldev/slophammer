@@ -10,25 +10,35 @@ import (
 )
 
 func goProjectRoots(snapshot repo.Snapshot) []string {
-	rootsByPath := map[string]struct{}{}
-	for filePath := range snapshot.Files {
-		if isEmbeddedFixturePath(filePath) {
-			continue
-		}
-		if strings.EqualFold(path.Base(filePath), "go.mod") {
-			root := path.Dir(filePath)
-			if root == "." {
-				root = ""
-			}
-			rootsByPath[root] = struct{}{}
-		}
-	}
+	rootsByPath := goModuleRootSet(snapshot)
 	if len(rootsByPath) == 0 && hasUnscopedGoSignal(snapshot) {
 		rootsByPath[""] = struct{}{}
 	}
 	if len(rootsByPath) > 0 && hasGoSourceOutsideModuleRoots(snapshot, rootsByPath) {
 		rootsByPath[""] = struct{}{}
 	}
+	return sortedRootSet(rootsByPath)
+}
+
+func goModuleRootSet(snapshot repo.Snapshot) map[string]struct{} {
+	rootsByPath := map[string]struct{}{}
+	for filePath := range snapshot.Files {
+		if !isEmbeddedFixturePath(filePath) && strings.EqualFold(path.Base(filePath), "go.mod") {
+			rootsByPath[goModuleRootPath(filePath)] = struct{}{}
+		}
+	}
+	return rootsByPath
+}
+
+func goModuleRootPath(filePath string) string {
+	root := path.Dir(filePath)
+	if root == "." {
+		return ""
+	}
+	return root
+}
+
+func sortedRootSet(rootsByPath map[string]struct{}) []string {
 	roots := make([]string, 0, len(rootsByPath))
 	for root := range rootsByPath {
 		roots = append(roots, root)

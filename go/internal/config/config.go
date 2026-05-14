@@ -10,6 +10,9 @@ import (
 const (
 	DefaultFileName = "slophammer.yml"
 	AltFileName     = "slophammer.yaml"
+
+	MinimumGoCoverageThreshold = 85
+	MaximumGoCRAPScore         = 8
 )
 
 type Config struct {
@@ -107,22 +110,46 @@ func configFile(snapshot repo.Snapshot) (repo.File, bool) {
 
 func validate(cfg Config) error {
 	for ruleID, rule := range cfg.Rules {
-		switch rule.Severity {
-		case "", "error", "warn":
-		default:
-			return fmt.Errorf("rules.%s.severity must be error or warn", ruleID)
-		}
-		if rule.Disabled && rule.Reason == "" {
-			return fmt.Errorf("rules.%s.reason is required when disabled is true", ruleID)
+		if err := validateRule(ruleID, rule); err != nil {
+			return err
 		}
 	}
 	for i, boundary := range cfg.Go.DependencyBoundaries {
-		if boundary.From == "" {
-			return fmt.Errorf("go.dependency_boundaries[%d].from cannot be empty", i)
+		if err := validateDependencyBoundary(i, boundary); err != nil {
+			return err
 		}
 	}
-	if cfg.Go.DRYMaxCandidatesSet && cfg.Go.DRYMaxCandidates < 0 {
+	return validateGoTargets(cfg.Go)
+}
+
+func validateGoTargets(cfg GoConfig) error {
+	if cfg.DRYMaxCandidatesSet && cfg.DRYMaxCandidates < 0 {
 		return fmt.Errorf("go.dry_max_candidates must be non-negative")
+	}
+	if cfg.CoverageThreshold > 0 && cfg.CoverageThreshold < MinimumGoCoverageThreshold {
+		return fmt.Errorf("go.coverage_threshold must be at least %.1f", float64(MinimumGoCoverageThreshold))
+	}
+	if cfg.CRAPMaxScore > 0 && cfg.CRAPMaxScore > MaximumGoCRAPScore {
+		return fmt.Errorf("go.crap_max_score must be at most %.1f", float64(MaximumGoCRAPScore))
+	}
+	return nil
+}
+
+func validateRule(ruleID string, rule RuleConfig) error {
+	switch rule.Severity {
+	case "", "error", "warn":
+	default:
+		return fmt.Errorf("rules.%s.severity must be error or warn", ruleID)
+	}
+	if rule.Disabled && rule.Reason == "" {
+		return fmt.Errorf("rules.%s.reason is required when disabled is true", ruleID)
+	}
+	return nil
+}
+
+func validateDependencyBoundary(index int, boundary DependencyBoundary) error {
+	if boundary.From == "" {
+		return fmt.Errorf("go.dependency_boundaries[%d].from cannot be empty", index)
 	}
 	return nil
 }

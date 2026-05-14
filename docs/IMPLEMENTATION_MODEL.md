@@ -476,6 +476,8 @@ slophammer.yml
 ```
 
 Config should tune policy. It should not make problems disappear silently.
+The Go defaults are also floors and ceilings: coverage cannot be configured
+below 85%, and CRAP cannot be configured above 8. Stricter values are allowed.
 
 Example:
 
@@ -486,7 +488,7 @@ rules:
     threshold: 0.82
   go.crap-required:
     severity: error
-    max: 30
+    max: 8
 go:
   dependency_boundaries:
     - from: internal/rules

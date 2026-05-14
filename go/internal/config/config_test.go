@@ -26,14 +26,14 @@ func TestLoadParsesPolicyConfig(t *testing.T) {
   go.crap-required:
     severity: warn
 go:
-  coverage_threshold: 80
+  coverage_threshold: 85
   dry_max_candidates: 0
   dry_paths:
     - go/cmd
     - go/internal
   dry_exclude:
     - "**/*_test.go"
-  crap_max_score: 30
+  crap_max_score: 8
   mutation_targets:
     - internal/rules/rules.go
   dependency_boundaries:
@@ -53,7 +53,7 @@ go:
 
 func assertParsedGoPolicyConfig(t *testing.T, cfg Config) {
 	t.Helper()
-	if cfg.Go.CoverageThreshold != 80 || cfg.Go.DRYMaxCandidates != 0 || !cfg.Go.DRYMaxCandidatesSet || cfg.Go.CRAPMaxScore != 30 {
+	if cfg.Go.CoverageThreshold != 85 || cfg.Go.DRYMaxCandidates != 0 || !cfg.Go.DRYMaxCandidatesSet || cfg.Go.CRAPMaxScore != 8 {
 		t.Fatalf("Go config = %#v", cfg.Go)
 	}
 	assertParsedDryPaths(t, cfg)
@@ -125,6 +125,39 @@ func TestLoadRejectsNegativeDryBudget(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "dry_max_candidates") {
 		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestLoadRejectsWeakerRecommendedGoTargets(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    string
+	}{
+		{
+			name:    "coverage",
+			content: "go:\n  coverage_threshold: 84\n",
+			want:    "coverage_threshold",
+		},
+		{
+			name:    "crap",
+			content: "go:\n  crap_max_score: 9\n",
+			want:    "crap_max_score",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := Load(repo.NewSnapshot("/repo", map[string]repo.File{
+				"slophammer.yml": {Path: "slophammer.yml", Content: tt.content},
+			}))
+			if err == nil {
+				t.Fatal("Load returned nil error")
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("error = %v", err)
+			}
+		})
 	}
 }
 

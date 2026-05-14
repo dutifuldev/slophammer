@@ -16,7 +16,7 @@ import (
 
 const (
 	DefaultMaximumDRYCandidates = 40
-	DefaultMaximumCRAPScore     = 30
+	DefaultMaximumCRAPScore     = 8
 )
 
 type Runner interface {
@@ -78,10 +78,7 @@ func (options MutationOptions) RootPath() string {
 
 func CheckDry(ctx context.Context, options DryOptions, out io.Writer, errOut io.Writer, runner Runner) int {
 	root := defaultRoot(options.Root)
-	maximumCandidates := options.MaximumCandidates
-	if !options.MaximumSet && maximumCandidates == 0 {
-		maximumCandidates = DefaultMaximumDRYCandidates
-	}
+	maximumCandidates := dryCandidateLimit(options)
 
 	args := gotools.Dry4Go.GoRunArgs(gotools.Latest, append([]string{"--format", "json"}, dryPaths(options)...)...)
 	result, err := runner.Run(ctx, root, "go", args...)
@@ -106,12 +103,16 @@ func CheckDry(ctx context.Context, options DryOptions, out io.Writer, errOut io.
 	return 0
 }
 
+func dryCandidateLimit(options DryOptions) int {
+	if !options.MaximumSet && options.MaximumCandidates == 0 {
+		return DefaultMaximumDRYCandidates
+	}
+	return options.MaximumCandidates
+}
+
 func CheckCRAP(ctx context.Context, options CRAPOptions, out io.Writer, errOut io.Writer, runner Runner) int {
 	root := defaultRoot(options.Root)
-	maximumScore := options.MaximumScore
-	if !options.MaximumSet && maximumScore == 0 {
-		maximumScore = DefaultMaximumCRAPScore
-	}
+	maximumScore := crapScoreLimit(options)
 
 	result, err := runner.Run(ctx, root, "go", gotools.CRAP4Go.GoRunArgs(gotools.Latest)...)
 	writeBytes(out, result.Stdout)
@@ -133,6 +134,13 @@ func CheckCRAP(ctx context.Context, options CRAPOptions, out io.Writer, errOut i
 		return 1
 	}
 	return 0
+}
+
+func crapScoreLimit(options CRAPOptions) float64 {
+	if options.MaximumSet || options.MaximumScore != 0 {
+		return options.MaximumScore
+	}
+	return DefaultMaximumCRAPScore
 }
 
 func CheckMutation(ctx context.Context, options MutationOptions, out io.Writer, errOut io.Writer, runner Runner) int {

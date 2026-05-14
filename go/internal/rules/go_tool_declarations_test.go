@@ -71,7 +71,7 @@ func TestGoToolRulesAcceptSlophammerGoCommands(t *testing.T) {
 		"slophammer.yml": {
 			Path: "slophammer.yml",
 			Content: `go:
-  crap_max_score: 30
+  crap_max_score: 8
   mutation_targets:
     - go/internal/rules/rules.go
 `,
@@ -136,7 +136,7 @@ func TestGoToolRulesAcceptConfigBackedSlophammerCommands(t *testing.T) {
 		"slophammer.yml": {
 			Path: "slophammer.yml",
 			Content: `go:
-  crap_max_score: 30
+  crap_max_score: 8
   mutation_targets:
     - go/internal/rules/rules.go
 `,
@@ -169,7 +169,7 @@ func TestGoToolRulesRejectConfigBackedNonRootParentPath(t *testing.T) {
 		"slophammer.yml": {
 			Path: "slophammer.yml",
 			Content: `go:
-  crap_max_score: 30
+  crap_max_score: 8
   mutation_targets:
     - go/internal/rules/rules.go
 `,
@@ -202,7 +202,7 @@ func TestGoToolRulesRequireConfigRootForDeepWorkingDirectory(t *testing.T) {
 		"slophammer.yml": {
 			Path: "slophammer.yml",
 			Content: `go:
-  crap_max_score: 30
+  crap_max_score: 8
   mutation_targets:
     - services/api/internal/rules/rules.go
 `,
@@ -251,7 +251,7 @@ func TestGoToolRulesAcceptConfigBackedRootSlophammerCommands(t *testing.T) {
 		"slophammer.yml": {
 			Path: "slophammer.yml",
 			Content: `go:
-  crap_max_score: 30
+  crap_max_score: 8
   mutation_targets:
     - internal/rules/rules.go
 `,
@@ -281,7 +281,7 @@ func TestGoToolRulesAcceptConfigBackedRootSlophammerCommandsWithDefaultPath(t *t
 		"slophammer.yml": {
 			Path: "slophammer.yml",
 			Content: `go:
-  crap_max_score: 30
+  crap_max_score: 8
   mutation_targets:
     - internal/rules/rules.go
 `,

@@ -7,6 +7,10 @@ import (
 )
 
 func commandFiles(snapshot repo.Snapshot) []repo.File {
+	return preparedCommandFiles(commandFileMap(snapshot))
+}
+
+func commandFileMap(snapshot repo.Snapshot) map[string]repo.File {
 	filesByPath := map[string]repo.File{}
 	for _, file := range snapshot.WorkflowFiles() {
 		filesByPath[file.Path] = file
@@ -25,6 +29,10 @@ func commandFiles(snapshot repo.Snapshot) []repo.File {
 			filesByPath[file.Path] = file
 		}
 	}
+	return filesByPath
+}
+
+func preparedCommandFiles(filesByPath map[string]repo.File) []repo.File {
 	files := make([]repo.File, 0, len(filesByPath))
 	for _, file := range filesByPath {
 		file.Content = stripCommentLines(file.Content)
@@ -121,12 +129,15 @@ func workflowRunBlockScalar(value string) (folded bool, ok bool) {
 		return false, false
 	}
 	for _, indicator := range value[1:] {
-		if indicator == '-' || indicator == '+' || (indicator >= '1' && indicator <= '9') {
-			continue
+		if !isWorkflowBlockScalarIndicator(indicator) {
+			return false, false
 		}
-		return false, false
 	}
 	return folded, true
+}
+
+func isWorkflowBlockScalarIndicator(indicator rune) bool {
+	return indicator == '-' || indicator == '+' || (indicator >= '1' && indicator <= '9')
 }
 
 func (s *workflowRunScan) recordRunBlockLine(line, trimmed string) bool {

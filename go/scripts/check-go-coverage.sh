@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-minimum_total_coverage="80.0"
+minimum_total_coverage="85.0"
 declare -A package_minimums=(
   ["./internal/rules"]="90.0"
   ["./internal/scan"]="85.0"

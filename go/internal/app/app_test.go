@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/dutifuldev/slophammer/go/internal/config"
+	"github.com/dutifuldev/slophammer/go/internal/repo"
 	"github.com/dutifuldev/slophammer/go/internal/rules"
 	"github.com/dutifuldev/slophammer/go/internal/toolchecks"
 )
@@ -128,7 +129,7 @@ func TestCheckExecuteAddsToolFindings(t *testing.T) {
 	writeFile(t, root, "slophammer.yml", strings.Join([]string{
 		"go:",
 		"  dry_max_candidates: 1",
-		"  crap_max_score: 10",
+		"  crap_max_score: 8",
 		"  mutation_targets:",
 		"    - internal/example.go",
 		"",
@@ -204,6 +205,41 @@ func TestApplyCommandConfigKeepsExplicitValues(t *testing.T) {
 	applyMutationConfig(&mutation, cfg)
 	if mutation.Target != "explicit.go" || len(mutation.Targets) != 0 {
 		t.Fatalf("mutation = %#v", mutation)
+	}
+}
+
+func TestRunWithCommandConfigLoadsRepoConfig(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "slophammer.yml", "go:\n  crap_max_score: 8\n")
+
+	var errOut bytes.Buffer
+	code := runWithCommandConfig(root, &errOut, func(snapshot repo.Snapshot, cfg config.Config) int {
+		if snapshot.Root != root {
+			t.Fatalf("snapshot.Root = %q, want %q", snapshot.Root, root)
+		}
+		if cfg.Go.CRAPMaxScore != 8 {
+			t.Fatalf("CRAPMaxScore = %v, want 8", cfg.Go.CRAPMaxScore)
+		}
+		return ExitOK
+	})
+
+	if code != ExitOK {
+		t.Fatalf("code = %d, want %d; stderr=%q", code, ExitOK, errOut.String())
+	}
+}
+
+func TestRunWithCommandConfigRejectsInvalidRoot(t *testing.T) {
+	var errOut bytes.Buffer
+	code := runWithCommandConfig(filepath.Join(t.TempDir(), "missing"), &errOut, func(repo.Snapshot, config.Config) int {
+		t.Fatal("run should not be called")
+		return ExitOK
+	})
+
+	if code != ExitError {
+		t.Fatalf("code = %d, want %d", code, ExitError)
+	}
+	if !strings.Contains(errOut.String(), "config failed") {
+		t.Fatalf("stderr = %q", errOut.String())
 	}
 }
 

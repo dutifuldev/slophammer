@@ -146,23 +146,33 @@ func lineHasConfigRootArgument(prefix []string, tokens []string, configRootPath 
 	if workingDirectory, ok := priorCDWorkingDirectory(prefix); ok {
 		configRootPath = configRootPathForWorkingDirectory(workingDirectory)
 	}
-	for i := 0; i < len(tokens); i++ {
-		token := cleanCommandToken(tokens[i])
-		if token == "" {
-			continue
-		}
-		if isShellSeparator(token) {
-			return false
-		}
-		if strings.HasPrefix(token, "-") {
-			if slophammerGoFlagNeedsValue(token) && !strings.Contains(token, "=") {
-				i++
-			}
-			continue
-		}
+	if token, ok := firstSlophammerGoPathArgument(tokens); ok {
 		return pathIsConfigRootArgument(token, configRootPath)
 	}
 	return path.Clean(configRootPath) == "."
+}
+
+func firstSlophammerGoPathArgument(tokens []string) (string, bool) {
+	for i := 0; i < len(tokens); i++ {
+		token := cleanCommandToken(tokens[i])
+		switch {
+		case token == "":
+			continue
+		case isShellSeparator(token):
+			return "", false
+		case strings.HasPrefix(token, "-"):
+			if slophammerGoFlagConsumesNext(token) {
+				i++
+			}
+		default:
+			return token, true
+		}
+	}
+	return "", false
+}
+
+func slophammerGoFlagConsumesNext(token string) bool {
+	return slophammerGoFlagNeedsValue(token) && !strings.Contains(token, "=")
 }
 
 func priorCDWorkingDirectory(tokens []string) (string, bool) {

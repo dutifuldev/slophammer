@@ -50,18 +50,24 @@ func runGo(ctx context.Context, args []string, out io.Writer, errOut io.Writer) 
 		printGoUsage(errOut)
 		return app.ExitError
 	}
-	switch args[0] {
-	case "dry":
-		return runGoDry(ctx, args[1:], out, errOut)
-	case "crap":
-		return runGoCRAP(ctx, args[1:], out, errOut)
-	case "mutate":
-		return runGoMutation(ctx, args[1:], out, errOut)
-	default:
-		_, _ = fmt.Fprintf(errOut, "unknown go command: %s\n", args[0])
-		printGoUsage(errOut)
-		return app.ExitError
+	if run, ok := goSubcommand(args[0]); ok {
+		return run(ctx, args[1:], out, errOut)
 	}
+	_, _ = fmt.Fprintf(errOut, "unknown go command: %s\n", args[0])
+	printGoUsage(errOut)
+	return app.ExitError
+}
+
+type goCommandRunner func(context.Context, []string, io.Writer, io.Writer) int
+
+func goSubcommand(name string) (goCommandRunner, bool) {
+	commands := map[string]goCommandRunner{
+		"dry":    runGoDry,
+		"crap":   runGoCRAP,
+		"mutate": runGoMutation,
+	}
+	run, ok := commands[name]
+	return run, ok
 }
 
 func runGoDry(ctx context.Context, args []string, out io.Writer, errOut io.Writer) int {
@@ -94,31 +100,38 @@ func runParsed[T any](
 func parseCheckArgs(args []string, errOut io.Writer) (app.CheckOptions, bool) {
 	options := app.CheckOptions{Format: "text"}
 	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		switch arg {
-		case "--format":
-			value, ok := nextArg(args, i)
-			if !ok {
-				_, _ = fmt.Fprintln(errOut, "--format requires a value")
-				return app.CheckOptions{}, false
-			}
-			i++
-			options.Format = value
-		case "--json":
-			options.Format = "json"
-		case "--execute":
-			options.Execute = true
-		default:
-			if !parseCheckPath(&options, arg, errOut) {
-				return app.CheckOptions{}, false
-			}
+		advance, ok := parseCheckArg(&options, args, i, errOut)
+		if !ok {
+			return app.CheckOptions{}, false
 		}
+		i += advance
 	}
 	if options.Root == "" {
 		_, _ = fmt.Fprintln(errOut, "usage: slophammer check <path> [--format text|json|sarif] [--execute]")
 		return app.CheckOptions{}, false
 	}
 	return options, true
+}
+
+func parseCheckArg(options *app.CheckOptions, args []string, index int, errOut io.Writer) (int, bool) {
+	switch args[index] {
+	case "--format":
+		value, ok := nextArg(args, index)
+		if !ok {
+			_, _ = fmt.Fprintln(errOut, "--format requires a value")
+			return 0, false
+		}
+		options.Format = value
+		return 1, true
+	case "--json":
+		options.Format = "json"
+		return 0, true
+	case "--execute":
+		options.Execute = true
+		return 0, true
+	default:
+		return 0, parseCheckPath(options, args[index], errOut)
+	}
 }
 
 func parseCheckPath(options *app.CheckOptions, arg string, errOut io.Writer) bool {
@@ -135,95 +148,128 @@ func parseCheckPath(options *app.CheckOptions, arg string, errOut io.Writer) boo
 }
 
 func parseGoDryArgs(args []string, errOut io.Writer) (toolchecks.DryOptions, bool) {
-	options := toolchecks.DryOptions{MaximumCandidates: toolchecks.DefaultMaximumDRYCandidates}
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		switch arg {
-		case "--show-report":
-			options.ShowReport = true
-		case "--max-candidates":
-			valueText, ok := nextArg(args, i)
-			if !ok {
-				_, _ = fmt.Fprintln(errOut, "--max-candidates requires a value")
-				return toolchecks.DryOptions{}, false
-			}
-			i++
-			value, err := strconv.Atoi(valueText)
-			if err != nil || value < 0 {
-				_, _ = fmt.Fprintln(errOut, "--max-candidates must be a non-negative integer")
-				return toolchecks.DryOptions{}, false
-			}
-			options.MaximumCandidates = value
-			options.MaximumSet = true
-		default:
-			root, ok := parseSinglePathOption(options.Root, arg, "go dry", errOut)
-			if !ok {
-				return toolchecks.DryOptions{}, false
-			}
-			options.Root = root
+	return parseGoToolArgs(args, errOut, toolchecks.DryOptions{MaximumCandidates: toolchecks.DefaultMaximumDRYCandidates}, parseGoDryArg)
+}
+
+func parseGoDryArg(options *toolchecks.DryOptions, args []string, index int, errOut io.Writer) (int, bool) {
+	switch args[index] {
+	case "--show-report":
+		options.ShowReport = true
+		return 0, true
+	case "--max-candidates":
+		value, ok := parseNonNegativeIntFlag(args, index, "--max-candidates", errOut)
+		if !ok {
+			return 0, false
 		}
+		options.MaximumCandidates = value
+		options.MaximumSet = true
+		return 1, true
+	default:
+		root, ok := parseSinglePathOption(options.Root, args[index], "go dry", errOut)
+		options.Root = root
+		return 0, ok
 	}
-	return options, true
 }
 
 func parseGoCRAPArgs(args []string, errOut io.Writer) (toolchecks.CRAPOptions, bool) {
-	options := toolchecks.CRAPOptions{MaximumScore: toolchecks.DefaultMaximumCRAPScore}
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		switch arg {
-		case "--max-score":
-			valueText, ok := nextArg(args, i)
-			if !ok {
-				_, _ = fmt.Fprintln(errOut, "--max-score requires a value")
-				return toolchecks.CRAPOptions{}, false
-			}
-			i++
-			value, err := strconv.ParseFloat(valueText, 64)
-			if err != nil || value < 0 || math.IsNaN(value) || math.IsInf(value, 0) {
-				_, _ = fmt.Fprintln(errOut, "--max-score must be a non-negative number")
-				return toolchecks.CRAPOptions{}, false
-			}
-			options.MaximumScore = value
-			options.MaximumSet = true
-		default:
-			root, ok := parseSinglePathOption(options.Root, arg, "go crap", errOut)
-			if !ok {
-				return toolchecks.CRAPOptions{}, false
-			}
-			options.Root = root
+	return parseGoToolArgs(args, errOut, toolchecks.CRAPOptions{MaximumScore: toolchecks.DefaultMaximumCRAPScore}, parseGoCRAPArg)
+}
+
+func parseGoCRAPArg(options *toolchecks.CRAPOptions, args []string, index int, errOut io.Writer) (int, bool) {
+	if args[index] == "--max-score" {
+		value, ok := parseNonNegativeFloatFlag(args, index, "--max-score", errOut)
+		if !ok {
+			return 0, false
 		}
+		options.MaximumScore = value
+		options.MaximumSet = true
+		return 1, true
 	}
-	return options, true
+	root, ok := parseSinglePathOption(options.Root, args[index], "go crap", errOut)
+	options.Root = root
+	return 0, ok
 }
 
 func parseGoMutationArgs(args []string, errOut io.Writer) (toolchecks.MutationOptions, bool) {
 	options := toolchecks.MutationOptions{}
+	return parseGoToolArgs(args, errOut, options, parseGoMutationArg)
+}
+
+func parseGoToolArgs[T any](
+	args []string,
+	errOut io.Writer,
+	options T,
+	parseArg func(*T, []string, int, io.Writer) (int, bool),
+) (T, bool) {
 	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		switch arg {
-		case "--target":
-			value, ok := nextArg(args, i)
-			if !ok {
-				_, _ = fmt.Fprintln(errOut, "--target requires a value")
-				return toolchecks.MutationOptions{}, false
-			}
-			i++
-			if value == "" || value[0] == '-' {
-				_, _ = fmt.Fprintln(errOut, "--target requires a file value")
-				return toolchecks.MutationOptions{}, false
-			}
-			options.Target = value
-		case "--scan":
-			options.Scan = true
-		default:
-			root, ok := parseSinglePathOption(options.Root, arg, "go mutate", errOut)
-			if !ok {
-				return toolchecks.MutationOptions{}, false
-			}
-			options.Root = root
+		advance, ok := parseArg(&options, args, i, errOut)
+		if !ok {
+			var zero T
+			return zero, false
 		}
+		i += advance
 	}
 	return options, true
+}
+
+func parseGoMutationArg(options *toolchecks.MutationOptions, args []string, index int, errOut io.Writer) (int, bool) {
+	switch args[index] {
+	case "--target":
+		value, ok := parseTargetFlag(args, index, errOut)
+		if !ok {
+			return 0, false
+		}
+		options.Target = value
+		return 1, true
+	case "--scan":
+		options.Scan = true
+		return 0, true
+	default:
+		root, ok := parseSinglePathOption(options.Root, args[index], "go mutate", errOut)
+		options.Root = root
+		return 0, ok
+	}
+}
+
+func parseNonNegativeIntFlag(args []string, index int, flag string, errOut io.Writer) (int, bool) {
+	valueText, ok := nextArg(args, index)
+	if !ok {
+		_, _ = fmt.Fprintf(errOut, "%s requires a value\n", flag)
+		return 0, false
+	}
+	value, err := strconv.Atoi(valueText)
+	if err != nil || value < 0 {
+		_, _ = fmt.Fprintf(errOut, "%s must be a non-negative integer\n", flag)
+		return 0, false
+	}
+	return value, true
+}
+
+func parseNonNegativeFloatFlag(args []string, index int, flag string, errOut io.Writer) (float64, bool) {
+	valueText, ok := nextArg(args, index)
+	if !ok {
+		_, _ = fmt.Fprintf(errOut, "%s requires a value\n", flag)
+		return 0, false
+	}
+	value, err := strconv.ParseFloat(valueText, 64)
+	if err != nil || value < 0 || math.IsNaN(value) || math.IsInf(value, 0) {
+		_, _ = fmt.Fprintf(errOut, "%s must be a non-negative number\n", flag)
+		return 0, false
+	}
+	return value, true
+}
+
+func parseTargetFlag(args []string, index int, errOut io.Writer) (string, bool) {
+	value, ok := nextArg(args, index)
+	if !ok {
+		_, _ = fmt.Fprintln(errOut, "--target requires a value")
+		return "", false
+	}
+	if value == "" || value[0] == '-' {
+		_, _ = fmt.Fprintln(errOut, "--target requires a file value")
+		return "", false
+	}
+	return value, true
 }
 
 func nextArg(args []string, index int) (string, bool) {

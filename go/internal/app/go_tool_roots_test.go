@@ -119,6 +119,32 @@ func TestDryOptionsForModuleKeepsDotIncludePath(t *testing.T) {
 	}
 }
 
+func TestDryIncludeRoot(t *testing.T) {
+	tests := []struct {
+		name       string
+		moduleRoot string
+		include    string
+		want       string
+		wantOK     bool
+	}{
+		{name: "empty", moduleRoot: "go", include: "", wantOK: false},
+		{name: "dot", moduleRoot: "go", include: ".", want: "go", wantOK: true},
+		{name: "root module", moduleRoot: ".", include: "cmd", want: "cmd", wantOK: true},
+		{name: "nested module exact", moduleRoot: "go", include: "go", want: "go", wantOK: true},
+		{name: "nested module child", moduleRoot: "go", include: "go/internal", want: "go/internal", wantOK: true},
+		{name: "outside nested module", moduleRoot: "go", include: "templates/go", wantOK: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := dryIncludeRoot(tt.moduleRoot, tt.include)
+			if ok != tt.wantOK || got != tt.want {
+				t.Fatalf("dryIncludeRoot = %q, %v; want %q, %v", got, ok, tt.want, tt.wantOK)
+			}
+		})
+	}
+}
+
 func TestMutationOptionsForModulesTrimsConfiguredTargets(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
 		"go/go.mod": {Path: "go/go.mod"},
@@ -135,6 +161,33 @@ func TestMutationOptionsForModulesTrimsConfiguredTargets(t *testing.T) {
 
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("mutationOptionsForModules = %#v, want %#v", got, want)
+	}
+}
+
+func TestTargetModuleRoot(t *testing.T) {
+	moduleRoots := []string{".", "services/api", "services/api/tools"}
+	tests := []struct {
+		target string
+		want   string
+	}{
+		{target: "main.go", want: "."},
+		{target: "services/api", want: "services/api"},
+		{target: "services/api/internal/app.go", want: "services/api"},
+		{target: "services/api/tools/main.go", want: "services/api/tools"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.target, func(t *testing.T) {
+			if got := targetModuleRoot(tt.target, moduleRoots); got != tt.want {
+				t.Fatalf("targetModuleRoot = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTargetModuleRootFallsBackToSingleModule(t *testing.T) {
+	if got := targetModuleRoot("cmd/main.go", []string{"go"}); got != "go" {
+		t.Fatalf("targetModuleRoot = %q, want go", got)
 	}
 }
 

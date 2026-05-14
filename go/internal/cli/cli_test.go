@@ -81,6 +81,10 @@ func TestRunGoRejectsMissingSubcommand(t *testing.T) {
 	assertCLIError(t, []string{"go"}, "slophammer go dry")
 }
 
+func TestRunGoRejectsUnknownSubcommand(t *testing.T) {
+	assertCLIError(t, []string{"go", "wat"}, "unknown go command")
+}
+
 func TestParseGoDryArgs(t *testing.T) {
 	var errOut bytes.Buffer
 	options, ok := parseGoDryArgs([]string{"/repo", "--max-candidates", "12", "--show-report"}, &errOut)

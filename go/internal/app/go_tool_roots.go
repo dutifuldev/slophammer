@@ -156,23 +156,29 @@ func dryIncludeRoots(moduleRoot string, includes []string) []string {
 	}
 	roots := make([]string, 0, len(includes))
 	for _, include := range includes {
-		if strings.TrimSpace(include) == "" {
-			continue
-		}
-		include = cleanSlashPath(include)
-		if include == "" {
-			continue
-		}
-		switch {
-		case include == ".":
-			roots = append(roots, moduleRoot)
-		case moduleRoot == ".":
-			roots = append(roots, include)
-		case include == moduleRoot || strings.HasPrefix(include, moduleRoot+"/"):
-			roots = append(roots, include)
+		root, ok := dryIncludeRoot(moduleRoot, include)
+		if ok {
+			roots = append(roots, root)
 		}
 	}
 	return roots
+}
+
+func dryIncludeRoot(moduleRoot string, include string) (string, bool) {
+	if strings.TrimSpace(include) == "" {
+		return "", false
+	}
+	include = cleanSlashPath(include)
+	switch {
+	case include == ".":
+		return moduleRoot, true
+	case moduleRoot == ".":
+		return include, true
+	case include == moduleRoot || strings.HasPrefix(include, moduleRoot+"/"):
+		return include, true
+	default:
+		return "", false
+	}
 }
 
 func isUnderDryRoot(filePath string, roots []string) bool {

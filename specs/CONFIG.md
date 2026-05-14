@@ -15,7 +15,7 @@ rules:
   go.crap-required:
     severity: warn
 go:
-  coverage_threshold: 80
+  coverage_threshold: 85
   dry_max_candidates: 0
   dry_paths:
     - go/cmd
@@ -24,7 +24,7 @@ go:
     - "**/*_test.go"
     - "fixtures/**"
     - "templates/**"
-  crap_max_score: 30
+  crap_max_score: 8
   mutation_targets:
     - go/internal/rules/rules.go
   dependency_boundaries:
@@ -59,6 +59,15 @@ reason and is not used by the current Go implementation to hide findings.
 
 `go.coverage_threshold`, `go.dry_max_candidates`, `go.crap_max_score`, and
 `go.mutation_targets` are parsed as typed policy fields.
+
+The Go policy values have hard recommended bounds. Slophammer rejects config
+that weakens them:
+
+- `go.coverage_threshold` must be at least `85`.
+- `go.crap_max_score` must be at most `8`.
+
+Projects may choose stricter values, such as higher coverage or lower CRAP
+limits, but they cannot configure weaker values through `slophammer.yml`.
 
 `go.dry_paths` and `go.dry_exclude` configure production-only DRY enforcement.
 Slophammer expands those paths to Go source files before running `dry4go`.

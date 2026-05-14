@@ -1,5 +1,5 @@
 go:
-  coverage_threshold: 80
+  coverage_threshold: 85
   dry_max_candidates: 0
   dry_paths:
     - go/cmd
@@ -8,7 +8,7 @@ go:
     - "**/*_test.go"
     - "fixtures/**"
     - "templates/**"
-  crap_max_score: 30
+  crap_max_score: 8
   mutation_targets:
     - go/internal/rules/rules.go
   dependency_boundaries:
