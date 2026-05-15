@@ -16,14 +16,23 @@ rules:
     severity: warn
 go:
   coverage_threshold: 85
-  dry_max_candidates: 0
-  dry_paths:
-    - go/cmd
-    - go/internal
-  dry_exclude:
-    - "**/*_test.go"
-    - "fixtures/**"
-    - "templates/**"
+  dry:
+    max_findings: 0
+    paths:
+      - go/cmd
+      - go/internal
+    exclude:
+      - "**/*_test.go"
+      - "fixtures/**"
+      - "templates/**"
+    structural:
+      enabled: true
+      threshold: 0.82
+      min_lines: 4
+      min_nodes: 20
+    copied_blocks:
+      enabled: true
+      min_tokens: 100
   crap_max_score: 8
   mutation_targets:
     - go/internal/rules/rules.go
@@ -57,8 +66,9 @@ reason and is not used by the current Go implementation to hide findings.
 
 ## Go Config
 
-`go.coverage_threshold`, `go.dry_max_candidates`, `go.crap_max_score`, and
-`go.mutation_targets` are parsed as typed policy fields.
+`go.coverage_threshold`, `go.dry_max_candidates`, `go.dry`,
+`go.crap_max_score`, and `go.mutation_targets` are parsed as typed policy
+fields.
 
 The Go policy values have hard recommended bounds. Slophammer rejects config
 that weakens them:
@@ -70,7 +80,16 @@ Projects may choose stricter values, such as higher coverage or lower CRAP
 limits, but they cannot configure weaker values through `slophammer.yml`.
 
 `go.dry_paths` and `go.dry_exclude` configure production-only DRY enforcement.
-Slophammer expands those paths to Go source files before running `dry4go`.
+The nested `go.dry` shape is the preferred spelling for new repos:
+
+- `go.dry.max_findings` sets the finding budget.
+- `go.dry.paths` selects paths to scan.
+- `go.dry.exclude` excludes tests, fixtures, templates, or generated code.
+- `go.dry.structural` configures function and method similarity.
+- `go.dry.copied_blocks` configures CPD-style copied-block detection.
+
+Slophammer expands the configured paths to Go source files before running its
+native DRY engine. The old top-level fields remain accepted for compatibility.
 
 The direct Go commands use these values as defaults:
 

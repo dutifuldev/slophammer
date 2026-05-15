@@ -34,9 +34,33 @@ type GoConfig struct {
 	DRYMaxCandidatesSet  bool                 `yaml:"-"`
 	DRYPaths             []string             `yaml:"dry_paths"`
 	DRYExclude           []string             `yaml:"dry_exclude"`
+	DRY                  DryConfig            `yaml:"dry"`
 	CRAPMaxScore         float64              `yaml:"crap_max_score"`
 	MutationTargets      []string             `yaml:"mutation_targets"`
 	DependencyBoundaries []DependencyBoundary `yaml:"dependency_boundaries"`
+}
+
+type DryConfig struct {
+	MaxFindings    int                 `yaml:"max_findings"`
+	MaxFindingsSet bool                `yaml:"-"`
+	Paths          []string            `yaml:"paths"`
+	Exclude        []string            `yaml:"exclude"`
+	Structural     DryStructuralConfig `yaml:"structural"`
+	CopiedBlocks   DryCopiedConfig     `yaml:"copied_blocks"`
+}
+
+type DryStructuralConfig struct {
+	EnabledSet bool    `yaml:"-"`
+	Enabled    bool    `yaml:"enabled"`
+	Threshold  float64 `yaml:"threshold"`
+	MinLines   int     `yaml:"min_lines"`
+	MinNodes   int     `yaml:"min_nodes"`
+}
+
+type DryCopiedConfig struct {
+	EnabledSet bool `yaml:"-"`
+	Enabled    bool `yaml:"enabled"`
+	MinTokens  int  `yaml:"min_tokens"`
 }
 
 type DependencyBoundary struct {
@@ -45,11 +69,29 @@ type DependencyBoundary struct {
 }
 
 func (cfg *GoConfig) UnmarshalYAML(value *yaml.Node) error {
+	type dryStructuralConfig struct {
+		Enabled   *bool   `yaml:"enabled"`
+		Threshold float64 `yaml:"threshold"`
+		MinLines  int     `yaml:"min_lines"`
+		MinNodes  int     `yaml:"min_nodes"`
+	}
+	type dryCopiedConfig struct {
+		Enabled   *bool `yaml:"enabled"`
+		MinTokens int   `yaml:"min_tokens"`
+	}
+	type dryConfig struct {
+		MaxFindings  *int                `yaml:"max_findings"`
+		Paths        []string            `yaml:"paths"`
+		Exclude      []string            `yaml:"exclude"`
+		Structural   dryStructuralConfig `yaml:"structural"`
+		CopiedBlocks dryCopiedConfig     `yaml:"copied_blocks"`
+	}
 	type goConfig struct {
 		CoverageThreshold    float64              `yaml:"coverage_threshold"`
 		DRYMaxCandidates     *int                 `yaml:"dry_max_candidates"`
 		DRYPaths             []string             `yaml:"dry_paths"`
 		DRYExclude           []string             `yaml:"dry_exclude"`
+		DRY                  dryConfig            `yaml:"dry"`
 		CRAPMaxScore         float64              `yaml:"crap_max_score"`
 		MutationTargets      []string             `yaml:"mutation_targets"`
 		DependencyBoundaries []DependencyBoundary `yaml:"dependency_boundaries"`
@@ -65,6 +107,32 @@ func (cfg *GoConfig) UnmarshalYAML(value *yaml.Node) error {
 	}
 	cfg.DRYPaths = parsed.DRYPaths
 	cfg.DRYExclude = parsed.DRYExclude
+	if parsed.DRY.MaxFindings != nil {
+		cfg.DRY.MaxFindings = *parsed.DRY.MaxFindings
+		cfg.DRY.MaxFindingsSet = true
+		cfg.DRYMaxCandidates = *parsed.DRY.MaxFindings
+		cfg.DRYMaxCandidatesSet = true
+	}
+	if len(parsed.DRY.Paths) > 0 {
+		cfg.DRY.Paths = parsed.DRY.Paths
+		cfg.DRYPaths = parsed.DRY.Paths
+	}
+	if len(parsed.DRY.Exclude) > 0 {
+		cfg.DRY.Exclude = parsed.DRY.Exclude
+		cfg.DRYExclude = parsed.DRY.Exclude
+	}
+	cfg.DRY.Structural.Threshold = parsed.DRY.Structural.Threshold
+	cfg.DRY.Structural.MinLines = parsed.DRY.Structural.MinLines
+	cfg.DRY.Structural.MinNodes = parsed.DRY.Structural.MinNodes
+	if parsed.DRY.Structural.Enabled != nil {
+		cfg.DRY.Structural.Enabled = *parsed.DRY.Structural.Enabled
+		cfg.DRY.Structural.EnabledSet = true
+	}
+	cfg.DRY.CopiedBlocks.MinTokens = parsed.DRY.CopiedBlocks.MinTokens
+	if parsed.DRY.CopiedBlocks.Enabled != nil {
+		cfg.DRY.CopiedBlocks.Enabled = *parsed.DRY.CopiedBlocks.Enabled
+		cfg.DRY.CopiedBlocks.EnabledSet = true
+	}
 	cfg.CRAPMaxScore = parsed.CRAPMaxScore
 	cfg.MutationTargets = parsed.MutationTargets
 	cfg.DependencyBoundaries = parsed.DependencyBoundaries
@@ -123,14 +191,47 @@ func validate(cfg Config) error {
 }
 
 func validateGoTargets(cfg GoConfig) error {
+	if err := validateDryBudgets(cfg); err != nil {
+		return err
+	}
+	if err := validateDryEngineTargets(cfg.DRY); err != nil {
+		return err
+	}
+	return validateGoThresholds(cfg)
+}
+
+func validateDryBudgets(cfg GoConfig) error {
 	if cfg.DRYMaxCandidatesSet && cfg.DRYMaxCandidates < 0 {
 		return fmt.Errorf("go.dry_max_candidates must be non-negative")
 	}
+	if cfg.DRY.MaxFindingsSet && cfg.DRY.MaxFindings < 0 {
+		return fmt.Errorf("go.dry.max_findings must be non-negative")
+	}
+	return nil
+}
+
+func validateGoThresholds(cfg GoConfig) error {
 	if cfg.CoverageThreshold > 0 && cfg.CoverageThreshold < MinimumGoCoverageThreshold {
 		return fmt.Errorf("go.coverage_threshold must be at least %.1f", float64(MinimumGoCoverageThreshold))
 	}
 	if cfg.CRAPMaxScore > 0 && cfg.CRAPMaxScore > MaximumGoCRAPScore {
 		return fmt.Errorf("go.crap_max_score must be at most %.1f", float64(MaximumGoCRAPScore))
+	}
+	return nil
+}
+
+func validateDryEngineTargets(cfg DryConfig) error {
+	if cfg.Structural.Threshold < 0 || cfg.Structural.Threshold > 1 {
+		return fmt.Errorf("go.dry.structural.threshold must be between 0 and 1")
+	}
+	if cfg.Structural.MinLines < 0 {
+		return fmt.Errorf("go.dry.structural.min_lines must be non-negative")
+	}
+	if cfg.Structural.MinNodes < 0 {
+		return fmt.Errorf("go.dry.structural.min_nodes must be non-negative")
+	}
+	if cfg.CopiedBlocks.MinTokens < 0 {
+		return fmt.Errorf("go.dry.copied_blocks.min_tokens must be non-negative")
 	}
 	return nil
 }

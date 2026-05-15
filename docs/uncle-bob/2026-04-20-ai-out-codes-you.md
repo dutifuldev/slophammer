@@ -29,7 +29,7 @@ So you run code coverage and you kind of smirk at it and go, yeah, well, okay.
 Doesn't mean the code works.
 It just means it's executing.
 Well, you can fix that.
-Now you've got the horsepower.
+Now you've got the power.
 You tell that AI to cover the damned code.
 And then you use a mutation tester.
 Yes, that's a tool.

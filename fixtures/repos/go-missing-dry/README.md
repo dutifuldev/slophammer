@@ -1,3 +1,3 @@
 # Go Missing DRY Fixture
 
-This fixture is missing `dry4go`.
+This fixture is missing a declared DRY check.

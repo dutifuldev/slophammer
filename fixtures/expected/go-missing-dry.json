@@ -5,7 +5,7 @@
       "rule_id": "go.dry-required",
       "severity": "error",
       "path": ".github/workflows",
-      "message": "Go projects must declare dry4go"
+      "message": "Go projects must declare a DRY check"
     }
   ]
 }

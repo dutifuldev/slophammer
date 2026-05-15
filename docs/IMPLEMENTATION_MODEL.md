@@ -158,7 +158,7 @@ The production Go rule set should be:
 | `go.lint-required`                  | `golangci-lint`                          | Check that linting is configured and declared.           |
 | `go.coverage-required`              | `go test -coverprofile`, `go tool cover` | Check that a coverage gate is configured.                |
 | `go.complexity-required`            | `golangci-lint` complexity linters       | Check that complexity linting is configured.             |
-| `go.dry-required`                   | `dry4go`                                 | Check that structural duplicate detection is configured. |
+| `go.dry-required`                   | Slophammer native DRY                    | Check that structural and copied-block duplicate detection is configured. |
 | `go.crap-required`                  | `crap4go`                                | Check that CRAP analysis is configured.                  |
 | `go.mutation-required`              | `mutate4go`                              | Check that mutation testing has a workflow slot.         |
 | `go.dependency-boundaries-required` | Slophammer config plus Go imports        | Check declared import boundaries.                        |
@@ -176,11 +176,15 @@ Slophammer should prefer existing tools in this order:
 3. Wrap the tool output into Slophammer findings.
 4. Add a native implementation only when direct use blocks production use.
 
-For Uncle Bob's tools, the default position is direct use:
+For Uncle Bob's Go tools, the default position is direct use unless there is a
+clear production reason to absorb behavior:
 
-- use `dry4go` for structural duplication
 - use `crap4go` for CRAP analysis
 - use `mutate4go` for mutation testing
+
+DRY is the exception. Slophammer owns a native `go dry` engine now because the
+production target needs both `dry4go`-style structural similarity and CPD-style
+copied-block detection in one report and one budget.
 
 Do not copy those implementations into Slophammer just to reduce dependencies.
 Absorb behavior only with evidence that direct use is not production-ready for
@@ -199,7 +203,8 @@ Valid reasons to absorb a tool are:
 - it has correctness issues that affect Slophammer's fixtures
 - upstream maintenance stops and the tool becomes a release risk
 
-Until one of those is true, Slophammer should call the tool.
+Until one of those is true, Slophammer should call the tool. For DRY, that
+condition has been met and the runtime dependency on `dry4go` has been removed.
 
 ## Go Lint Policy
 
@@ -238,8 +243,8 @@ Add noisier linters only after the core signal is stable:
 - `prealloc`
 - `dupl`
 
-`dupl` overlaps with the intent of `dry4go`, so it should be treated as a
-cheap lint-time hint, not the source of truth for structural duplication.
+`dupl` overlaps with the intent of native DRY, so it should be treated as a
+cheap lint-time hint, not the source of truth for duplicate detection.
 
 Formatting is separate from linting. Use Go's normal tools and
 `golangci-lint` formatters for formatting:
@@ -278,7 +283,7 @@ Example static checks:
 - `.golangci.yml` exists
 - `.golangci.yml` enables complexity linters
 - a coverage script or CI command enforces coverage
-- a `dry4go` check is present in CI or scripts
+- a `slophammer go dry` check is present in CI or scripts
 - a `crap4go` check is present in CI or scripts
 - a `mutate4go` command exists in a slow, nightly, or manual workflow
 
@@ -323,21 +328,26 @@ The exact accepted set belongs in `specs/RULES.md` once the rule is implemented.
 The advanced quality checks should start as direct integrations with Uncle
 Bob's Go tools.
 
-### `dry4go`
+### `slophammer go dry`
 
-Use `dry4go` for structural duplicate detection.
+Use the native Slophammer DRY engine for Go duplicate detection.
 
-Slophammer checks that the repo has a declared `dry4go` command in CI, a script,
-or the first-class `slophammer go dry` command. The Slophammer command runs
-`dry4go` directly, parses its JSON report, and applies the candidate budget in
-Go instead of in shell glue. If `slophammer.yml` sets `go.dry_max_candidates`,
-that value is the default budget unless `--max-candidates` is passed.
+Slophammer checks that the repo has a declared `slophammer go dry` command in
+CI or a script. Existing `dry4go` declarations remain accepted as legacy
+evidence, but the recommended command is the first-class Slophammer command. If
+`slophammer.yml` sets `go.dry.max_findings` or `go.dry_max_candidates`, that
+value is the default budget unless `--max-candidates` is passed.
 
 The production target is strict: production Go code should have a zero-candidate
 DRY budget. Tests should be reviewed separately, fixtures should be excluded,
 and templates should run their own checks as reference projects. Slophammer
 enforces that by expanding configured include paths and exclude globs before
-calling `dry4go`.
+running its native DRY engine.
+
+The native engine combines:
+
+- structural function and method similarity based on the `dry4go` model
+- CPD-style copied-block detection that preserves identifiers and literals
 
 The static `go.dry-required` rule is a hard requirement: the repo must declare a
 DRY check somewhere Slophammer can inspect.
@@ -465,7 +475,8 @@ Every production rule should have:
 
 The next Go fixture tranche must cover both baseline Go tooling and Uncle Bob's
 tools. The clean fixture should declare `go test`, `go vet`, `golangci-lint`, a
-coverage gate, complexity linting, `dry4go`, `crap4go`, and `mutate4go`.
+coverage gate, complexity linting, `slophammer go dry`, `crap4go`, and
+`mutate4go`.
 
 ## Config
 
@@ -554,7 +565,7 @@ The completed baseline is:
 
 1. `specs/rules.json` exists and the Go registry is verified against it.
 2. Go baseline rules cover module, tests, vet, lint, coverage, and complexity.
-3. Direct Uncle Bob tool checks cover `dry4go`, `crap4go`, and `mutate4go`.
+3. Direct Go quality checks cover native DRY, `crap4go`, and `mutate4go`.
 4. Shared fixtures and expected reports cover clean and failing Go repos.
 5. CI runs Slophammer's own self-check.
 6. The Go lint stack includes the stricter production linters and an 800-line

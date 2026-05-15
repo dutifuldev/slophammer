@@ -156,6 +156,8 @@ func parseGoDryArg(options *toolchecks.DryOptions, args []string, index int, err
 	case "--show-report":
 		options.ShowReport = true
 		return 0, true
+	case "--format":
+		return parseGoDryFormat(options, args, index, errOut)
 	case "--max-candidates":
 		value, ok := parseNonNegativeIntFlag(args, index, "--max-candidates", errOut)
 		if !ok {
@@ -168,6 +170,21 @@ func parseGoDryArg(options *toolchecks.DryOptions, args []string, index int, err
 		root, ok := parseSinglePathOption(options.Root, args[index], "go dry", errOut)
 		options.Root = root
 		return 0, ok
+	}
+}
+
+func parseGoDryFormat(options *toolchecks.DryOptions, args []string, index int, errOut io.Writer) (int, bool) {
+	if index+1 >= len(args) {
+		_, _ = fmt.Fprintln(errOut, "--format requires a value")
+		return 0, false
+	}
+	switch args[index+1] {
+	case "json", "text":
+		options.Format = args[index+1]
+		return 1, true
+	default:
+		_, _ = fmt.Fprintf(errOut, "unsupported go dry format: %s\n", args[index+1])
+		return 0, false
 	}
 }
 
@@ -295,14 +312,14 @@ func printUsage(out io.Writer) {
 	_, _ = fmt.Fprintln(out, "usage:")
 	_, _ = fmt.Fprintln(out, "  slophammer check <path> [--format text|json|sarif] [--execute]")
 	_, _ = fmt.Fprintln(out, "  slophammer explain <rule-id>")
-	_, _ = fmt.Fprintln(out, "  slophammer go dry [path] [--max-candidates n] [--show-report]")
+	_, _ = fmt.Fprintln(out, "  slophammer go dry [path] [--max-candidates n] [--show-report] [--format json|text]")
 	_, _ = fmt.Fprintln(out, "  slophammer go crap [path] [--max-score n]")
 	_, _ = fmt.Fprintln(out, "  slophammer go mutate [path] [--target file] [--scan]")
 }
 
 func printGoUsage(out io.Writer) {
 	_, _ = fmt.Fprintln(out, "usage:")
-	_, _ = fmt.Fprintln(out, "  slophammer go dry [path] [--max-candidates n] [--show-report]")
+	_, _ = fmt.Fprintln(out, "  slophammer go dry [path] [--max-candidates n] [--show-report] [--format json|text]")
 	_, _ = fmt.Fprintln(out, "  slophammer go crap [path] [--max-score n]")
 	_, _ = fmt.Fprintln(out, "  slophammer go mutate [path] [--target file] [--scan]")
 }

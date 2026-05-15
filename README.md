@@ -45,10 +45,10 @@ slophammer check <path> --execute
 slophammer explain <rule-id>
 ```
 
-The Go implementation also includes direct checks for Uncle Bob's Go tools:
+The Go implementation also includes direct Go quality checks:
 
 ```sh
-slophammer go dry [path] [--max-candidates n] [--show-report]
+slophammer go dry [path] [--max-candidates n] [--show-report] [--format json|text]
 slophammer go crap [path] [--max-score n]
 slophammer go mutate [path] [--target file] [--scan]
 ```
@@ -67,7 +67,7 @@ The checker should scan a target repository and report findings such as:
 - missing linting setup
 - missing coverage gate
 - missing Go complexity check
-- missing `dry4go`, gated `crap4go`, or `mutate4go` declaration
+- missing DRY, gated `crap4go`, or `mutate4go` declaration
 - documentation that does not follow the repo convention
 
 The shared report model should stay simple:
@@ -133,8 +133,8 @@ The Go implementation currently provides:
 
 - repo rules for `README.md`, `AGENTS.md`, and CI
 - Go rules for module, tests, vet, lint, coverage, and complexity
-- static declarations for `dry4go`, `crap4go`, and `mutate4go`
-- direct commands that run `dry4go`, `crap4go`, and `mutate4go`
+- static declarations for DRY, `crap4go`, and `mutate4go`
+- direct commands for native DRY, `crap4go`, and `mutate4go`
 - `slophammer.yml` config parsing
 - native Go dependency boundary checks
 - text, JSON, and SARIF report output
@@ -163,7 +163,9 @@ useful as a reference implementation:
 
 3. Dependency boundary rules are native.
    This is Slophammer-owned policy. Existing tools cover lint, tests, coverage,
-   duplication, CRAP, and mutation. Import direction belongs in this repo.
+   CRAP, and mutation. DRY is native because Slophammer combines structural
+   function similarity with CPD-style copied-block detection. Import direction
+   belongs in this repo.
 
 4. Go fixture coverage is organized by concern.
    Shared fixtures remain the acceptance contract, while tests separate
@@ -192,7 +194,7 @@ The current shared rule set is:
 | `go.lint-required`                  | Go projects should run `golangci-lint`.             |
 | `go.coverage-required`              | Go projects should enforce coverage.                |
 | `go.complexity-required`            | Go projects should check complexity.                |
-| `go.dry-required`                   | Go projects should declare `dry4go`.                |
+| `go.dry-required`                   | Go projects should declare a DRY check.             |
 | `go.crap-required`                  | Go projects should gate `crap4go`.                  |
 | `go.mutation-required`              | Go projects should declare `mutate4go`.             |
 | `go.dependency-boundaries-required` | Go projects should obey configured import boundaries. |

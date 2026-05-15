@@ -11,11 +11,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dutifuldev/slophammer/go/internal/dry"
 	"github.com/dutifuldev/slophammer/go/internal/gotools"
 )
 
 const (
-	DefaultMaximumDRYCandidates = 40
+	DefaultMaximumDRYCandidates = 0
 	DefaultMaximumCRAPScore     = 8
 )
 
@@ -43,12 +44,21 @@ func (ExecRunner) Run(ctx context.Context, dir string, name string, args ...stri
 }
 
 type DryOptions struct {
-	Root              string
-	MaximumCandidates int
-	MaximumSet        bool
-	ShowReport        bool
-	Paths             []string
-	Exclude           []string
+	Root                string
+	MaximumCandidates   int
+	MaximumSet          bool
+	ShowReport          bool
+	Format              string
+	Paths               []string
+	Exclude             []string
+	StructuralEnabled   bool
+	StructuralSet       bool
+	StructuralThreshold float64
+	StructuralMinLines  int
+	StructuralMinNodes  int
+	CopiedBlockEnabled  bool
+	CopiedBlockSet      bool
+	CopiedBlockTokens   int
 }
 
 func (options DryOptions) RootPath() string {
@@ -77,30 +87,61 @@ func (options MutationOptions) RootPath() string {
 }
 
 func CheckDry(ctx context.Context, options DryOptions, out io.Writer, errOut io.Writer, runner Runner) int {
+	_ = ctx
+	_ = runner
 	root := defaultRoot(options.Root)
 	maximumCandidates := dryCandidateLimit(options)
 
-	args := gotools.Dry4Go.GoRunArgs(gotools.Latest, append([]string{"--format", "json"}, dryPaths(options)...)...)
-	result, err := runner.Run(ctx, root, "go", args...)
-	if options.ShowReport || err != nil {
-		writeBytes(out, result.Stdout)
-	}
-	writeBytes(errOut, result.Stderr)
+	report, err := dry.Find(dry.Options{
+		Root:                root,
+		Paths:               dryPaths(options),
+		StructuralEnabled:   dryStructuralEnabled(options),
+		StructuralThreshold: options.StructuralThreshold,
+		StructuralMinLines:  options.StructuralMinLines,
+		StructuralMinNodes:  options.StructuralMinNodes,
+		CopiedBlockEnabled:  dryCopiedBlockEnabled(options),
+		CopiedBlockTokens:   options.CopiedBlockTokens,
+	})
 	if err != nil {
-		_, _ = fmt.Fprintf(errOut, "dry4go failed: %v\n", err)
+		_, _ = fmt.Fprintf(errOut, "dry check failed: %v\n", err)
 		return 2
 	}
 
-	candidateCount, err := CountDRYCandidates(result.Stdout)
-	if err != nil {
-		_, _ = fmt.Fprintf(errOut, "dry4go report parse failed: %v\n", err)
-		return 2
+	if options.Format == "json" || options.ShowReport {
+		content, err := dry.WriteJSON(report)
+		if err != nil {
+			_, _ = fmt.Fprintf(errOut, "dry report render failed: %v\n", err)
+			return 2
+		}
+		writeBytes(out, content)
 	}
-	_, _ = fmt.Fprintf(out, "DRY candidates: %d; maximum: %d\n", candidateCount, maximumCandidates)
+	if options.Format == "text" {
+		_, _ = io.WriteString(out, dry.FormatText(report))
+	}
+
+	candidateCount := len(report.Findings)
+	if options.Format != "json" {
+		_, _ = fmt.Fprintf(out, "DRY candidates: %d; maximum: %d\n", candidateCount, maximumCandidates)
+	}
 	if candidateCount > maximumCandidates {
 		return 1
 	}
 	return 0
+}
+
+func dryStructuralEnabled(options DryOptions) bool {
+	return dryBoolDefault(options.StructuralSet, options.StructuralEnabled)
+}
+
+func dryCopiedBlockEnabled(options DryOptions) bool {
+	return dryBoolDefault(options.CopiedBlockSet, options.CopiedBlockEnabled)
+}
+
+func dryBoolDefault(configured bool, value bool) bool {
+	if configured {
+		return value
+	}
+	return true
 }
 
 func dryCandidateLimit(options DryOptions) int {
@@ -172,11 +213,13 @@ func CountDRYCandidates(report []byte) (int, error) {
 	if err := json.Unmarshal(report, &parsed); err != nil {
 		return 0, err
 	}
-	candidates, ok := parsed["candidates"]
-	if !ok {
-		return 0, errors.New("missing candidates field")
+	if findings, ok := parsed["findings"]; ok {
+		return len(findings), nil
 	}
-	return len(candidates), nil
+	if candidates, ok := parsed["candidates"]; ok {
+		return len(candidates), nil
+	}
+	return 0, errors.New("missing findings field")
 }
 
 func MutationTargets(options MutationOptions) []string {

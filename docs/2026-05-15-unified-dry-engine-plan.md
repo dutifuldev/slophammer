@@ -89,7 +89,7 @@ This engine absorbs the CPD behavior.
 It should:
 
 - tokenize Go source using the standard Go scanner
-- normalize identifiers and literal values
+- preserve identifiers and literal values for copied-block matching
 - keep operator, keyword, delimiter, and punctuation shape
 - build repeated token-window matches
 - expand exact token-window matches to the largest useful copied range
@@ -259,21 +259,19 @@ behavior.
 
 ## Implementation Steps
 
-- [ ] Add `internal/dry` types and config.
-- [ ] Move current external `dry4go` execution behind an interface so tests can
-      compare old and new behavior during the transition.
-- [ ] Implement native structural function detection.
-- [ ] Add golden tests using small Go fixtures copied from the current dry4go
-      behavior description, not from unlicensed source.
-- [ ] Implement native copied-block detection.
-- [ ] Add fixtures for copied blocks inside larger functions.
-- [ ] Add grouping and overlap detection.
-- [ ] Add JSON and text report rendering.
-- [ ] Change `slophammer go dry` to call the unified engine.
-- [ ] Update `go.dry-required` docs to describe the unified DRY check.
-- [ ] Add small regression fixtures that capture missed CPD-style cases in a
+- [x] Add `internal/dry` types and config.
+- [x] Implement native structural function detection.
+- [x] Add tests using small Go fixtures derived from the behavior description,
+      not from unlicensed source.
+- [x] Implement native copied-block detection.
+- [x] Add fixtures for copied blocks inside larger functions.
+- [x] Add grouping and overlap detection.
+- [x] Add JSON and text report rendering.
+- [x] Change `slophammer go dry` to call the unified engine.
+- [x] Update `go.dry-required` docs to describe the unified DRY check.
+- [x] Add small regression fixtures that capture missed CPD-style cases in a
       repo-safe form.
-- [ ] Remove direct runtime dependency on `dry4go` after parity checks pass.
+- [x] Remove direct runtime dependency on `dry4go` after parity checks pass.
 
 ## Non-Goals
 
@@ -310,16 +308,23 @@ Slophammer should reimplement the documented behavior.
 
 - Should the copied-block detector report overlapping clones separately, or
   collapse them aggressively into the largest range?
-- Should the copied-block detector normalize selector member names, or keep
-  them as tokens?
 - Should test files be excluded by default, or should that stay entirely in
   `slophammer.yml`?
 
-## Recommended First Tranche
+## Implementation Notes
 
-Implement the copied-block engine first.
+The copied-block detector keeps identifiers and literal values as tokens. The
+structural engine already handles renamed identifiers and changed literals. The
+copied-block engine should behave closer to CPD, which is why it preserves
+tokens and collapses overlapping sliding-window matches into the largest
+representative copied block.
 
-Reason: the existing external `dry4go` path already covers structural function
-similarity. The missing production signal is CPD-style block detection. Once
-copied-block detection is native and tested, move structural detection into the
-same package and remove the external `dry4go` runtime call.
+Parity checks showed:
+
+| Baseline                 | Findings | Covered by native `go dry` |
+| ------------------------ | -------- | -------------------------- |
+| Existing structural pass | 220      | 220                        |
+| PMD CPD production scan  | 34       | 34                         |
+
+The native command also passes Slophammer's own zero-finding production DRY
+budget.

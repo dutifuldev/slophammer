@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -11,109 +13,135 @@ import (
 	"github.com/dutifuldev/slophammer/go/internal/gotools"
 )
 
-func TestCheckDryRunsDry4GoAndEnforcesCandidateBudget(t *testing.T) {
-	runner := &fakeRunner{output: []byte(`{"candidates":[{},{}]}`)}
+func TestCheckDryRunsNativeEngineAndEnforcesCandidateBudget(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "left.go", duplicateSource("Left"))
+	writeFile(t, root, "right.go", duplicateSource("Right"))
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 
-	code := CheckDry(context.Background(), DryOptions{Root: "/repo", MaximumCandidates: 1, MaximumSet: true}, &out, &errOut, runner)
+	code := CheckDry(context.Background(), DryOptions{Root: root, MaximumCandidates: 0, MaximumSet: true}, &out, &errOut, &fakeRunner{})
 
 	if code != 1 {
 		t.Fatalf("code = %d, want 1", code)
 	}
-	wantArgs := gotools.Dry4Go.GoRunArgs(gotools.Latest, "--format", "json", ".")
-	if runnerCall := runner.call; runnerCall.dir != "/repo" || runnerCall.name != "go" || !reflect.DeepEqual(runnerCall.args, wantArgs) {
-		t.Fatalf("call = %#v, want dir=/repo name=go args=%#v", runnerCall, wantArgs)
-	}
-	if !strings.Contains(out.String(), "DRY candidates: 2; maximum: 1") {
+	if !strings.Contains(out.String(), "DRY candidates:") || !strings.Contains(out.String(), "maximum: 0") {
 		t.Fatalf("stdout = %q", out.String())
 	}
 }
 
 func TestCheckDryHonorsExplicitZeroBudget(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "left.go", duplicateSource("Left"))
+	writeFile(t, root, "right.go", duplicateSource("Right"))
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 
-	code := CheckDry(context.Background(), DryOptions{MaximumCandidates: 0, MaximumSet: true}, &out, &errOut, &fakeRunner{
-		output: []byte(`{"candidates":[{}]}`),
-	})
+	code := CheckDry(context.Background(), DryOptions{Root: root, MaximumCandidates: 0, MaximumSet: true}, &out, &errOut, &fakeRunner{})
 
 	if code != 1 {
 		t.Fatalf("code = %d, want 1", code)
 	}
-	if !strings.Contains(out.String(), "DRY candidates: 1; maximum: 0") {
+	if !strings.Contains(out.String(), "maximum: 0") {
 		t.Fatalf("stdout = %q", out.String())
 	}
 }
 
 func TestCheckDryPassesConfiguredPaths(t *testing.T) {
-	runner := &fakeRunner{output: []byte(`{"candidates":[]}`)}
+	root := t.TempDir()
+	writeFile(t, root, "cmd/main.go", duplicateSource("Left"))
+	writeFile(t, root, "internal/app/app.go", duplicateSource("Right"))
+	writeFile(t, root, "ignored/ignored.go", duplicateSource("Ignored"))
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 
 	code := CheckDry(context.Background(), DryOptions{
-		Root:              "/repo",
+		Root:              root,
 		MaximumCandidates: 0,
 		MaximumSet:        true,
 		Paths:             []string{"cmd/main.go", "internal/app/app.go"},
-	}, &out, &errOut, runner)
+	}, &out, &errOut, &fakeRunner{})
 
-	if code != 0 {
-		t.Fatalf("code = %d, want 0", code)
+	if code != 1 {
+		t.Fatalf("code = %d, want 1", code)
 	}
-	wantArgs := gotools.Dry4Go.GoRunArgs(gotools.Latest, "--format", "json", "cmd/main.go", "internal/app/app.go")
-	if runnerCall := runner.call; !reflect.DeepEqual(runnerCall.args, wantArgs) {
-		t.Fatalf("args = %#v, want %#v", runnerCall.args, wantArgs)
-	}
-}
-
-func TestCheckDryParsesStdoutWhenGoRunWritesToStderr(t *testing.T) {
-	var out bytes.Buffer
-	var errOut bytes.Buffer
-
-	code := CheckDry(context.Background(), DryOptions{MaximumCandidates: 1, MaximumSet: true}, &out, &errOut, &fakeRunner{
-		output: []byte(`{"candidates":[]}`),
-		stderr: []byte("go: downloading github.com/unclebob/dry4go v0.0.0\n"),
-	})
-
-	if code != 0 {
-		t.Fatalf("code = %d, want 0", code)
-	}
-	if !strings.Contains(out.String(), "DRY candidates: 0; maximum: 1") {
-		t.Fatalf("stdout = %q", out.String())
-	}
-	if !strings.Contains(errOut.String(), "go: downloading") {
-		t.Fatalf("stderr = %q", errOut.String())
-	}
-}
-
-func TestCheckDryAcceptsNullCandidates(t *testing.T) {
-	var out bytes.Buffer
-	var errOut bytes.Buffer
-
-	code := CheckDry(context.Background(), DryOptions{MaximumCandidates: 0, MaximumSet: true}, &out, &errOut, &fakeRunner{
-		output: []byte(`{"candidates":null}`),
-	})
-
-	if code != 0 {
-		t.Fatalf("code = %d, want 0; stderr=%q", code, errOut.String())
-	}
-	if !strings.Contains(out.String(), "DRY candidates: 0; maximum: 0") {
+	if !strings.Contains(out.String(), "maximum: 0") {
 		t.Fatalf("stdout = %q", out.String())
 	}
 }
 
-func TestCheckDryRejectsInvalidReport(t *testing.T) {
+func TestCheckDryCanRenderJSONReport(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "left.go", duplicateSource("Left"))
+	writeFile(t, root, "right.go", duplicateSource("Right"))
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 
-	code := CheckDry(context.Background(), DryOptions{}, &out, &errOut, &fakeRunner{output: []byte(`{}`)})
+	code := CheckDry(context.Background(), DryOptions{Root: root, MaximumCandidates: 999, MaximumSet: true, Format: "json"}, &out, &errOut, &fakeRunner{})
+
+	if code != 0 {
+		t.Fatalf("code = %d, want 0", code)
+	}
+	if !strings.Contains(out.String(), `"findings"`) || !strings.Contains(out.String(), `"structural-function"`) {
+		t.Fatalf("stdout = %q", out.String())
+	}
+}
+
+func TestCheckDryCanRenderTextReport(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "left.go", duplicateSource("Left"))
+	writeFile(t, root, "right.go", duplicateSource("Right"))
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckDry(context.Background(), DryOptions{Root: root, MaximumCandidates: 999, MaximumSet: true, Format: "text"}, &out, &errOut, &fakeRunner{})
+
+	if code != 0 {
+		t.Fatalf("code = %d, want 0", code)
+	}
+	if !strings.Contains(out.String(), "Structural function findings:") {
+		t.Fatalf("stdout = %q", out.String())
+	}
+}
+
+func TestCheckDryReportsScanErrors(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckDry(context.Background(), DryOptions{Root: filepath.Join(t.TempDir(), "missing")}, &out, &errOut, &fakeRunner{})
 
 	if code != 2 {
 		t.Fatalf("code = %d, want 2", code)
 	}
-	if !strings.Contains(errOut.String(), "missing candidates") {
+	if !strings.Contains(errOut.String(), "dry check failed") {
 		t.Fatalf("stderr = %q", errOut.String())
+	}
+}
+
+func TestCountDRYCandidatesAcceptsNativeAndLegacyReports(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		report string
+		want   int
+	}{
+		{name: "native", report: `{"findings":[{},{}]}`, want: 2},
+		{name: "legacy", report: `{"candidates":[{}]}`, want: 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := CountDRYCandidates([]byte(tc.report))
+			if err != nil {
+				t.Fatalf("CountDRYCandidates returned error: %v", err)
+			}
+			if got != tc.want {
+				t.Fatalf("CountDRYCandidates = %d, want %d", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestCountDRYCandidatesRejectsUnknownShape(t *testing.T) {
+	if _, err := CountDRYCandidates([]byte(`{"groups":[]}`)); err == nil {
+		t.Fatal("CountDRYCandidates returned nil error")
 	}
 }
 
@@ -234,4 +262,30 @@ type fakeCall struct {
 	dir  string
 	name string
 	args []string
+}
+
+func writeFile(t *testing.T, root, name, content string) {
+	t.Helper()
+	path := filepath.Join(root, filepath.FromSlash(name))
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+		t.Fatalf("MkdirAll returned error: %v", err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+}
+
+func duplicateSource(name string) string {
+	return `package sample
+
+func ` + name + `(items []int) []int {
+	var kept []int
+	for _, item := range items {
+		if item%2 == 0 {
+			kept = append(kept, item+1)
+		}
+	}
+	return kept
+}
+`
 }

@@ -139,6 +139,18 @@ func applyDryConfig(options *toolchecks.DryOptions, cfg config.Config) {
 	}
 	options.Paths = append([]string(nil), cfg.Go.DRYPaths...)
 	options.Exclude = append([]string(nil), cfg.Go.DRYExclude...)
+	if cfg.Go.DRY.Structural.EnabledSet {
+		options.StructuralEnabled = cfg.Go.DRY.Structural.Enabled
+		options.StructuralSet = true
+	}
+	options.StructuralThreshold = cfg.Go.DRY.Structural.Threshold
+	options.StructuralMinLines = cfg.Go.DRY.Structural.MinLines
+	options.StructuralMinNodes = cfg.Go.DRY.Structural.MinNodes
+	if cfg.Go.DRY.CopiedBlocks.EnabledSet {
+		options.CopiedBlockEnabled = cfg.Go.DRY.CopiedBlocks.Enabled
+		options.CopiedBlockSet = true
+	}
+	options.CopiedBlockTokens = cfg.Go.DRY.CopiedBlocks.MinTokens
 }
 
 func applyCRAPConfig(options *toolchecks.CRAPOptions, cfg config.Config) {
@@ -160,13 +172,21 @@ func executeGoChecks(ctx context.Context, snapshot repo.Snapshot, root string, c
 	var findings []rules.Finding
 	if cfg.Go.DRYMaxCandidatesSet {
 		options := toolchecks.DryOptions{
-			Root:              commandRoot(root),
-			MaximumCandidates: cfg.Go.DRYMaxCandidates,
-			MaximumSet:        true,
-			Paths:             append([]string(nil), cfg.Go.DRYPaths...),
-			Exclude:           append([]string(nil), cfg.Go.DRYExclude...),
+			Root:                commandRoot(root),
+			MaximumCandidates:   cfg.Go.DRYMaxCandidates,
+			MaximumSet:          true,
+			Paths:               append([]string(nil), cfg.Go.DRYPaths...),
+			Exclude:             append([]string(nil), cfg.Go.DRYExclude...),
+			StructuralEnabled:   cfg.Go.DRY.Structural.Enabled,
+			StructuralSet:       cfg.Go.DRY.Structural.EnabledSet,
+			StructuralThreshold: cfg.Go.DRY.Structural.Threshold,
+			StructuralMinLines:  cfg.Go.DRY.Structural.MinLines,
+			StructuralMinNodes:  cfg.Go.DRY.Structural.MinNodes,
+			CopiedBlockEnabled:  cfg.Go.DRY.CopiedBlocks.Enabled,
+			CopiedBlockSet:      cfg.Go.DRY.CopiedBlocks.EnabledSet,
+			CopiedBlockTokens:   cfg.Go.DRY.CopiedBlocks.MinTokens,
 		}
-		findings = appendToolFinding(findings, rules.GoDryRequiredRuleID, cfg, "dry4go exceeded the configured candidate budget", func(out, errOut io.Writer) int {
+		findings = appendToolFinding(findings, rules.GoDryRequiredRuleID, cfg, "DRY check exceeded the configured candidate budget", func(out, errOut io.Writer) int {
 			return checkDryInModules(ctx, snapshot, options, out, errOut, runner)
 		})
 	}
