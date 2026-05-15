@@ -18,10 +18,12 @@ type Options struct {
 	Root                string
 	Paths               []string
 	StructuralEnabled   bool
+	StructuralSet       bool
 	StructuralThreshold float64
 	StructuralMinLines  int
 	StructuralMinNodes  int
 	CopiedBlockEnabled  bool
+	CopiedBlockSet      bool
 	CopiedBlockTokens   int
 }
 
@@ -92,7 +94,7 @@ func withDefaults(options Options) Options {
 	if len(options.Paths) == 0 {
 		options.Paths = []string{"."}
 	}
-	if !options.StructuralEnabled && !options.CopiedBlockEnabled {
+	if !options.StructuralSet && !options.CopiedBlockSet && !options.StructuralEnabled && !options.CopiedBlockEnabled {
 		options.StructuralEnabled = true
 		options.CopiedBlockEnabled = true
 	}

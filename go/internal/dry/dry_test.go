@@ -68,6 +68,27 @@ func TestFindGroupsOverlappingStructuralAndCopiedBlockFindings(t *testing.T) {
 	}
 }
 
+func TestFindHonorsExplicitDisabledEngines(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "left.go", structuralSource("Left", "item%2 == 0"))
+	writeFile(t, root, "right.go", structuralSource("Right", "item%2 == 0"))
+
+	report, err := Find(Options{
+		Root:               root,
+		StructuralEnabled:  false,
+		StructuralSet:      true,
+		CopiedBlockEnabled: false,
+		CopiedBlockSet:     true,
+	})
+	if err != nil {
+		t.Fatalf("Find returned error: %v", err)
+	}
+
+	if len(report.Findings) != 0 {
+		t.Fatalf("findings = %#v, want none", report.Findings)
+	}
+}
+
 func TestFindHonorsExplicitPaths(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, "included/left.go", structuralSource("Left", "item%2 == 0"))

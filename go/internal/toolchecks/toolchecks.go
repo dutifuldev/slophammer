@@ -96,10 +96,12 @@ func CheckDry(ctx context.Context, options DryOptions, out io.Writer, errOut io.
 		Root:                root,
 		Paths:               dryPaths(options),
 		StructuralEnabled:   dryStructuralEnabled(options),
+		StructuralSet:       options.StructuralSet,
 		StructuralThreshold: options.StructuralThreshold,
 		StructuralMinLines:  options.StructuralMinLines,
 		StructuralMinNodes:  options.StructuralMinNodes,
 		CopiedBlockEnabled:  dryCopiedBlockEnabled(options),
+		CopiedBlockSet:      options.CopiedBlockSet,
 		CopiedBlockTokens:   options.CopiedBlockTokens,
 	})
 	if err != nil {

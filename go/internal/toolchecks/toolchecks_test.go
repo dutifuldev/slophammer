@@ -70,6 +70,31 @@ func TestCheckDryPassesConfiguredPaths(t *testing.T) {
 	}
 }
 
+func TestCheckDryHonorsExplicitDisabledEngines(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "left.go", duplicateSource("Left"))
+	writeFile(t, root, "right.go", duplicateSource("Right"))
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckDry(context.Background(), DryOptions{
+		Root:               root,
+		MaximumCandidates:  0,
+		MaximumSet:         true,
+		StructuralEnabled:  false,
+		StructuralSet:      true,
+		CopiedBlockEnabled: false,
+		CopiedBlockSet:     true,
+	}, &out, &errOut, &fakeRunner{})
+
+	if code != 0 {
+		t.Fatalf("code = %d, want 0; stderr = %q", code, errOut.String())
+	}
+	if !strings.Contains(out.String(), "DRY candidates: 0; maximum: 0") {
+		t.Fatalf("stdout = %q", out.String())
+	}
+}
+
 func TestCheckDryCanRenderJSONReport(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, "left.go", duplicateSource("Left"))
