@@ -37,6 +37,9 @@ The direct `go dry`, `go crap`, and `go mutate` commands read
 when the matching CLI flag is not provided. `check --execute` runs configured
 Go tool checks and reports failures through the normal Slophammer report model.
 
+`go dry` is native to Slophammer. It combines structural function similarity
+with CPD-style copied-block detection under one `dry` report.
+
 ## Lint Policy
 
 The Go implementation uses `golangci-lint` as the lint runner. The current

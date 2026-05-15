@@ -193,7 +193,12 @@ copy/paste is the risk.
 
 For this repo, the Go target is a zero-candidate budget over production
 implementation paths only. Slophammer enforces that by expanding configured
-include paths and exclude globs before it calls `dry4go`.
+include paths and exclude globs before it runs the native `go dry` engine.
+
+The native Go engine combines two signals:
+
+- structural function and method similarity based on the `dry4go` model
+- CPD-style copied-block detection for large repeated blocks inside functions
 
 ## Source Notes
 

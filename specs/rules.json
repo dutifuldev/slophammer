@@ -102,9 +102,9 @@
       "category": "go",
       "severity": "error",
       "path": ".github/workflows",
-      "message": "Go projects must declare dry4go",
-      "description": "Go projects should declare dry4go for structural duplicate detection.",
-      "tool": "dry4go",
+      "message": "Go projects must declare a DRY check",
+      "description": "Go projects should declare Slophammer's unified DRY check for structural and copied-block duplicate detection.",
+      "tool": "slophammer go dry",
       "status": "implemented"
     },
     {

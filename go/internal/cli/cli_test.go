@@ -87,13 +87,26 @@ func TestRunGoRejectsUnknownSubcommand(t *testing.T) {
 
 func TestParseGoDryArgs(t *testing.T) {
 	var errOut bytes.Buffer
-	options, ok := parseGoDryArgs([]string{"/repo", "--max-candidates", "12", "--show-report"}, &errOut)
+	options, ok := parseGoDryArgs([]string{"/repo", "--max-candidates", "12", "--show-report", "--format", "text"}, &errOut)
 
 	if !ok {
 		t.Fatalf("ok = false; stderr=%q", errOut.String())
 	}
-	if options.Root != "/repo" || options.MaximumCandidates != 12 || !options.MaximumSet || !options.ShowReport {
+	if options.Root != "/repo" || options.MaximumCandidates != 12 || !options.MaximumSet || !options.ShowReport || options.Format != "text" {
 		t.Fatalf("options = %#v", options)
+	}
+}
+
+func TestParseGoDryArgsRejectsInvalidFormat(t *testing.T) {
+	var errOut bytes.Buffer
+
+	_, ok := parseGoDryArgs([]string{"/repo", "--format", "xml"}, &errOut)
+
+	if ok {
+		t.Fatal("ok = true, want false")
+	}
+	if !strings.Contains(errOut.String(), "unsupported go dry format") {
+		t.Fatalf("stderr = %q", errOut.String())
 	}
 }
 

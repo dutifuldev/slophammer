@@ -26,7 +26,7 @@ commands.
 | `go.lint-required`                  | `error`  | `.golangci.yml`                | `Go projects must configure and declare golangci-lint`         |
 | `go.coverage-required`              | `error`  | `scripts/check-go-coverage.sh` | `Go projects must declare a coverage gate`                     |
 | `go.complexity-required`            | `error`  | `.golangci.yml`                | `Go projects must enable a complexity linter`                  |
-| `go.dry-required`                   | `error`  | `.github/workflows`            | `Go projects must declare dry4go`                              |
+| `go.dry-required`                   | `error`  | `.github/workflows`            | `Go projects must declare a DRY check`                         |
 | `go.crap-required`                  | `error`  | `.github/workflows`            | `Go projects must declare crap4go with a threshold`            |
 | `go.mutation-required`              | `error`  | `.github/workflows`            | `Go projects must declare mutate4go`                           |
 | `go.dependency-boundaries-required` | `error`  | `slophammer.yml`               | `Go projects must respect configured dependency boundaries`    |
@@ -98,10 +98,12 @@ linters through golangci-lint.
 
 ### `go.dry-required`
 
-Go projects should declare `dry4go` for structural duplicate detection.
+Go projects should declare `slophammer go dry` for structural and copied-block
+duplicate detection.
 
-Slophammer checks for an inspectable declaration. It does not run `dry4go` in
-static mode.
+Slophammer checks for an inspectable declaration. It does not run the DRY
+engine in static mode. Existing `dry4go` declarations remain accepted as legacy
+evidence, but new repos should declare the Slophammer command.
 
 ### `go.crap-required`
 

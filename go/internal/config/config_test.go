@@ -113,6 +113,55 @@ func TestLoadPrefersRootConfig(t *testing.T) {
 	}
 }
 
+func TestLoadParsesNestedDryConfig(t *testing.T) {
+	cfg, err := Load(repo.NewSnapshot("/repo", map[string]repo.File{
+		"slophammer.yml": {
+			Path: "slophammer.yml",
+			Content: `go:
+  dry:
+    max_findings: 0
+    paths:
+      - go/internal
+    exclude:
+      - "**/*_test.go"
+    structural:
+      enabled: true
+      threshold: 0.82
+      min_lines: 4
+      min_nodes: 20
+    copied_blocks:
+      enabled: true
+      min_tokens: 100
+`,
+		},
+	}))
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	assertNestedDryConfig(t, cfg)
+}
+
+func assertNestedDryConfig(t *testing.T, cfg Config) {
+	t.Helper()
+	if cfg.Go.DRYMaxCandidates != 0 || !cfg.Go.DRYMaxCandidatesSet || !cfg.Go.DRY.MaxFindingsSet {
+		t.Fatalf("DRY budget = %#v", cfg.Go)
+	}
+	if !reflect.DeepEqual(cfg.Go.DRYPaths, []string{"go/internal"}) || !reflect.DeepEqual(cfg.Go.DRY.Paths, []string{"go/internal"}) {
+		t.Fatalf("DRY paths = %#v nested=%#v", cfg.Go.DRYPaths, cfg.Go.DRY.Paths)
+	}
+	assertNestedDryEngines(t, cfg.Go.DRY)
+}
+
+func assertNestedDryEngines(t *testing.T, cfg DryConfig) {
+	t.Helper()
+	if !cfg.Structural.EnabledSet || !cfg.Structural.Enabled || cfg.Structural.Threshold != 0.82 {
+		t.Fatalf("DRY structural = %#v", cfg.Structural)
+	}
+	if !cfg.CopiedBlocks.EnabledSet || !cfg.CopiedBlocks.Enabled || cfg.CopiedBlocks.MinTokens != 100 {
+		t.Fatalf("DRY copied blocks = %#v", cfg.CopiedBlocks)
+	}
+}
+
 func TestLoadRejectsNegativeDryBudget(t *testing.T) {
 	_, err := Load(repo.NewSnapshot("/repo", map[string]repo.File{
 		"slophammer.yml": {
@@ -125,6 +174,31 @@ func TestLoadRejectsNegativeDryBudget(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "dry_max_candidates") {
 		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestLoadRejectsInvalidNestedDryTargets(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		content string
+		want    string
+	}{
+		{name: "threshold", content: "go:\n  dry:\n    structural:\n      threshold: 1.2\n", want: "threshold"},
+		{name: "min lines", content: "go:\n  dry:\n    structural:\n      min_lines: -1\n", want: "min_lines"},
+		{name: "min nodes", content: "go:\n  dry:\n    structural:\n      min_nodes: -1\n", want: "min_nodes"},
+		{name: "copied tokens", content: "go:\n  dry:\n    copied_blocks:\n      min_tokens: -1\n", want: "min_tokens"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := Load(repo.NewSnapshot("/repo", map[string]repo.File{
+				"slophammer.yml": {Path: "slophammer.yml", Content: tc.content},
+			}))
+			if err == nil {
+				t.Fatal("Load returned nil error")
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error = %v, want %q", err, tc.want)
+			}
+		})
 	}
 }
 

@@ -126,9 +126,11 @@ func TestCheckExecuteAddsToolFindings(t *testing.T) {
 	writeFile(t, root, "README.md", "# Test\n")
 	writeFile(t, root, "AGENTS.md", "# Agents\n")
 	writeFile(t, root, ".github/workflows/ci.yml", "name: CI\n")
+	writeFile(t, root, "left.go", duplicateGoSource("Left"))
+	writeFile(t, root, "right.go", duplicateGoSource("Right"))
 	writeFile(t, root, "slophammer.yml", strings.Join([]string{
 		"go:",
-		"  dry_max_candidates: 1",
+		"  dry_max_candidates: 0",
 		"  crap_max_score: 8",
 		"  mutation_targets:",
 		"    - internal/example.go",
@@ -278,6 +280,21 @@ func writeFile(t *testing.T, root, name, content string) {
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		t.Fatalf("WriteFile returned error: %v", err)
 	}
+}
+
+func duplicateGoSource(name string) string {
+	return `package sample
+
+func ` + name + `(items []int) []int {
+	var kept []int
+	for _, item := range items {
+		if item%2 == 0 {
+			kept = append(kept, item+1)
+		}
+	}
+	return kept
+}
+`
 }
 
 func repoRoot(t *testing.T) string {

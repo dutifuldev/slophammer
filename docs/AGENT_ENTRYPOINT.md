@@ -83,20 +83,30 @@ For Go projects, start with this policy:
 ```yaml
 go:
   coverage_threshold: 85
-  dry_max_candidates: 0
-  dry_paths:
-    - go/cmd
-    - go/internal
-  dry_exclude:
-    - "**/*_test.go"
-    - "fixtures/**"
-    - "templates/**"
+  dry:
+    max_findings: 0
+    paths:
+      - go/cmd
+      - go/internal
+    exclude:
+      - "**/*_test.go"
+      - "fixtures/**"
+      - "templates/**"
+    structural:
+      enabled: true
+      threshold: 0.82
+      min_lines: 4
+      min_nodes: 20
+    copied_blocks:
+      enabled: true
+      min_tokens: 100
   crap_max_score: 8
   mutation_targets:
     - go/internal/rules/rules.go
 ```
 
-Adjust `dry_paths` and `mutation_targets` to match the target repository.
+Adjust `go.dry.paths`, `go.dry.exclude`, and `mutation_targets` to match the
+target repository.
 
 These are hard quality targets:
 

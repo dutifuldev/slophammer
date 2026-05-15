@@ -38,7 +38,7 @@ func newGoComplexityRule(definition Definition) Rule {
 }
 
 func newGoDryRule(definition Definition) Rule {
-	return goStaticRule{definition: definition, satisfied: hasDry4GoCommand}
+	return goStaticRule{definition: definition, satisfied: hasDryCommand}
 }
 
 func newGoCRAPRule(definition Definition) Rule {
@@ -144,7 +144,7 @@ func hasGoComplexityLint(snapshot repo.Snapshot) bool {
 	return false
 }
 
-func hasDry4GoCommand(snapshot repo.Snapshot) bool {
+func hasDryCommand(snapshot repo.Snapshot) bool {
 	for _, file := range commandFiles(snapshot) {
 		for _, content := range commandSections(file) {
 			if contentHasGoToolCommand(content, gotools.Dry4Go) ||

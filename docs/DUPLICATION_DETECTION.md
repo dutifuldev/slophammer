@@ -8,6 +8,10 @@ quickly. The code may pass tests while still growing in a copy/paste direction.
 
 See [DRY](DRY.md) for the refactoring policy behind duplicate reports.
 
+See [Unified DRY Engine Plan](2026-05-15-unified-dry-engine-plan.md)
+for the plan to combine structural function detection and copied-block
+detection into one Slophammer module.
+
 ## Core Idea
 
 Do not wait for duplication to become obvious by eye.
@@ -61,5 +65,6 @@ candidates.
 
 ## Source Notes
 
+- [Unified DRY Engine Plan](2026-05-15-unified-dry-engine-plan.md)
 - [Uncle Bob GitHub Projects: Agentic Coding Guardrails](uncle-bob/2026-05-12-uncle-bob-github-projects.md)
 - [Structural Review](STRUCTURAL_REVIEW.md)
