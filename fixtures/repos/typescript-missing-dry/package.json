@@ -1,0 +1,13 @@
+{
+  "name": "typescript-missing-dry-fixture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "format": "prettier --check .",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "mutate": "stryker run"
+  }
+}

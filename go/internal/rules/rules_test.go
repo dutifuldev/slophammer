@@ -147,17 +147,28 @@ func TestDefaultDefinitionsMatchRulesSpec(t *testing.T) {
 		t.Fatalf("unmarshal rules spec: %v", err)
 	}
 
+	specRules := goImplementationSpecRules(spec.Rules)
 	definitions := DefaultDefinitions()
-	if len(spec.Rules) != len(definitions) {
-		t.Fatalf("len(spec.Rules) = %d, want %d", len(spec.Rules), len(definitions))
+	if len(specRules) != len(definitions) {
+		t.Fatalf("len(specRules) = %d, want %d", len(specRules), len(definitions))
 	}
 	for i, definition := range definitions {
-		got := spec.Rules[i]
+		got := specRules[i]
 		want := ruleSpec(definition)
 		if !reflect.DeepEqual(got, want) {
 			t.Fatalf("spec rule[%d] mismatch\ngot:  %#v\nwant: %#v", i, got, want)
 		}
 	}
+}
+
+func goImplementationSpecRules(rules []ruleSpec) []ruleSpec {
+	filtered := make([]ruleSpec, 0, len(rules))
+	for _, rule := range rules {
+		if rule.Category == "repo" || rule.Category == "go" {
+			filtered = append(filtered, rule)
+		}
+	}
+	return filtered
 }
 
 func assertRuleIDs(t *testing.T, findings []Finding, want []string) {

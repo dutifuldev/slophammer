@@ -21,6 +21,7 @@ jobs:
           test -f AGENTS.md
           test -f slophammer.yml
           test -f docs/2026-05-12-guardrails.md
+          test -f docs/2026-05-16-typescript-implementation.md
           test -f specs/PRODUCT.md
           test -f specs/RULES.md
           test -f specs/CONFIG.md
@@ -33,6 +34,8 @@ jobs:
           test -f fixtures/expected/clean.json
           test -f fixtures/expected/go-clean.json
           test -f fixtures/expected/go-bad-dependency.json
+          test -f fixtures/repos/typescript-clean/README.md
+          test -f fixtures/expected/typescript-clean.json
       - run: npx -y @simpledoc/simpledoc check
 
   go-template:
@@ -106,5 +109,22 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: "22"
+      - run: npm ci
+      - run: npm run check
+
+  typescript-implementation:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: typescript
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go/go.mod
+          cache: false
       - run: npm ci
       - run: npm run check
