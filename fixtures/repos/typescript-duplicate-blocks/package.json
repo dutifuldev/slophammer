@@ -1,0 +1,8 @@
+{
+  "name": "typescript-duplicate-blocks-fixture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dry": "slophammer typescript dry ."
+  }
+}

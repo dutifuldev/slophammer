@@ -1,0 +1,14 @@
+{
+  "name": "typescript-missing-any-rule-fixture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "format": "prettier --check .",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "dry": "slophammer typescript dry .",
+    "mutate": "stryker run"
+  }
+}

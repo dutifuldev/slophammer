@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "ts.strict-required",
+      "severity": "error",
+      "path": "tsconfig.json",
+      "message": "TypeScript projects must enable strict mode"
+    }
+  ]
+}

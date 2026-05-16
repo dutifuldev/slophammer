@@ -60,3 +60,59 @@ go:
       allow: []
     - from: go/internal/repo
       allow: []
+typescript:
+  coverage_threshold: 85
+  complexity_max: 8
+  dry:
+    max_findings: 0
+    paths:
+      - typescript/src
+    exclude:
+      - "**/*.test.ts"
+      - "**/*.spec.ts"
+      - "typescript/fixtures/**"
+      - "typescript/dist/**"
+      - "typescript/coverage/**"
+    copied_blocks:
+      enabled: true
+      min_tokens: 100
+  mutation_targets:
+    - typescript/src/rules/rules.ts
+  dependency_boundaries:
+    - from: typescript/src/cli
+      allow:
+        - typescript/src/cli
+        - typescript/src/app
+        - typescript/src/dry
+    - from: typescript/src/app
+      allow:
+        - typescript/src/config
+        - typescript/src/dry
+        - typescript/src/repo
+        - typescript/src/report
+        - typescript/src/rules
+        - typescript/src/scan
+        - typescript/src/toolchecks
+    - from: typescript/src/config
+      allow:
+        - typescript/src/repo
+        - typescript/src/rules
+    - from: typescript/src/report
+      allow:
+        - typescript/src/rules
+    - from: typescript/src/rules
+      allow:
+        - typescript/src/config
+        - typescript/src/repo
+        - typescript/src/rules
+    - from: typescript/src/scan
+      allow:
+        - typescript/src/repo
+    - from: typescript/src/toolchecks
+      allow:
+        - typescript/src/rules
+    - from: typescript/src/dry
+      allow:
+        - typescript/src/dry
+    - from: typescript/src/repo
+      allow: []

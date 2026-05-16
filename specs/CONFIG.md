@@ -44,6 +44,34 @@ go:
         - go/internal/repo
     - from: go/internal/repo
       allow: []
+typescript:
+  coverage_threshold: 85
+  complexity_max: 8
+  dry:
+    max_findings: 0
+    paths:
+      - typescript/src
+    exclude:
+      - "**/*.test.ts"
+      - "**/*.spec.ts"
+      - "typescript/fixtures/**"
+      - "typescript/dist/**"
+      - "typescript/coverage/**"
+    copied_blocks:
+      enabled: true
+      min_tokens: 100
+  mutation_targets:
+    - typescript/src/rules/rules.ts
+  dependency_boundaries:
+    - from: typescript/src/app
+      allow:
+        - typescript/src/config
+        - typescript/src/dry
+        - typescript/src/repo
+        - typescript/src/report
+        - typescript/src/rules
+        - typescript/src/scan
+        - typescript/src/toolchecks
 ```
 
 ## Rule Config
@@ -118,3 +146,40 @@ reference projects.
 
 External imports are ignored. Local imports are resolved through the nearest
 `go.mod` module path.
+
+## TypeScript Config
+
+`typescript.coverage_threshold`, `typescript.complexity_max`,
+`typescript.dry`, `typescript.mutation_targets`, and
+`typescript.dependency_boundaries` are parsed as typed policy fields.
+
+The TypeScript policy values have hard recommended bounds. Slophammer rejects
+config that weakens them:
+
+- `typescript.coverage_threshold` must be at least `85`.
+- `typescript.complexity_max` must be at most `8`.
+
+Projects may choose stricter values, such as higher coverage or lower
+complexity limits, but they cannot configure weaker values through
+`slophammer.yml`.
+
+The nested `typescript.dry` shape configures native copied-block duplicate
+detection:
+
+- `typescript.dry.max_findings` sets the finding budget.
+- `typescript.dry.paths` selects paths to scan.
+- `typescript.dry.exclude` excludes tests, fixtures, build output, or generated
+  code.
+- `typescript.dry.copied_blocks` configures CPD-style copied-block detection.
+
+The configured DRY budget is zero for production code.
+
+`typescript.dependency_boundaries` declares import boundaries:
+
+| Field   | Meaning                                                   |
+| ------- | --------------------------------------------------------- |
+| `from`  | Repository-root-relative source path.                     |
+| `allow` | Local source paths that code under `from` may import.     |
+
+External package imports are ignored. Relative imports are resolved against the
+importing source file.

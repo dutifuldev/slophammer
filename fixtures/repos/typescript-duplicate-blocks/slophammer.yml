@@ -1,0 +1,8 @@
+typescript:
+  dry:
+    max_findings: 0
+    paths:
+      - src
+    copied_blocks:
+      enabled: true
+      min_tokens: 40

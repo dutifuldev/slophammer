@@ -1,0 +1,11 @@
+typescript:
+  coverage_threshold: 85
+  complexity_max: 8
+  dry:
+    max_findings: 0
+  mutation_targets:
+    - src/rules.ts
+  dependency_boundaries:
+    - from: src/rules
+      allow:
+        - src/repo

@@ -620,6 +620,7 @@ typescript/
 ├── src/app/
 ├── src/cli/
 ├── src/config/
+├── src/dry/
 ├── src/report/
 ├── src/repo/
 ├── src/rules/
@@ -628,6 +629,14 @@ typescript/
 
 Strict TypeScript should be non-negotiable. External data should enter as
 `unknown`, be validated, and then become typed domain data.
+
+The TypeScript implementation lives at top level in `typescript/`, not under
+`templates/`. It should be fully standalone and should include a native
+CPD-style copied-block detector so TypeScript can expose the same DRY report
+model as Go.
+
+See [TypeScript Implementation](2026-05-16-typescript-implementation.md) for
+the detailed TypeScript plan.
 
 ## Python Implementation
 

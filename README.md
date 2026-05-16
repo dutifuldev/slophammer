@@ -57,6 +57,12 @@ When `slophammer.yml` defines Go policy values, the direct Go commands use
 those values as defaults. Explicit CLI flags still win. `check --execute` runs
 the configured Go tool checks and folds tool failures into the normal report.
 
+The TypeScript implementation also includes native copied-block detection:
+
+```sh
+slophammer typescript dry [path] [--max-findings n] [--show-report] [--format json|text]
+```
+
 The checker should scan a target repository and report findings such as:
 
 - missing `README.md`
@@ -67,6 +73,7 @@ The checker should scan a target repository and report findings such as:
 - missing linting setup
 - missing coverage gate
 - missing Go complexity check
+- missing TypeScript strictness, unsafe-type, complexity, or mutation setup
 - missing DRY, gated `crap4go`, or `mutate4go` declaration
 - documentation that does not follow the repo convention
 
@@ -110,13 +117,16 @@ The shared report model should stay simple:
 │   ├── cmd/slophammer/
 │   ├── internal/
 │   └── scripts/
+├── typescript/
+│   ├── src/
+│   └── tests/
 └── templates/
     ├── go/
     ├── python/
     └── typescript/
 ```
 
-`go/` is the working Slophammer implementation.
+`go/` and `typescript/` are working Slophammer implementations.
 
 `templates/` contains language project references that agents can copy from.
 Those templates are not full Slophammer implementations yet.
@@ -126,7 +136,7 @@ Those templates are not full Slophammer implementations yet.
 | Language   | Status                                           |
 | ---------- | ------------------------------------------------ |
 | Go         | Implemented checker, CLI, tool checks, fixtures, CI |
-| TypeScript | Template only; checker implementation planned       |
+| TypeScript | Implemented checker, CLI, native DRY, fixtures, CI  |
 | Python     | Template only; checker implementation planned       |
 
 The Go implementation currently provides:
@@ -147,6 +157,20 @@ The Go implementation now tightens `golangci-lint` with `revive`, including an
 errors, nil handling, exhaustiveness, HTTP cleanup, context use, conversions,
 whitespace, and `nolint` discipline. See
 [Implementation Model](docs/IMPLEMENTATION_MODEL.md) for the detailed policy.
+
+The TypeScript implementation currently provides:
+
+- shared repo rules for `README.md`, `AGENTS.md`, and CI
+- TypeScript rules for package setup, strict compiler options, unsafe-type lint
+  rules, formatting, linting, tests, coverage, complexity, DRY, mutation
+  declaration, and dependency boundaries
+- native CPD-style copied-block detection through `slophammer typescript dry`
+- `slophammer.yml` config parsing with hard targets for coverage, complexity,
+  and duplication budgets
+- text, JSON, and SARIF report output
+- shared fixture equivalence tests against the Go implementation
+- CI gates for formatting, linting, type checking, tests, coverage, build,
+  native DRY, and fixture equivalence
 
 ## Current Go Quality Surface
 
@@ -198,8 +222,19 @@ The current shared rule set is:
 | `go.crap-required`                  | Go projects should gate `crap4go`.                  |
 | `go.mutation-required`              | Go projects should declare `mutate4go`.             |
 | `go.dependency-boundaries-required` | Go projects should obey configured import boundaries. |
+| `ts.package-required`               | TypeScript projects should include `package.json`.  |
+| `ts.typecheck-required`             | TypeScript projects should run `tsc --noEmit`.      |
 | `ts.strict-required`                | TypeScript projects should use strict mode.         |
 | `ts.no-explicit-any`                | TypeScript projects should reject `any`.            |
+| `ts.no-unsafe-types`                | TypeScript projects should reject unsafe type operations. |
+| `ts.lint-required`                  | TypeScript projects should run ESLint.              |
+| `ts.format-required`                | TypeScript projects should run a formatter check.   |
+| `ts.test-required`                  | TypeScript projects should run tests.               |
+| `ts.coverage-required`              | TypeScript projects should enforce coverage.        |
+| `ts.complexity-required`            | TypeScript projects should enforce complexity limits. |
+| `ts.dry-required`                   | TypeScript projects should run duplication detection. |
+| `ts.mutation-required`              | TypeScript projects should declare mutation testing. |
+| `ts.dependency-boundaries-required` | TypeScript projects should obey configured import boundaries. |
 | `python.mypy-required`              | Python projects should run mypy.                    |
 | `python.ruff-required`              | Python projects should run Ruff.                    |
 | `docs.simpledoc`                    | Docs should follow the repository convention.       |
@@ -222,9 +257,6 @@ Each language implementation should demonstrate the same boundaries:
 
 The implementations should be boring on purpose. Agents should be able to copy
 the shape without copying accidental complexity.
-
-The Go implementation does not have config parsing yet. That belongs in a later
-slice.
 
 ## Guardrail Principles
 
