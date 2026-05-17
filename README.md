@@ -15,62 +15,29 @@ code.
 ## Quick setup: tell your agent about Slophammer
 
 If you are an agent applying Slophammer standards to an existing repository,
-start with [Agent Entrypoint](docs/AGENT_ENTRYPOINT.md). It explains what to
-add, which targets to enforce, how to wire CI, and how to report the result.
+start with [Agent Entrypoint](docs/AGENT_ENTRYPOINT.md). It explains how to
+choose the right implementation, what to add, which targets to enforce, how to
+wire CI, and how to report the result.
 
 Copy the block below and paste it into your coding agent when you want it to
-apply Slophammer standards to a repository. The agent should detect the target
-project's language, choose the matching Slophammer implementation, and stop
-with a clear note when no implementation exists for that language.
+apply Slophammer standards to a repository.
 
 ```text
-I want you to use Slophammer to enforce repository quality for this project.
-Please do the following:
+Use Slophammer to enforce repository quality for this project.
 
-1. Inspect this repository and identify its primary implementation language.
-   Choose the matching Slophammer implementation for that language:
-   - Go: slophammer-go
-   - TypeScript: slophammer-ts
-   - Python: slophammer-py
+Attention agent: start with this file before changing code:
+https://raw.githubusercontent.com/dutifuldev/slophammer/refs/heads/main/docs/AGENT_ENTRYPOINT.md
 
-   If the matching implementation does not exist or is not installable for this
-   project, say that clearly and do not substitute an unrelated implementation.
-
-2. Install or run the matching Slophammer implementation.
-   For Go, use the released checker:
-   go install github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.0
-
-3. Read the Slophammer agent entrypoint before changing files:
-   https://raw.githubusercontent.com/dutifuldev/slophammer/refs/tags/go/v0.1.0/docs/AGENT_ENTRYPOINT.md
-
-4. Inspect the rule catalog for the implementation you selected:
-   <slophammer-command> rules --format json
-
-5. Run Slophammer against this repository:
-   <slophammer-command> check . --format json
-
-6. Run the implementation's executable checks when they exist.
-   For Go projects, run:
-   slophammer-go check . --execute
-   slophammer-go dry .
-   slophammer-go crap .
-   slophammer-go mutate . --scan
-
-7. Add or update README.md, AGENTS.md, slophammer.yml, CI, tests, linting,
-   coverage, DRY, CRAP, mutation, strict typing, and dependency-boundary
-   checks as needed. Do not lower Slophammer's recommended targets:
-   coverage >= 85, CRAP <= 8, production DRY findings = 0.
-
-8. Before finishing, rerun the relevant local checks and Slophammer. Report
-   exactly what changed, which checks passed, and anything that could not run.
+Follow it exactly. Detect the target repo's language, use the matching Slophammer
+implementation, and say clearly if no matching implementation exists.
 ```
 
 ## What This Is
 
 - A small product spec for a repo quality checker.
 - Separate user-facing implementations of that product.
-- A production Go implementation named `slophammer-go`.
-- A TypeScript implementation named `slophammer-ts`.
+- A released Go implementation named `slophammer-go`.
+- A private, package-checked TypeScript implementation named `slophammer-ts`.
 - Go, TypeScript, and Python project templates with strict local checks.
 - A reference for project structure, testing, errors, reporting, and CI.
 - A source of patterns for agents working in different language ecosystems.
@@ -84,8 +51,7 @@ Please do the following:
 
 ## Product Shape
 
-Slophammer is the standard. Installable implementations use short,
-language-specific names:
+Slophammer is the standard. Implementations use short, language-specific names:
 
 ```sh
 slophammer-go
@@ -93,8 +59,12 @@ slophammer-ts
 slophammer-py
 ```
 
-Each implementation supports the same basic commands under its own executable
-name:
+`slophammer-go` is released. `slophammer-ts` is implemented and package-checked
+but not published to npm yet. `slophammer-py` is the planned Python command; the
+current Python work is a template, not a checker implementation.
+
+Each implemented checker supports the same basic commands under its own
+executable name:
 
 ```sh
 slophammer-go check <path>
@@ -211,18 +181,25 @@ Those templates are not full Slophammer implementations yet.
 and TypeScript implementations. It verifies JSON report shape, findings, and
 exit codes for the fixture sets each implementation supports.
 
-The required next work before a Go release is tracked in
-[Required Next Work](docs/2026-05-17-required-next-work.md). Go is the
-releasable implementation. TypeScript remains private and package-checked in
-CI, but npm publishing is intentionally deferred.
+The Go checker is released from the
+[Slophammer releases](https://github.com/dutifuldev/slophammer/releases). Install
+the current release with:
+
+```sh
+go install github.com/dutifuldev/slophammer/go/cmd/slophammer-go@latest
+```
+
+[Required Next Work](docs/2026-05-17-required-next-work.md) records the release
+hardening tasks that were completed for that Go release. TypeScript remains
+private and package-checked in CI, but npm publishing is intentionally deferred.
 
 ## Implementation Status
 
-| Language   | Product name    | Status                                              |
-| ---------- | --------------- | --------------------------------------------------- |
-| Go         | `slophammer-go` | Implemented checker, CLI, tool checks, fixtures, CI |
-| TypeScript | `slophammer-ts` | Implemented checker, CLI, native DRY, fixtures, CI  |
-| Python     | `slophammer-py` | Template only; checker implementation planned       |
+| Language   | Product name    | Status                                                     |
+| ---------- | --------------- | ---------------------------------------------------------- |
+| Go         | `slophammer-go` | Released checker, CLI, tool checks, fixtures, CI           |
+| TypeScript | `slophammer-ts` | Implemented private checker, CLI, native DRY, fixtures, CI |
+| Python     | `slophammer-py` | Template only; checker implementation planned              |
 
 An implementation can check more than one language. For example,
 `slophammer-go` can operate as a strong single-binary checker for Go,
@@ -307,11 +284,15 @@ useful as a reference implementation:
    `@dutifuldev/slophammer-ts`, checks both public command names, and runs the
    shared conformance script. The Go implementation is the release target;
    TypeScript package publishing is deferred. The Go release dry-run workflow
-   validates `go/vX.Y.Z` tags before release.
+   validates release tags and verifies tagged `go install` on release tag
+   pushes.
 
 ## Shared Rule Set
 
-The current shared rule set is:
+The current implemented rule registry contains 26 rules: 3 shared repository
+rules, 10 Go rules, and 13 TypeScript rules.
+
+The implemented rule set is:
 
 | Rule ID                             | Meaning                                                       |
 | ----------------------------------- | ------------------------------------------------------------- |
@@ -341,9 +322,6 @@ The current shared rule set is:
 | `ts.dry-required`                   | TypeScript projects should run duplication detection.         |
 | `ts.mutation-required`              | TypeScript projects should declare mutation testing.          |
 | `ts.dependency-boundaries-required` | TypeScript projects should obey configured import boundaries. |
-| `python.mypy-required`              | Python projects should run mypy.                              |
-| `python.ruff-required`              | Python projects should run Ruff.                              |
-| `docs.simpledoc`                    | Docs should follow the repository convention.                 |
 
 The exact shared rule behavior belongs in [Rules](specs/RULES.md) so each
 implementation can share the same contract.

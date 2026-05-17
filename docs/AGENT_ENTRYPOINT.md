@@ -44,6 +44,52 @@ Then make the smallest plan that turns the existing project into an enforceable
 project. Do not rewrite the project structure unless the current structure blocks
 quality checks.
 
+## Choose The Implementation
+
+Choose the Slophammer implementation from the target repository's primary
+language. Do not use an unrelated implementation just because it is available.
+
+Use this selection model:
+
+| Target repo language | Slophammer command | Current availability                                                             |
+| -------------------- | ------------------ | -------------------------------------------------------------------------------- |
+| Go                   | `slophammer-go`    | Public Go install                                                                |
+| TypeScript           | `slophammer-ts`    | Available from this repo's TypeScript implementation; npm publishing is deferred |
+| Python               | `slophammer-py`    | Not implemented yet                                                              |
+
+For a Go target outside this source tree, install the current released checker:
+
+```sh
+go install github.com/dutifuldev/slophammer/go/cmd/slophammer-go@latest
+```
+
+For this repository's Go implementation, use the source-tree command:
+
+```sh
+cd go
+go run ./cmd/slophammer-go help
+```
+
+For TypeScript, use `slophammer-ts` only when the command is available from a
+local Slophammer checkout or package artifact. If there is no installable
+matching implementation for the target language, say that clearly and do not
+claim Slophammer passed. You may still apply the documented standards manually,
+but report that the language-specific Slophammer checker could not run.
+
+Before changing files, inspect the implemented rule catalog for the selected
+checker:
+
+```sh
+slophammer-go rules --format json
+slophammer-ts rules --format json
+```
+
+Then run the selected checker against the target repo:
+
+```sh
+<slophammer-command> check . --format json
+```
+
 ## Required Files
 
 Every serious repository should have these files:
