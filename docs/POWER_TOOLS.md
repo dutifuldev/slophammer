@@ -8,9 +8,7 @@ damage, faster.
 
 ## Core Idea
 
-The point of agentic coding is not to remove human responsibility.
-
-The point is to move human effort toward higher-leverage work:
+Use agents for mechanical production and keep human review focused on:
 
 - choosing behavior
 - setting constraints
@@ -18,8 +16,7 @@ The point is to move human effort toward higher-leverage work:
 - reviewing risk
 - deciding what is acceptable
 
-The agent handles more of the mechanical production. The human remains
-responsible for the system.
+Review the generated change against those points before merging it.
 
 ## What Responsible Use Looks Like
 

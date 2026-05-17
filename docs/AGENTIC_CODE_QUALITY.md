@@ -52,8 +52,6 @@ A useful loop for agentic work:
 8. Check dependencies and duplication.
 9. Review structure before reading syntax.
 
-This loop makes quality an operating system around the agent.
-
 ## Common Failure Modes
 
 Agentic projects drift when:

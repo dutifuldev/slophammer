@@ -8,8 +8,8 @@ AI-generated code under control: agent instructions, CI, tests, strict typing,
 linting, coverage, documentation conventions, and project structure that humans
 can still review.
 
-The point of this repository is to show a small tool implemented cleanly, with
-language templates beside it, so agents can copy patterns from real, working
+This repository keeps the product contract, implementations, fixtures,
+templates, and CI in one place so agents can copy tested patterns from working
 code.
 
 ## Quick setup: tell your agent about Slophammer
@@ -339,12 +339,12 @@ Each language implementation should demonstrate the same boundaries:
 - integration tests for CLI behavior
 - CI checks for formatting, linting, type checking, and tests
 
-The implementations should be boring on purpose. Agents should be able to copy
-the shape without copying accidental complexity.
+The implementations should keep rule logic separate from CLI parsing,
+filesystem scanning, config parsing, and report rendering.
 
 ## Guardrail Principles
 
-1. Keep the core boring.
+1. Keep the core isolated.
    Business rules should be ordinary code with direct tests. Frameworks,
    databases, queues, HTTP, file systems, and external APIs belong at the edges.
 
@@ -360,9 +360,9 @@ the shape without copying accidental complexity.
    The important rules should not depend on CLIs, web servers, ORMs, or cloud
    SDKs.
 
-5. Treat generated code as untrusted.
-   Review it, test it, type-check it, and keep the architecture understandable to
-   humans.
+5. Apply checks to generated code.
+   Generated code must pass the same formatter, linter, type, test, and boundary
+   checks unless it is explicitly excluded in config.
 
 ## Concept Docs
 

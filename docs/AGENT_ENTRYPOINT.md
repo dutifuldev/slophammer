@@ -3,9 +3,9 @@
 Attention agent: start here when you are asked to apply Slophammer standards to
 an existing repository.
 
-Your job is not to make the repository look busy. Your job is to make quality
-enforceable. Prefer small, reviewable changes that add real checks, wire them
-into CI, and leave maintainers with commands they can run locally.
+Only add files, scripts, and checks that are enforced locally or in CI. Prefer
+small, reviewable changes that leave maintainers with commands they can run
+locally.
 
 ## Operating Rules
 
@@ -92,7 +92,7 @@ Then run the selected checker against the target repo:
 
 ## Required Files
 
-Every serious repository should have these files:
+Slophammer expects these files:
 
 ```text
 README.md
