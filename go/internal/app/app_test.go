@@ -230,6 +230,21 @@ func TestRunWithCommandConfigLoadsRepoConfig(t *testing.T) {
 	}
 }
 
+func TestRulesWritesRuleCatalog(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := Rules(&out, &errOut)
+
+	if code != ExitOK {
+		t.Fatalf("code = %d, want %d; stderr=%q", code, ExitOK, errOut.String())
+	}
+	if !strings.Contains(out.String(), "repo.readme-required") ||
+		!strings.Contains(out.String(), "go.dry-required") {
+		t.Fatalf("rules output = %q", out.String())
+	}
+}
+
 func TestRunWithCommandConfigRejectsInvalidRoot(t *testing.T) {
 	var errOut bytes.Buffer
 	code := runWithCommandConfig(filepath.Join(t.TempDir(), "missing"), &errOut, func(repo.Snapshot, config.Config) int {

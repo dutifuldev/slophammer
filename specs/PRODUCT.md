@@ -30,6 +30,7 @@ slophammer-go check <path> --format json
 slophammer-go check <path> --format sarif
 slophammer-go check <path> --execute
 slophammer-go explain <rule-id>
+slophammer-go rules
 ```
 
 During the rename from the early `slophammer ...` command shape,
@@ -52,6 +53,15 @@ the same report model as static findings.
 `explain` prints rule metadata for a known rule ID.
 
 Unknown rule IDs are command errors.
+
+## Rules
+
+`rules` prints the implemented rule catalog for the current implementation.
+The catalog includes rule ID, category, severity, implementation status, and
+the backing tool when one exists.
+
+`rules` is an inspection command. It does not scan a repository and it exits
+successfully when the catalog is written.
 
 ## Implementation Boundary
 

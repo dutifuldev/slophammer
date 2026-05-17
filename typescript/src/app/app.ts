@@ -6,6 +6,7 @@ import type { DryOptions } from "../dry/types.js";
 import type { Snapshot } from "../repo/repo.js";
 import { newReport, writeJSON, writeSARIF, writeText } from "../report/report.js";
 import { scanRepo } from "../scan/scan.js";
+import { defaultDefinitions } from "../rules/definitions.js";
 import { explain as explainRule, runRules } from "../rules/rules.js";
 import type { Finding } from "../rules/types.js";
 import { executeTypeScriptChecks, execRunner, type Runner } from "../toolchecks/toolchecks.js";
@@ -193,6 +194,43 @@ export function explain(ruleID: string): {
     return { code: exitError, stdout: "", stderr: `unknown rule: ${ruleID}\n` };
   }
   return { code: exitOK, stdout: `${text}\n`, stderr: "" };
+}
+
+export function rules(): {
+  readonly code: number;
+  readonly stdout: string;
+  readonly stderr: string;
+} {
+  return {
+    code: exitOK,
+    stdout: `${ruleCatalogText()}\n`,
+    stderr: ""
+  };
+}
+
+function ruleCatalogText(): string {
+  const header = ["RULE ID", "CATEGORY", "SEVERITY", "STATUS", "TOOL"];
+  const rows = [
+    header,
+    ...defaultDefinitions.map((definition) => [
+      definition.id,
+      definition.category,
+      definition.severity,
+      definition.status,
+      definition.tool ?? ""
+    ])
+  ];
+  const widths = header.map((_, column) =>
+    Math.max(...rows.map((row) => row[column]?.length ?? 0))
+  );
+  return rows
+    .map((row) =>
+      row
+        .map((cell, column) => cell.padEnd(widths[column] ?? 0))
+        .join("  ")
+        .trimEnd()
+    )
+    .join("\n");
 }
 
 export async function typescriptDry(

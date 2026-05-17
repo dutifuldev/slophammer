@@ -51,6 +51,21 @@ describe("run", () => {
     expect(result.stdout).toContain("repo.readme-required");
   });
 
+  it("runs rules from CLI args", async () => {
+    const result = await run(["rules"]);
+
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain("repo.readme-required");
+    expect(result.stdout).toContain("ts.dry-required");
+  });
+
+  it("rejects malformed rules args", async () => {
+    const result = await run(["rules", "repo.readme-required"]);
+
+    expect(result.code).toBe(2);
+    expect(result.stderr).toContain("usage: slophammer-ts rules");
+  });
+
   it("rejects malformed explain and unknown commands", async () => {
     await expect(run(["explain"])).resolves.toMatchObject({ code: 2 });
     await expect(run(["unknown"])).resolves.toMatchObject({ code: 2 });

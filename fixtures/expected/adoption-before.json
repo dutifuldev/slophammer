@@ -1,0 +1,83 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "repo.agents-required",
+      "severity": "error",
+      "path": "AGENTS.md",
+      "message": "AGENTS.md is required"
+    },
+    {
+      "rule_id": "repo.ci-required",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": ".github/workflows must contain at least one .yml or .yaml workflow"
+    },
+    {
+      "rule_id": "ts.complexity-required",
+      "severity": "error",
+      "path": "eslint.config.mjs",
+      "message": "TypeScript projects must enforce complexity limits"
+    },
+    {
+      "rule_id": "ts.coverage-required",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "TypeScript projects must declare a coverage gate"
+    },
+    {
+      "rule_id": "ts.dependency-boundaries-required",
+      "severity": "error",
+      "path": "slophammer.yml",
+      "message": "TypeScript projects must respect configured dependency boundaries"
+    },
+    {
+      "rule_id": "ts.dry-required",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "TypeScript projects must declare a DRY check"
+    },
+    {
+      "rule_id": "ts.format-required",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "TypeScript projects must declare a formatter check"
+    },
+    {
+      "rule_id": "ts.lint-required",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "TypeScript projects must declare ESLint in CI or scripts"
+    },
+    {
+      "rule_id": "ts.mutation-required",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "TypeScript projects must declare mutation testing"
+    },
+    {
+      "rule_id": "ts.no-explicit-any",
+      "severity": "error",
+      "path": "eslint.config.mjs",
+      "message": "TypeScript projects must reject explicit any"
+    },
+    {
+      "rule_id": "ts.no-unsafe-types",
+      "severity": "error",
+      "path": "eslint.config.mjs",
+      "message": "TypeScript projects must reject unsafe type operations"
+    },
+    {
+      "rule_id": "ts.strict-required",
+      "severity": "error",
+      "path": "tsconfig.json",
+      "message": "TypeScript projects must enable strict mode"
+    },
+    {
+      "rule_id": "ts.test-required",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "TypeScript projects must declare tests in CI or scripts"
+    }
+  ]
+}

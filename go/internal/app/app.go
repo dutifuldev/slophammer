@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/dutifuldev/slophammer/go/internal/config"
 	"github.com/dutifuldev/slophammer/go/internal/repo"
@@ -66,6 +67,27 @@ func Explain(ruleID string, out io.Writer, errOut io.Writer) int {
 	}
 	_, err := io.WriteString(out, text)
 	if err != nil {
+		_, _ = fmt.Fprintf(errOut, "write failed: %v\n", err)
+		return ExitError
+	}
+	return ExitOK
+}
+
+func Rules(out io.Writer, errOut io.Writer) int {
+	writer := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
+	_, _ = fmt.Fprintln(writer, "RULE ID\tCATEGORY\tSEVERITY\tSTATUS\tTOOL")
+	for _, definition := range rules.DefaultDefinitions() {
+		_, _ = fmt.Fprintf(
+			writer,
+			"%s\t%s\t%s\t%s\t%s\n",
+			definition.ID,
+			definition.Category,
+			definition.Severity,
+			definition.Status,
+			definition.Tool,
+		)
+	}
+	if err := writer.Flush(); err != nil {
 		_, _ = fmt.Fprintf(errOut, "write failed: %v\n", err)
 		return ExitError
 	}

@@ -34,6 +34,8 @@ func rootCommand(name string) (goCommandRunner, bool) {
 		return runCheck, true
 	case "explain":
 		return runExplainCommand, true
+	case "rules":
+		return runRules, true
 	case "go":
 		return runGo, true
 	case "-h", "--help", "help":
@@ -62,6 +64,14 @@ func runExplain(args []string, out io.Writer, errOut io.Writer) int {
 
 func runExplainCommand(_ context.Context, args []string, out io.Writer, errOut io.Writer) int {
 	return runExplain(args, out, errOut)
+}
+
+func runRules(_ context.Context, args []string, out io.Writer, errOut io.Writer) int {
+	if len(args) != 0 {
+		_, _ = fmt.Fprintln(errOut, "usage: slophammer-go rules")
+		return app.ExitError
+	}
+	return app.Rules(out, errOut)
 }
 
 func runGo(ctx context.Context, args []string, out io.Writer, errOut io.Writer) int {
@@ -331,6 +341,7 @@ func printUsage(out io.Writer) {
 	_, _ = fmt.Fprintln(out, "usage:")
 	_, _ = fmt.Fprintln(out, "  slophammer-go check <path> [--format text|json|sarif] [--execute]")
 	_, _ = fmt.Fprintln(out, "  slophammer-go explain <rule-id>")
+	_, _ = fmt.Fprintln(out, "  slophammer-go rules")
 	_, _ = fmt.Fprintln(out, "  slophammer-go dry [path] [--max-candidates n] [--show-report] [--format json|text]")
 	_, _ = fmt.Fprintln(out, "  slophammer-go crap [path] [--max-score n]")
 	_, _ = fmt.Fprintln(out, "  slophammer-go mutate [path] [--target file] [--scan]")
