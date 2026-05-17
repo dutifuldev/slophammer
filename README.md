@@ -1,5 +1,7 @@
 <p align="center">
   <img src="assets/unclebob_hammer.jpg" alt="Uncle Bob with a hammer" width="320">
+  <br>
+  <sub>*Not affiliated with Uncle Bob; only inspired by him.</sub>
 </p>
 
 # Slophammer
