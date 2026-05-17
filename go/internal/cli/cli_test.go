@@ -77,6 +77,22 @@ func TestRunExplainRejectsWrongArity(t *testing.T) {
 	assertCLIError(t, []string{"explain"}, "usage: slophammer-go explain")
 }
 
+func TestRunRules(t *testing.T) {
+	result := runCLI(t, "rules")
+
+	if result.code != app.ExitOK {
+		t.Fatalf("code = %d, want %d; stderr=%q", result.code, app.ExitOK, result.stderr)
+	}
+	if !strings.Contains(result.stdout, "repo.readme-required") ||
+		!strings.Contains(result.stdout, "go.dry-required") {
+		t.Fatalf("stdout = %q", result.stdout)
+	}
+}
+
+func TestRunRulesRejectsArgs(t *testing.T) {
+	assertCLIError(t, []string{"rules", "repo.readme-required"}, "usage: slophammer-go rules")
+}
+
 func TestRunGoRejectsMissingSubcommand(t *testing.T) {
 	assertCLIError(t, []string{"go"}, "slophammer-go dry")
 }

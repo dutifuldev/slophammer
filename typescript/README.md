@@ -13,9 +13,15 @@ and fixtures.
 npm install
 npm run check
 slophammer-ts check ..
+slophammer-ts rules
 slophammer-ts dry ..
 npm run mutate
 ```
+
+The npm package is publishable as `@dutifuldev/slophammer-ts`. The packed
+artifact contains runtime `dist/src/**` files and package metadata, exposes the
+public `slophammer-ts` bin, and keeps the legacy `slophammer` bin alias during
+the transition.
 
 Source-tree development can also run the built CLI directly:
 

@@ -55,6 +55,7 @@ slophammer-go check <path> --format json
 slophammer-go check <path> --format sarif
 slophammer-go check <path> --execute
 slophammer-go explain <rule-id>
+slophammer-go rules
 ```
 
 The language suffix names the implementation and packaging target, not a hard
@@ -83,6 +84,9 @@ The TypeScript implementation also includes native copied-block detection:
 ```sh
 slophammer-ts dry [path] [--max-findings n] [--show-report] [--format json|text]
 ```
+
+Both working implementations expose a `rules` command so agents can inspect the
+implemented rule catalog without reading source files.
 
 The checker scans a target repository and reports findings such as:
 
@@ -155,6 +159,10 @@ commands remain available through the local entrypoints.
 `templates/` contains language project references that agents can copy from.
 Those templates are not full Slophammer implementations yet.
 
+`scripts/check-conformance.mjs` runs the shared fixture contract against the Go
+and TypeScript implementations. It verifies JSON report shape, findings, and
+exit codes for the fixture sets each implementation supports.
+
 ## Implementation Status
 
 | Language   | Product name       | Status                                           |
@@ -175,6 +183,7 @@ The Go implementation currently provides:
 - Go rules for module, tests, vet, lint, coverage, and complexity
 - static declarations for DRY, `crap4go`, and `mutate4go`
 - direct commands for native DRY, `crap4go`, and `mutate4go`
+- an installed-binary release check for `slophammer-go`
 - `slophammer.yml` config parsing
 - native Go dependency boundary checks
 - text, JSON, and SARIF report output
@@ -195,12 +204,14 @@ The TypeScript implementation currently provides:
   rules, formatting, linting, tests, coverage, complexity, DRY, mutation
   declaration, and dependency boundaries
 - native CPD-style copied-block detection through `slophammer-ts dry`
+- a narrowed npm package artifact with `slophammer-ts` and legacy `slophammer`
+  bin verification
 - `slophammer.yml` config parsing with hard targets for coverage, complexity,
   and duplication budgets
 - text, JSON, and SARIF report output
 - shared fixture equivalence tests against the Go implementation
 - CI gates for formatting, linting, type checking, tests, coverage, build,
-  native DRY, and fixture equivalence
+  native DRY, package installation, and fixture conformance
 
 ## Current Go Quality Surface
 
@@ -232,6 +243,11 @@ useful as a reference implementation:
 6. SARIF output is available.
    JSON stays the stable internal report contract. SARIF lets GitHub code
    scanning consume Slophammer findings.
+
+7. Release checks exercise installed artifacts.
+   CI installs `slophammer-go` into a temporary `GOBIN`, packs and installs
+   `@dutifuldev/slophammer-ts`, checks both public command names, and runs the
+   shared conformance script.
 
 ## Shared Rule Set
 

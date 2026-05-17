@@ -143,6 +143,13 @@ If the repo does not implement Slophammer itself, install or run the matching
 Slophammer tool, such as `slophammer-go`, instead of assuming
 `./cmd/slophammer-go` exists.
 
+Use the rule catalog command when a finding needs context:
+
+```sh
+slophammer-go rules
+slophammer-ts rules
+```
+
 ## Language Baselines
 
 For TypeScript:
@@ -204,6 +211,8 @@ go run ./cmd/slophammer-go dry ..
 go run ./cmd/slophammer-go crap ..
 go run ./cmd/slophammer-go mutate .. --scan
 go run ./cmd/slophammer-go check .. --execute
+./scripts/check-go-install.sh
+node ../scripts/check-conformance.mjs
 npx -y @simpledoc/simpledoc check
 git diff --check
 ```

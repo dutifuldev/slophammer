@@ -9,12 +9,15 @@ let tarball: string | undefined;
 
 try {
   const pack = run("npm", ["pack", "--json"], root);
-  tarball = path.join(root, packedFileName(pack.stdout));
+  const metadata = packedPackageMetadata(pack.stdout);
+  assertPackageScope(metadata.files);
+  tarball = path.join(root, metadata.filename);
 
   run("npm", ["install", "--silent", "--prefix", temp, tarball], root);
 
   assertHelpIncludesPublicUsage("slophammer-ts");
   assertHelpIncludesPublicUsage("slophammer");
+  assertFixtureCheckPasses("slophammer-ts");
 } finally {
   if (tarball !== undefined) {
     await rm(tarball, { force: true });
@@ -29,16 +32,70 @@ function assertHelpIncludesPublicUsage(name: string): void {
   }
 }
 
-function packedFileName(output: string): string {
+function assertFixtureCheckPasses(name: string): void {
+  const fixture = path.resolve(root, "..", "fixtures", "repos", "typescript-clean");
+  const result = run(binPath(name), ["check", fixture, "--format", "json"], root);
+  if (!result.stdout.includes('"ok": true')) {
+    throw new Error(`${name} check did not pass the clean TypeScript fixture:\n${result.stdout}`);
+  }
+}
+
+type PackedPackageMetadata = {
+  readonly filename: string;
+  readonly files: readonly PackedFile[];
+};
+
+type PackedFile = {
+  readonly path: string;
+};
+
+function packedPackageMetadata(output: string): PackedPackageMetadata {
   const parsed = JSON.parse(output) as unknown;
   if (!Array.isArray(parsed) || parsed.length === 0) {
     throw new Error(`npm pack did not return package metadata: ${output}`);
   }
   const first = parsed[0] as unknown;
-  if (!record(first) || typeof first["filename"] !== "string") {
+  if (!record(first) || typeof first["filename"] !== "string" || !Array.isArray(first["files"])) {
     throw new Error(`npm pack metadata did not include a filename: ${output}`);
   }
-  return first["filename"];
+  return {
+    filename: first["filename"],
+    files: first["files"].map(packedFile)
+  };
+}
+
+function packedFile(value: unknown): PackedFile {
+  if (!record(value) || typeof value["path"] !== "string") {
+    throw new Error(`npm pack metadata included an invalid file entry: ${JSON.stringify(value)}`);
+  }
+  return { path: value["path"] };
+}
+
+function assertPackageScope(files: readonly PackedFile[]): void {
+  const paths = files.map((file) => file.path).sort();
+  const required = ["README.md", "dist/src/cli/main.js", "dist/src/app/app.js", "package.json"];
+  for (const requiredPath of required) {
+    if (!paths.includes(requiredPath)) {
+      throw new Error(`packed package is missing ${requiredPath}`);
+    }
+  }
+  const forbidden = [
+    /^src\//u,
+    /^tests\//u,
+    /^dist\/tests\//u,
+    /^scripts\//u,
+    /^coverage\//u,
+    /^node_modules\//u,
+    /^fixtures\//u,
+    /^vitest/u,
+    /^eslint\.config/u,
+    /^tsconfig\.json$/u,
+    /^stryker\.conf\.json$/u
+  ];
+  const leaked = paths.filter((filePath) => forbidden.some((pattern) => pattern.test(filePath)));
+  if (leaked.length > 0) {
+    throw new Error(`packed package includes development-only files:\n${leaked.join("\n")}`);
+  }
 }
 
 function record(value: unknown): value is Readonly<Record<string, unknown>> {

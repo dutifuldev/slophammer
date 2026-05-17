@@ -20,8 +20,10 @@ jobs:
           test -f LICENSE
           test -f AGENTS.md
           test -f slophammer.yml
+          test -f scripts/check-conformance.mjs
           test -f docs/2026-05-12-guardrails.md
           test -f docs/2026-05-16-typescript-implementation.md
+          test -f docs/2026-05-17-release-hardening-roadmap.md
           test -f specs/PRODUCT.md
           test -f specs/RULES.md
           test -f specs/CONFIG.md
@@ -36,6 +38,8 @@ jobs:
           test -f fixtures/expected/go-bad-dependency.json
           test -f fixtures/repos/typescript-clean/README.md
           test -f fixtures/expected/typescript-clean.json
+          test -f fixtures/repos/adoption-before/SLOPHAMMER_REMEDIATION.md
+          test -f fixtures/expected/adoption-before.json
       - run: npx -y @simpledoc/simpledoc check
 
   go-template:
@@ -78,6 +82,7 @@ jobs:
       - run: golangci-lint run
       - run: go build ./cmd/slophammer
       - run: go build ./cmd/slophammer-go
+      - run: ./scripts/check-go-install.sh
       - run: go run ./cmd/slophammer-go dry ..
       - run: go run ./cmd/slophammer-go crap ..
       - run: go run ./cmd/slophammer-go mutate .. --scan
@@ -113,6 +118,33 @@ jobs:
       - run: npm ci
       - run: npm run check
 
+  sarif:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go/go.mod
+          cache: false
+      - name: Generate Slophammer SARIF
+        working-directory: go
+        run: |
+          set +e
+          go run ./cmd/slophammer-go check .. --format sarif > ../slophammer.sarif
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ] && [ "$status" -ne 1 ]; then
+            exit "$status"
+          fi
+          test -s ../slophammer.sarif
+      - uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: slophammer.sarif
+
   typescript-implementation:
     runs-on: ubuntu-latest
     defaults:
@@ -129,3 +161,4 @@ jobs:
           cache: false
       - run: npm ci
       - run: npm run check
+      - run: node ../scripts/check-conformance.mjs

@@ -11,11 +11,13 @@ Python checks when those checks are covered by the shared specs and fixtures.
 Installed command:
 
 ```sh
+go install github.com/dutifuldev/slophammer/go/cmd/slophammer-go@latest
 slophammer-go check ..
 slophammer-go check .. --format json
 slophammer-go check .. --format sarif
 slophammer-go check .. --execute
 slophammer-go explain repo.agents-required
+slophammer-go rules
 slophammer-go dry ..
 slophammer-go dry .. --show-report
 slophammer-go crap ..
@@ -44,6 +46,7 @@ golangci-lint fmt --diff
 go vet ./...
 go test ./...
 ./scripts/check-go-coverage.sh
+./scripts/check-go-install.sh
 go run ./cmd/slophammer-go dry ..
 go run ./cmd/slophammer-go crap ..
 go run ./cmd/slophammer-go mutate .. --scan

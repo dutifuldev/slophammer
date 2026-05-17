@@ -1,4 +1,12 @@
-import { check, explain, exitError, exitOK, typescriptDry, type CheckOptions } from "../app/app.js";
+import {
+  check,
+  explain,
+  exitError,
+  exitOK,
+  rules,
+  typescriptDry,
+  type CheckOptions
+} from "../app/app.js";
 import type { DryOptions } from "../dry/types.js";
 
 type Result = {
@@ -25,6 +33,8 @@ async function dispatch(args: readonly string[]): Promise<Result> {
       return await check(parseCheckArgs(args.slice(1)));
     case "explain":
       return runExplain(args.slice(1));
+    case "rules":
+      return runRules(args.slice(1));
     case "dry":
       return await typescriptDry(parseDryArgs(args.slice(1)));
     case "typescript":
@@ -32,6 +42,13 @@ async function dispatch(args: readonly string[]): Promise<Result> {
     default:
       return { code: exitError, stdout: "", stderr: `unknown command: ${command}\n${usage()}` };
   }
+}
+
+function runRules(args: readonly string[]): Result {
+  if (args.length !== 0) {
+    return { code: exitError, stdout: "", stderr: "usage: slophammer-ts rules\n" };
+  }
+  return rules();
 }
 
 function helpFlag(command: string): boolean {
@@ -218,6 +235,7 @@ function usage(): string {
     "usage:",
     "  slophammer-ts check <path> [--format text|json|sarif] [--execute]",
     "  slophammer-ts explain <rule-id>",
+    "  slophammer-ts rules",
     "  slophammer-ts dry <path>"
   ].join("\n")}\n`;
 }
