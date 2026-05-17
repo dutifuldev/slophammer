@@ -28,25 +28,26 @@ declared TypeScript guardrails.
 
 ## Product Contract
 
-The TypeScript implementation should support the shared commands:
+The TypeScript implementation should support the shared commands through the
+`slophammer-ts` public command:
 
 ```sh
-slophammer check <path>
-slophammer check <path> --format json
-slophammer check <path> --format sarif
-slophammer check <path> --execute
-slophammer explain <rule-id>
+slophammer-ts check <path>
+slophammer-ts check <path> --format json
+slophammer-ts check <path> --format sarif
+slophammer-ts check <path> --execute
+slophammer-ts explain <rule-id>
 ```
 
 The TypeScript implementation should also include direct language quality
 commands where Slophammer owns the check:
 
 ```sh
-slophammer typescript dry <path>
-slophammer typescript dry <path> --max-findings n
-slophammer typescript dry <path> --show-report
-slophammer typescript dry <path> --format json
-slophammer typescript dry <path> --format text
+slophammer-ts dry <path>
+slophammer-ts dry <path> --max-findings n
+slophammer-ts dry <path> --show-report
+slophammer-ts dry <path> --format json
+slophammer-ts dry <path> --format text
 ```
 
 It should use the same exit-code model:
@@ -312,7 +313,7 @@ Examples:
 - `ts.lint-required` checks CI/scripts for ESLint.
 - `ts.test-required` checks CI/scripts for Vitest or another test command.
 - `ts.coverage-required` checks CI/scripts for coverage with a threshold.
-- `ts.dry-required` checks CI/scripts for `slophammer typescript dry`.
+- `ts.dry-required` checks CI/scripts for `slophammer-ts dry`.
 - `ts.mutation-required` checks CI/scripts for StrykerJS or an accepted
   scheduled/manual mutation workflow.
 
@@ -333,7 +334,7 @@ npm run typecheck
 npm test
 npm run coverage
 npm run complexity
-slophammer typescript dry .
+slophammer-ts dry .
 npm run mutate -- --dryRunOnly
 ```
 
@@ -381,7 +382,7 @@ Support package managers in this order:
 - Validate hard defaults.
 - Add coverage, complexity, DRY, mutation, and dependency-boundary rules.
 - Implement the native CPD-style DRY engine.
-- Add direct `slophammer typescript dry` command support.
+- Add direct `slophammer-ts dry` command support.
 - Add expected reports for each missing gate.
 
 ### Slice 4: Execute Mode

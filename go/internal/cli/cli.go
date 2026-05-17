@@ -16,21 +16,36 @@ func Run(ctx context.Context, args []string, out io.Writer, errOut io.Writer) in
 		printUsage(errOut)
 		return app.ExitError
 	}
-	switch args[0] {
-	case "check":
-		return runCheck(ctx, args[1:], out, errOut)
-	case "explain":
-		return runExplain(args[1:], out, errOut)
-	case "go":
-		return runGo(ctx, args[1:], out, errOut)
-	case "-h", "--help", "help":
-		printUsage(out)
-		return app.ExitOK
-	default:
+	run, ok := rootCommand(args[0])
+	if !ok {
 		_, _ = fmt.Fprintf(errOut, "unknown command: %s\n", args[0])
 		printUsage(errOut)
 		return app.ExitError
 	}
+	return run(ctx, args[1:], out, errOut)
+}
+
+func rootCommand(name string) (goCommandRunner, bool) {
+	if run, ok := goSubcommand(name); ok {
+		return run, true
+	}
+	switch name {
+	case "check":
+		return runCheck, true
+	case "explain":
+		return runExplainCommand, true
+	case "go":
+		return runGo, true
+	case "-h", "--help", "help":
+		return runHelp, true
+	default:
+		return nil, false
+	}
+}
+
+func runHelp(_ context.Context, _ []string, out io.Writer, _ io.Writer) int {
+	printUsage(out)
+	return app.ExitOK
 }
 
 func runCheck(ctx context.Context, args []string, out io.Writer, errOut io.Writer) int {
@@ -39,10 +54,14 @@ func runCheck(ctx context.Context, args []string, out io.Writer, errOut io.Write
 
 func runExplain(args []string, out io.Writer, errOut io.Writer) int {
 	if len(args) != 1 {
-		_, _ = fmt.Fprintln(errOut, "usage: slophammer explain <rule-id>")
+		_, _ = fmt.Fprintln(errOut, "usage: slophammer-go explain <rule-id>")
 		return app.ExitError
 	}
 	return app.Explain(args[0], out, errOut)
+}
+
+func runExplainCommand(_ context.Context, args []string, out io.Writer, errOut io.Writer) int {
+	return runExplain(args, out, errOut)
 }
 
 func runGo(ctx context.Context, args []string, out io.Writer, errOut io.Writer) int {
@@ -107,7 +126,7 @@ func parseCheckArgs(args []string, errOut io.Writer) (app.CheckOptions, bool) {
 		i += advance
 	}
 	if options.Root == "" {
-		_, _ = fmt.Fprintln(errOut, "usage: slophammer check <path> [--format text|json|sarif] [--execute]")
+		_, _ = fmt.Fprintln(errOut, "usage: slophammer-go check <path> [--format text|json|sarif] [--execute]")
 		return app.CheckOptions{}, false
 	}
 	return options, true
@@ -310,16 +329,16 @@ func parseSinglePathOption(currentRoot string, arg string, command string, errOu
 
 func printUsage(out io.Writer) {
 	_, _ = fmt.Fprintln(out, "usage:")
-	_, _ = fmt.Fprintln(out, "  slophammer check <path> [--format text|json|sarif] [--execute]")
-	_, _ = fmt.Fprintln(out, "  slophammer explain <rule-id>")
-	_, _ = fmt.Fprintln(out, "  slophammer go dry [path] [--max-candidates n] [--show-report] [--format json|text]")
-	_, _ = fmt.Fprintln(out, "  slophammer go crap [path] [--max-score n]")
-	_, _ = fmt.Fprintln(out, "  slophammer go mutate [path] [--target file] [--scan]")
+	_, _ = fmt.Fprintln(out, "  slophammer-go check <path> [--format text|json|sarif] [--execute]")
+	_, _ = fmt.Fprintln(out, "  slophammer-go explain <rule-id>")
+	_, _ = fmt.Fprintln(out, "  slophammer-go dry [path] [--max-candidates n] [--show-report] [--format json|text]")
+	_, _ = fmt.Fprintln(out, "  slophammer-go crap [path] [--max-score n]")
+	_, _ = fmt.Fprintln(out, "  slophammer-go mutate [path] [--target file] [--scan]")
 }
 
 func printGoUsage(out io.Writer) {
 	_, _ = fmt.Fprintln(out, "usage:")
-	_, _ = fmt.Fprintln(out, "  slophammer go dry [path] [--max-candidates n] [--show-report] [--format json|text]")
-	_, _ = fmt.Fprintln(out, "  slophammer go crap [path] [--max-score n]")
-	_, _ = fmt.Fprintln(out, "  slophammer go mutate [path] [--target file] [--scan]")
+	_, _ = fmt.Fprintln(out, "  slophammer-go dry [path] [--max-candidates n] [--show-report] [--format json|text]")
+	_, _ = fmt.Fprintln(out, "  slophammer-go crap [path] [--max-score n]")
+	_, _ = fmt.Fprintln(out, "  slophammer-go mutate [path] [--target file] [--scan]")
 }

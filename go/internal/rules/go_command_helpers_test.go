@@ -78,6 +78,33 @@ func TestFirstSlophammerGoPathArgument(t *testing.T) {
 	}
 }
 
+func TestLineHasSlophammerGoCommandAcceptsTransitionForms(t *testing.T) {
+	tests := []struct {
+		name string
+		line string
+		want bool
+	}{
+		{name: "public direct binary", line: "slophammer-go dry .", want: true},
+		{name: "public binary legacy namespace", line: "slophammer-go go dry .", want: true},
+		{name: "legacy binary direct command", line: "slophammer dry .", want: true},
+		{name: "legacy binary namespace", line: "slophammer go dry .", want: true},
+		{name: "source public direct command", line: "go run ./cmd/slophammer-go dry .", want: true},
+		{name: "source public legacy namespace", line: "go run ./cmd/slophammer-go go dry .", want: true},
+		{name: "source legacy direct command", line: "go run ./cmd/slophammer dry .", want: true},
+		{name: "source legacy namespace", line: "go run ./cmd/slophammer go dry .", want: true},
+		{name: "wrong subcommand", line: "slophammer check .", want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := lineHasSlophammerGoCommand(commandTokens(tt.line), "dry", "")
+			if got != tt.want {
+				t.Fatalf("lineHasSlophammerGoCommand(%q) = %v, want %v", tt.line, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestFileHasConfigBackedSlophammerGoCommand(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -123,6 +150,24 @@ jobs:
 			file: repo.File{
 				Path:    "scripts/check.sh",
 				Content: "go run ./cmd/slophammer go mutate --scan\n",
+			},
+			want: true,
+		},
+		{
+			name:       "script public binary legacy namespace",
+			subcommand: "mutate",
+			file: repo.File{
+				Path:    "scripts/check.sh",
+				Content: "slophammer-go go mutate --scan\n",
+			},
+			want: true,
+		},
+		{
+			name:       "script legacy binary direct command",
+			subcommand: "crap",
+			file: repo.File{
+				Path:    "scripts/check.sh",
+				Content: "slophammer crap --max-score 8\n",
 			},
 			want: true,
 		},

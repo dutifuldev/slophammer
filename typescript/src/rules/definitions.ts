@@ -169,7 +169,7 @@ export const defaultDefinitions: readonly Definition[] = [
     message: "TypeScript projects must declare a DRY check",
     description:
       "TypeScript projects should declare Slophammer's native copied-block duplicate detector.",
-    tool: "slophammer typescript dry",
+    tool: "slophammer-ts dry",
     status: "implemented"
   },
   {

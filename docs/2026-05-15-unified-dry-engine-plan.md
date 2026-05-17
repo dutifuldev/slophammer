@@ -46,7 +46,7 @@ That means the current Go DRY check is useful, but incomplete.
 Use one DRY command:
 
 ```sh
-slophammer go dry <path>
+slophammer-go dry <path>
 ```
 
 The command should run both engines. The user-facing keyword stays `dry`.
@@ -242,20 +242,20 @@ DRY execution.
 Keep these commands working:
 
 ```sh
-slophammer go dry <path>
-slophammer go dry <path> --max-candidates 0
-slophammer go dry <path> --show-report
+slophammer-go dry <path>
+slophammer-go dry <path> --max-candidates 0
+slophammer-go dry <path> --show-report
 ```
 
 Add output flags to the same command:
 
 ```sh
-slophammer go dry <path> --format json
-slophammer go dry <path> --format text
+slophammer-go dry <path> --format json
+slophammer-go dry <path> --format text
 ```
 
-`go dry` should print the unified summary and keep the existing exit-code
-behavior.
+`slophammer-go dry` should print the unified summary and keep the existing
+exit-code behavior.
 
 ## Implementation Steps
 
@@ -267,7 +267,7 @@ behavior.
 - [x] Add fixtures for copied blocks inside larger functions.
 - [x] Add grouping and overlap detection.
 - [x] Add JSON and text report rendering.
-- [x] Change `slophammer go dry` to call the unified engine.
+- [x] Change `slophammer-go dry` to call the unified engine.
 - [x] Update `go.dry-required` docs to describe the unified DRY check.
 - [x] Add small regression fixtures that capture missed CPD-style cases in a
       repo-safe form.
@@ -288,9 +288,9 @@ Slophammer should reimplement the documented behavior.
 
 ## Acceptance Criteria
 
-- `slophammer go dry` reports structural function findings.
-- `slophammer go dry` reports copied-block findings.
-- `slophammer go dry` remains compatible.
+- `slophammer-go dry` reports structural function findings.
+- `slophammer-go dry` reports copied-block findings.
+- `slophammer-go dry` remains compatible.
 - JSON output distinguishes `structural-function` and `copied-block`.
 - Text output groups overlaps instead of spamming duplicate duplicates.
 - Production defaults are strict:

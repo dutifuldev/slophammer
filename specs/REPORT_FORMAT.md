@@ -44,7 +44,7 @@ Findings are sorted by `rule_id`, then by `path`.
 SARIF output is selected with:
 
 ```sh
-slophammer check <path> --format sarif
+slophammer-go check <path> --format sarif
 ```
 
 SARIF uses version `2.1.0`. Each Slophammer finding becomes one SARIF result

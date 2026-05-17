@@ -12,7 +12,7 @@ describe("run", () => {
     const result = await run([]);
 
     expect(result.code).toBe(0);
-    expect(result.stdout).toContain("usage:");
+    expect(result.stdout).toContain("slophammer-ts check");
   });
 
   it("runs check from CLI args", async () => {
@@ -56,7 +56,14 @@ describe("run", () => {
     await expect(run(["unknown"])).resolves.toMatchObject({ code: 2 });
   });
 
-  it("runs TypeScript dry from CLI args", async () => {
+  it("runs TypeScript dry from public CLI args", async () => {
+    const result = await run(["dry", fixturePath("typescript-duplicate-blocks"), "--show-report"]);
+
+    expect(result.code).toBe(1);
+    expect(result.stdout).toContain("copied-block");
+  });
+
+  it("keeps legacy TypeScript dry args compatible", async () => {
     const result = await run([
       "typescript",
       "dry",

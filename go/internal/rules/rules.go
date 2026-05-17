@@ -172,7 +172,7 @@ var defaultDefinitions = []Definition{
 		Path:        ".github/workflows",
 		Message:     "Go projects must declare a DRY check",
 		Description: "Go projects should declare Slophammer's unified DRY check for structural and copied-block duplicate detection.",
-		Tool:        "slophammer go dry",
+		Tool:        "slophammer-go dry",
 		Status:      "implemented",
 	},
 	{

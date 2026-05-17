@@ -24,6 +24,9 @@ go:
     - from: go/cmd/slophammer
       allow:
         - go/internal/cli
+    - from: go/cmd/slophammer-go
+      allow:
+        - go/internal/cli
     - from: go/internal/cli
       allow:
         - go/internal/app

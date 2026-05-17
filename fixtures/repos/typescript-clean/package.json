@@ -8,7 +8,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "coverage": "vitest run --coverage",
-    "dry": "slophammer typescript dry .",
+    "dry": "slophammer-ts dry .",
     "mutate": "stryker run",
     "check": "npm run format && npm run lint && npm run typecheck && npm test && npm run coverage && npm run dry"
   }

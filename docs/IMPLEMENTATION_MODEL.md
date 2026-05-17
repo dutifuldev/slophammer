@@ -1,10 +1,29 @@
 # Implementation Model
 
-Slophammer should be built as one product with several language implementations.
+Slophammer is one standard with several language implementations.
 
 The important part is not that Go, TypeScript, and Python share code. They
-should not. The important part is that they share the same contract: rules,
+do not. The important part is that they share the same contract: rules,
 fixtures, config shape, report shape, and command behavior.
+
+The user-facing products are separate:
+
+| Implementation | Public command    |
+| -------------- | ----------------- |
+| Go             | `slophammer-go`   |
+| TypeScript     | `slophammer-ts`   |
+| Python         | `slophammer-py`   |
+
+This makes installation honest. A Go user installs the Go implementation. A
+TypeScript user installs the TypeScript implementation. They are expected to
+agree on the shared Slophammer contract.
+
+The language suffix is an implementation identity, not a permanent capability
+ceiling. Each implementation owns its native checks first. It can also carry
+checks for other ecosystems when doing so is useful, maintainable, and covered
+by shared fixtures. For example, `slophammer-go` can check Go, TypeScript, and
+Python projects from one compiled binary. That does not require
+`slophammer-ts` to have the same language coverage.
 
 ## Target Shape
 
@@ -31,15 +50,16 @@ real implementation is under `templates/`, `examples/`, or `implementations/`.
 
 ## Product Contract
 
-Every implementation should support the same core commands:
+Every implementation supports the same core commands under its own public
+command name:
 
 ```sh
-slophammer check <path>
-slophammer check <path> --format json
-slophammer explain <rule-id>
+slophammer-go check <path>
+slophammer-go check <path> --format json
+slophammer-go explain <rule-id>
 ```
 
-Every implementation should use the same public concepts:
+Every implementation uses the same public concepts:
 
 - rule IDs
 - severities
@@ -51,6 +71,37 @@ Every implementation should use the same public concepts:
 - exit codes
 
 Rule IDs and report fields are public API. Rename them only with intent.
+
+## Capability Model
+
+Implementations grow in this order:
+
+1. Shared repository checks.
+2. Native language checks for the implementation's own ecosystem.
+3. Cross-language static checks that reuse the shared rule contract.
+4. Cross-language execute-mode integrations only when the runtime and toolchain
+   requirements are clear.
+
+Do not force every implementation to support every language. A small,
+well-tested implementation is better than broad coverage that silently skips
+important checks. Cross-language support is done only when the implementation
+can produce the same rule IDs, config behavior, reports, and exit codes as the
+shared spec.
+
+## Public Naming
+
+The public naming model is part of the product:
+
+- the Go implementation is exposed as `slophammer-go`
+- the TypeScript implementation is exposed as `slophammer-ts`
+- existing source-tree and pre-rename commands remain compatibility forms
+- static rule detection accepts the new public commands and the old
+  compatibility forms
+- help text and docs recommend the new public commands
+- package-level commands are verified in CI or local release-style checks
+
+The public names are real, tested, and aligned with the shared product
+contract. Release packaging can improve without changing the command contract.
 
 ## Holy Grail Loop
 
@@ -119,6 +170,7 @@ The Go version should emphasize explicit types and small packages:
 ```text
 go/
 ├── cmd/slophammer/
+├── cmd/slophammer-go/
 ├── internal/app/
 ├── internal/cli/
 ├── internal/config/
@@ -283,14 +335,14 @@ Example static checks:
 - `.golangci.yml` exists
 - `.golangci.yml` enables complexity linters
 - a coverage script or CI command enforces coverage
-- a `slophammer go dry` check is present in CI or scripts
+- a `slophammer-go dry` check is present in CI or scripts
 - a `crap4go` check is present in CI or scripts
 - a `mutate4go` command exists in a slow, nightly, or manual workflow
 
 Execution mode should be explicit:
 
 ```sh
-slophammer check <path> --execute
+slophammer-go check <path> --execute
 ```
 
 Execution mode runs configured Go checks, parses their output where needed, and
@@ -328,13 +380,14 @@ The exact accepted set belongs in `specs/RULES.md` once the rule is implemented.
 The advanced quality checks should start as direct integrations with Uncle
 Bob's Go tools.
 
-### `slophammer go dry`
+### `slophammer-go dry`
 
 Use the native Slophammer DRY engine for Go duplicate detection.
 
-Slophammer checks that the repo has a declared `slophammer go dry` command in
-CI or a script. Existing `dry4go` declarations remain accepted as legacy
-evidence, but the recommended command is the first-class Slophammer command. If
+Slophammer checks that the repo has a declared `slophammer-go dry` command in
+CI or a script. Existing `dry4go` and pre-rename `slophammer go dry`
+declarations remain accepted as legacy evidence, but the recommended command is
+the first-class Go implementation command. If
 `slophammer.yml` sets `go.dry.max_findings` or `go.dry_max_candidates`, that
 value is the default budget unless `--max-candidates` is passed.
 
@@ -357,7 +410,7 @@ DRY check somewhere Slophammer can inspect.
 Use `crap4go` for CRAP scoring.
 
 Slophammer checks that the repo has a declared CRAP command and a clear
-threshold. The first-class `slophammer go crap` command runs `crap4go` directly,
+threshold. The first-class `slophammer-go crap` command runs `crap4go` directly,
 parses its report, and fails when a function exceeds the configured maximum. If
 `slophammer.yml` sets `go.crap_max_score`, that value is the default maximum
 unless `--max-score` is passed.
@@ -366,7 +419,7 @@ Coverage and complexity already exist separately in Go tooling. CRAP is valuable
 because it combines them into one risk signal.
 
 The static `go.crap-required` rule is a hard requirement: the repo must declare
-`crap4go` or `slophammer go crap` with a threshold.
+`crap4go` or `slophammer-go crap` with a threshold.
 
 ### `mutate4go`
 
@@ -376,13 +429,13 @@ Mutation testing is expensive, so the production policy should require a
 declared workflow slot rather than requiring it on every pull request. Valid
 slots are nightly, manual, release, or targeted execution for risky packages.
 
-The first-class `slophammer go mutate` command runs `mutate4go` directly. If
+The first-class `slophammer-go mutate` command runs `mutate4go` directly. If
 `slophammer.yml` sets `go.mutation_targets`, those targets are used unless
 `--target` is passed. Pull requests should use `--scan` against configured
 targets; full mutation testing belongs on slower scheduled or manual paths.
 
 The static `go.mutation-required` rule is a hard requirement: the repo must
-declare `mutate4go` or `slophammer go mutate` in an inspectable workflow or
+declare `mutate4go` or `slophammer-go mutate` in an inspectable workflow or
 script.
 
 ## Native Slophammer Checks
@@ -475,7 +528,7 @@ Every production rule should have:
 
 The next Go fixture tranche must cover both baseline Go tooling and Uncle Bob's
 tools. The clean fixture should declare `go test`, `go vet`, `golangci-lint`, a
-coverage gate, complexity linting, `slophammer go dry`, `crap4go`, and
+coverage gate, complexity linting, `slophammer-go dry`, `crap4go`, and
 `mutate4go`.
 
 ## Config
@@ -516,14 +569,14 @@ Disabling a rule should eventually require a reason.
 The Go CLI should grow to:
 
 ```sh
-slophammer check <path>
-slophammer check <path> --format json
-slophammer check <path> --format text
-slophammer check <path> --format sarif
-slophammer check <path> --execute
-slophammer explain <rule-id>
-slophammer rules
-slophammer fixtures
+slophammer-go check <path>
+slophammer-go check <path> --format json
+slophammer-go check <path> --format text
+slophammer-go check <path> --format sarif
+slophammer-go check <path> --execute
+slophammer-go explain <rule-id>
+slophammer-go rules
+slophammer-go fixtures
 ```
 
 JSON stays the stable internal report contract. SARIF is an output adapter so
@@ -541,11 +594,11 @@ go vet
 go test
 coverage gate
 golangci-lint
-slophammer check .
-slophammer check . --execute
-slophammer go dry ..
-slophammer go crap ..
-slophammer go mutate .. --scan
+slophammer-go check .
+slophammer-go check . --execute
+slophammer-go dry ..
+slophammer-go crap ..
+slophammer-go mutate .. --scan
 dependency boundary check
 ```
 

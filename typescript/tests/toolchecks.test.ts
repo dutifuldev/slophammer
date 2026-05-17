@@ -57,7 +57,7 @@ describe("executeTypeScriptChecks", () => {
   it("runs noncanonical scripts that declare accepted checks", async () => {
     const root = await packageFixture({
       check:
-        "prettier --check . && eslint . && tsc --noEmit && vitest run && vitest run --coverage && slophammer typescript dry ."
+        "prettier --check . && eslint . && tsc --noEmit && vitest run && vitest run --coverage && slophammer-ts dry ."
     });
     const calls: string[] = [];
     const runner: Runner = {

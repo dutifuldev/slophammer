@@ -123,12 +123,13 @@ linters through golangci-lint.
 
 ### `go.dry-required`
 
-Go projects should declare `slophammer go dry` for structural and copied-block
+Go projects should declare `slophammer-go dry` for structural and copied-block
 duplicate detection.
 
 Slophammer checks for an inspectable declaration. It does not run the DRY
-engine in static mode. Existing `dry4go` declarations remain accepted as legacy
-evidence, but new repos should declare the Slophammer command.
+engine in static mode. Existing `dry4go` and pre-rename `slophammer go dry`
+declarations remain accepted as legacy evidence, but new repos should declare
+the `slophammer-go` command.
 
 ### `go.crap-required`
 
@@ -214,8 +215,11 @@ recommended cyclomatic complexity maximum is `8`.
 
 ### `ts.dry-required`
 
-TypeScript projects should declare `slophammer typescript dry` for native
+TypeScript projects should declare `slophammer-ts dry` for native
 copied-block duplicate detection.
+
+Pre-rename `slophammer typescript dry` declarations remain accepted as legacy
+evidence, but new repos should declare the `slophammer-ts` command.
 
 ### `ts.mutation-required`
 

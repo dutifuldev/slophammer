@@ -1,22 +1,40 @@
 # Product
 
-Slophammer is a repository quality checker for agent-assisted software projects.
+Slophammer is a repository quality standard for agent-assisted software
+projects.
 
-Each language implementation should expose the same product behavior, even
+Each language implementation exposes the same product behavior, even
 though each implementation uses its language's normal project structure and
-tooling.
+tooling. Installable implementations use short language-specific product
+names:
+
+| Implementation | Public command    |
+| -------------- | ----------------- |
+| Go             | `slophammer-go`   |
+| TypeScript     | `slophammer-ts`   |
+| Python         | `slophammer-py`   |
+
+The product name identifies the implementation package. It does not forbid
+cross-language checking. An implementation is native-first, and it can also
+support other languages when those checks follow the shared Slophammer rules,
+config, report, and exit-code contracts.
 
 ## Commands
 
-The public command surface is:
+The public command surface is the same for each implementation, using that
+implementation's executable name:
 
 ```sh
-slophammer check <path>
-slophammer check <path> --format json
-slophammer check <path> --format sarif
-slophammer check <path> --execute
-slophammer explain <rule-id>
+slophammer-go check <path>
+slophammer-go check <path> --format json
+slophammer-go check <path> --format sarif
+slophammer-go check <path> --execute
+slophammer-go explain <rule-id>
 ```
+
+During the rename from the early `slophammer ...` command shape,
+implementations keep compatibility aliases. Documentation and help text point
+users to the language-specific public names.
 
 ## Check
 
@@ -37,7 +55,7 @@ Unknown rule IDs are command errors.
 
 ## Implementation Boundary
 
-Implementations should keep this dependency direction:
+Implementations keep this dependency direction:
 
 ```text
 CLI
@@ -48,5 +66,5 @@ CLI
 -> reporter
 ```
 
-Rules should not walk the filesystem, parse command-line arguments, or write
+Rules do not walk the filesystem, parse command-line arguments, or write
 reports.

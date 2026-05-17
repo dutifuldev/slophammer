@@ -128,17 +128,20 @@ go vet ./...
 go test ./...
 golangci-lint run
 go build ./cmd/<binary>
-go run ./cmd/slophammer go dry ..
-go run ./cmd/slophammer go crap ..
-go run ./cmd/slophammer go mutate .. --scan
-go run ./cmd/slophammer check ..
-go run ./cmd/slophammer check .. --execute
+slophammer-go dry .
+slophammer-go crap .
+slophammer-go mutate . --scan
+slophammer-go check .
+slophammer-go check . --execute
 ```
 
-Adapt the build path to the target repo.
+Adapt the build path to the target repo. When working inside this repository's
+source tree, `go run ./cmd/slophammer-go ...` is the local development
+equivalent of the installed `slophammer-go` command.
 
-If the repo does not implement Slophammer itself, install or run Slophammer as a
-tool instead of assuming `./cmd/slophammer` exists.
+If the repo does not implement Slophammer itself, install or run the matching
+Slophammer tool, such as `slophammer-go`, instead of assuming
+`./cmd/slophammer-go` exists.
 
 ## Language Baselines
 
@@ -197,10 +200,10 @@ go test ./...
 go vet ./...
 golangci-lint run
 ./scripts/check-go-coverage.sh
-go run ./cmd/slophammer go dry ..
-go run ./cmd/slophammer go crap ..
-go run ./cmd/slophammer go mutate .. --scan
-go run ./cmd/slophammer check .. --execute
+go run ./cmd/slophammer-go dry ..
+go run ./cmd/slophammer-go crap ..
+go run ./cmd/slophammer-go mutate .. --scan
+go run ./cmd/slophammer-go check .. --execute
 npx -y @simpledoc/simpledoc check
 git diff --check
 ```

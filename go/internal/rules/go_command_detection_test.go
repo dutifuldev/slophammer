@@ -407,10 +407,13 @@ func TestSlophammerGoCommandRequiredFlagsNeedValues(t *testing.T) {
 		required    string
 		expectMatch bool
 	}{
+		{name: "public dry command", command: "slophammer-go dry .", subcommand: "dry", expectMatch: true},
+		{name: "public crap command", command: "slophammer-go crap . --max-score 8", subcommand: "crap", required: "--max-score", expectMatch: true},
 		{name: "crap value", command: "slophammer go crap . --max-score 30", subcommand: "crap", required: "--max-score", expectMatch: true},
 		{name: "crap after semicolon", command: "cd go; slophammer go crap . --max-score 30", subcommand: "crap", required: "--max-score", expectMatch: true},
 		{name: "crap missing value", command: "slophammer go crap . --max-score", subcommand: "crap", required: "--max-score"},
 		{name: "crap flag after separator", command: "slophammer go crap . && echo --max-score 30", subcommand: "crap", required: "--max-score"},
+		{name: "public mutate command", command: "slophammer-go mutate . --target main.go --scan", subcommand: "mutate", required: "--target", expectMatch: true},
 		{name: "mutate value", command: "slophammer go mutate . --target main.go --scan", subcommand: "mutate", required: "--target", expectMatch: true},
 		{name: "mutate after semicolon", command: "cd go; slophammer go mutate . --target main.go --scan", subcommand: "mutate", required: "--target", expectMatch: true},
 		{name: "mutate missing value", command: "slophammer go mutate . --target --scan", subcommand: "mutate", required: "--target"},

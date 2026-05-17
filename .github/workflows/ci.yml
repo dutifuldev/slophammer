@@ -77,11 +77,12 @@ jobs:
       - run: ./scripts/check-go-coverage.sh
       - run: golangci-lint run
       - run: go build ./cmd/slophammer
-      - run: go run ./cmd/slophammer go dry ..
-      - run: go run ./cmd/slophammer go crap ..
-      - run: go run ./cmd/slophammer go mutate .. --scan
-      - run: go run ./cmd/slophammer check ..
-      - run: go run ./cmd/slophammer check .. --execute
+      - run: go build ./cmd/slophammer-go
+      - run: go run ./cmd/slophammer-go dry ..
+      - run: go run ./cmd/slophammer-go crap ..
+      - run: go run ./cmd/slophammer-go mutate .. --scan
+      - run: go run ./cmd/slophammer-go check ..
+      - run: go run ./cmd/slophammer-go check .. --execute
 
   python-template:
     runs-on: ubuntu-latest
