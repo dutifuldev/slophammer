@@ -124,7 +124,7 @@ The checker scans a target repository and reports findings such as:
 - missing Go complexity check
 - missing TypeScript strictness, unsafe-type, complexity, or mutation setup
 - missing DRY, gated `crap4go`, or `mutate4go` declaration
-- documentation that does not follow the repo convention
+- dependency imports that cross configured boundaries
 
 The shared report model stays simple:
 
@@ -180,6 +180,21 @@ The shared report model stays simple:
 product names are `slophammer-go` and `slophammer-ts`. Source-tree development
 commands remain available through the local entrypoints.
 
+Both implementations use the same internal shape:
+
+```text
+CLI
+-> app orchestration
+-> scanner and typed repository snapshot
+-> config parser
+-> rule evaluation
+-> report renderer
+```
+
+Process execution is isolated behind tool-check adapters. Static `check` reads
+the target repo and reports missing guardrails. `check --execute` is opt-in and
+runs configured local tool commands.
+
 `templates/` contains language project references that agents can copy from.
 Those templates are not full Slophammer implementations yet.
 
@@ -198,6 +213,23 @@ go install github.com/dutifuldev/slophammer/go/cmd/slophammer-go@latest
 [Required Next Work](docs/2026-05-17-required-next-work.md) records the release
 hardening tasks that were completed for that Go release. TypeScript remains
 private and package-checked in CI, but npm publishing is intentionally deferred.
+
+## Policy Targets
+
+`slophammer.yml` is the project policy file. This repo sets these targets:
+
+| Policy                | Target                                     |
+| --------------------- | ------------------------------------------ |
+| Coverage              | at least `85`                              |
+| Go CRAP               | at most `8`                                |
+| TypeScript complexity | at most `8`                                |
+| Production DRY        | `0` findings                               |
+| Copied-block tokens   | `100` minimum token window                 |
+| Go structural DRY     | `0.82` similarity, `4` lines, `20` nodes   |
+| Dependency rules      | declared in `go` and `typescript` sections |
+
+Config validation is strict. Unknown keys fail instead of being ignored, and
+projects may use stricter thresholds but not weaker ones.
 
 ## Implementation Status
 
@@ -295,8 +327,10 @@ useful as a reference implementation:
 
 ## Shared Rule Set
 
-The current implemented rule registry contains 26 rules: 3 shared repository
-rules, 10 Go rules, and 13 TypeScript rules.
+The shared rule registry contains 26 implemented rules: 3 shared repository
+rules, 10 Go rules, and 13 TypeScript rules. Each runtime command prints the
+rules implemented by that executable: `slophammer-go rules` prints repo plus Go
+rules, and `slophammer-ts rules` prints repo plus TypeScript rules.
 
 The implemented rule set is:
 
