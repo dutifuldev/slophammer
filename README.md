@@ -18,6 +18,44 @@ If you are an agent applying Slophammer standards to an existing repository,
 start with [Agent Entrypoint](docs/AGENT_ENTRYPOINT.md). It explains what to
 add, which targets to enforce, how to wire CI, and how to report the result.
 
+## Quick setup: tell your agent about Slophammer
+
+Copy the block below and paste it into your coding agent when you want it to
+apply Slophammer standards to a repository. It will install the released Go
+checker, read the agent entrypoint, inspect the rule catalog, and use
+Slophammer as the quality gate.
+
+```text
+I want you to use Slophammer to enforce repository quality for this project.
+Please do the following:
+
+1. Install the released Go checker:
+   go install github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.0
+
+2. Read the Slophammer agent entrypoint before changing files:
+   https://raw.githubusercontent.com/dutifuldev/slophammer/refs/tags/go/v0.1.0/docs/AGENT_ENTRYPOINT.md
+
+3. Inspect the rule catalog so you know what Slophammer enforces:
+   slophammer-go rules --format json
+
+4. Run Slophammer against this repository:
+   slophammer-go check . --format json
+
+5. If this is a Go project, also run the executable checks:
+   slophammer-go check . --execute
+   slophammer-go dry .
+   slophammer-go crap .
+   slophammer-go mutate . --scan
+
+6. Add or update README.md, AGENTS.md, slophammer.yml, CI, tests, linting,
+   coverage, DRY, CRAP, mutation, strict typing, and dependency-boundary
+   checks as needed. Do not lower Slophammer's recommended targets:
+   coverage >= 85, CRAP <= 8, production DRY findings = 0.
+
+7. Before finishing, rerun the relevant local checks and Slophammer. Report
+   exactly what changed, which checks passed, and anything that could not run.
+```
+
 ## What This Is
 
 - A small product spec for a repo quality checker.
