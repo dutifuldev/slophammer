@@ -12,47 +12,56 @@ The point of this repository is to show a small tool implemented cleanly, with
 language templates beside it, so agents can copy patterns from real, working
 code.
 
-## Start Here For Agents
+## Quick setup: tell your agent about Slophammer
 
 If you are an agent applying Slophammer standards to an existing repository,
 start with [Agent Entrypoint](docs/AGENT_ENTRYPOINT.md). It explains what to
 add, which targets to enforce, how to wire CI, and how to report the result.
 
-## Quick setup: tell your agent about Slophammer
-
 Copy the block below and paste it into your coding agent when you want it to
-apply Slophammer standards to a repository. It will install the released Go
-checker, read the agent entrypoint, inspect the rule catalog, and use
-Slophammer as the quality gate.
+apply Slophammer standards to a repository. The agent should detect the target
+project's language, choose the matching Slophammer implementation, and stop
+with a clear note when no implementation exists for that language.
 
 ```text
 I want you to use Slophammer to enforce repository quality for this project.
 Please do the following:
 
-1. Install the released Go checker:
+1. Inspect this repository and identify its primary implementation language.
+   Choose the matching Slophammer implementation for that language:
+   - Go: slophammer-go
+   - TypeScript: slophammer-ts
+   - Python: slophammer-py
+
+   If the matching implementation does not exist or is not installable for this
+   project, say that clearly and do not substitute an unrelated implementation.
+
+2. Install or run the matching Slophammer implementation.
+   For Go, use the released checker:
    go install github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.0
 
-2. Read the Slophammer agent entrypoint before changing files:
+3. Read the Slophammer agent entrypoint before changing files:
    https://raw.githubusercontent.com/dutifuldev/slophammer/refs/tags/go/v0.1.0/docs/AGENT_ENTRYPOINT.md
 
-3. Inspect the rule catalog so you know what Slophammer enforces:
-   slophammer-go rules --format json
+4. Inspect the rule catalog for the implementation you selected:
+   <slophammer-command> rules --format json
 
-4. Run Slophammer against this repository:
-   slophammer-go check . --format json
+5. Run Slophammer against this repository:
+   <slophammer-command> check . --format json
 
-5. If this is a Go project, also run the executable checks:
+6. Run the implementation's executable checks when they exist.
+   For Go projects, run:
    slophammer-go check . --execute
    slophammer-go dry .
    slophammer-go crap .
    slophammer-go mutate . --scan
 
-6. Add or update README.md, AGENTS.md, slophammer.yml, CI, tests, linting,
+7. Add or update README.md, AGENTS.md, slophammer.yml, CI, tests, linting,
    coverage, DRY, CRAP, mutation, strict typing, and dependency-boundary
    checks as needed. Do not lower Slophammer's recommended targets:
    coverage >= 85, CRAP <= 8, production DRY findings = 0.
 
-7. Before finishing, rerun the relevant local checks and Slophammer. Report
+8. Before finishing, rerun the relevant local checks and Slophammer. Report
    exactly what changed, which checks passed, and anything that could not run.
 ```
 
