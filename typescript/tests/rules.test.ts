@@ -837,7 +837,7 @@ function packageScripts(): Readonly<Record<string, string>> {
     test: "vitest run",
     coverage:
       "vitest run --coverage --coverage.thresholds.lines=85 --coverage.thresholds.functions=85 --coverage.thresholds.branches=85 --coverage.thresholds.statements=85",
-    dry: "slophammer typescript dry .",
+    dry: "slophammer-ts dry .",
     mutate: "stryker run"
   };
 }

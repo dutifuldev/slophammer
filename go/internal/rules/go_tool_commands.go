@@ -110,9 +110,9 @@ func contentHasCommandLine(content string, match func([]string) bool) bool {
 }
 
 func lineHasSlophammerGoCommand(tokens []string, subcommand string, requiredFlag string) bool {
-	for i := 0; i+2 < len(tokens); i++ {
-		if isSlophammerGoSubcommand(tokens, i, subcommand) &&
-			lineHasRequiredFlag(tokens[i+3:], requiredFlag) {
+	for i := 0; i < len(tokens); i++ {
+		argsStart, ok := slophammerGoCommandArgsStart(tokens, i, subcommand)
+		if ok && lineHasRequiredFlag(tokens[argsStart:], requiredFlag) {
 			return true
 		}
 	}
@@ -120,26 +120,46 @@ func lineHasSlophammerGoCommand(tokens []string, subcommand string, requiredFlag
 }
 
 func lineHasConfigBackedSlophammerGoCommand(tokens []string, subcommand string, configRootPath string) bool {
-	for i := 0; i+2 < len(tokens); i++ {
-		if !isSlophammerGoSubcommand(tokens, i, subcommand) {
+	for i := 0; i < len(tokens); i++ {
+		argsStart, ok := slophammerGoCommandArgsStart(tokens, i, subcommand)
+		if !ok {
 			continue
 		}
-		if lineHasConfigRootArgument(tokens[:i], tokens[i+3:], configRootPath) {
+		if lineHasConfigRootArgument(tokens[:i], tokens[argsStart:], configRootPath) {
 			return true
 		}
 	}
 	return false
 }
 
-func isSlophammerGoSubcommand(tokens []string, commandIndex int, subcommand string) bool {
-	if !isSlophammerCommandToken(cleanCommandToken(tokens[commandIndex])) {
-		return false
+func slophammerGoCommandArgsStart(tokens []string, commandIndex int, subcommand string) (int, bool) {
+	token := cleanCommandToken(tokens[commandIndex])
+	if !isSlophammerCommandToken(token) {
+		return 0, false
 	}
 	if !isCommandToken(tokens, commandIndex) && !isGoRunPackage(tokens, commandIndex) {
-		return false
+		return 0, false
 	}
-	return cleanCommandToken(tokens[commandIndex+1]) == "go" &&
-		cleanCommandToken(tokens[commandIndex+2]) == subcommand
+	if argsStart, ok := directSlophammerGoArgsStart(tokens, commandIndex, subcommand); ok {
+		return argsStart, true
+	}
+	return legacySlophammerGoArgsStart(tokens, commandIndex, subcommand)
+}
+
+func directSlophammerGoArgsStart(tokens []string, commandIndex int, subcommand string) (int, bool) {
+	if commandIndex+1 >= len(tokens) || cleanCommandToken(tokens[commandIndex+1]) != subcommand {
+		return 0, false
+	}
+	return commandIndex + 2, true
+}
+
+func legacySlophammerGoArgsStart(tokens []string, commandIndex int, subcommand string) (int, bool) {
+	if commandIndex+2 >= len(tokens) ||
+		cleanCommandToken(tokens[commandIndex+1]) != "go" ||
+		cleanCommandToken(tokens[commandIndex+2]) != subcommand {
+		return 0, false
+	}
+	return commandIndex + 3, true
 }
 
 func lineHasConfigRootArgument(prefix []string, tokens []string, configRootPath string) bool {
@@ -402,7 +422,12 @@ func isToolBinaryToken(token string, binaryName string) bool {
 
 func isSlophammerCommandToken(token string) bool {
 	base := path.Base(token)
-	return base == "slophammer" || base == "slophammer.exe"
+	switch base {
+	case "slophammer", "slophammer.exe", "slophammer-go", "slophammer-go.exe":
+		return true
+	default:
+		return false
+	}
 }
 
 func cleanCommandToken(token string) string {

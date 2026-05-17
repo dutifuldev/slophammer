@@ -1,10 +1,11 @@
 {
-  "name": "@dutifuldev/slophammer-typescript",
+  "name": "@dutifuldev/slophammer-ts",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "bin": {
-    "slophammer": "./dist/src/cli/main.js"
+    "slophammer": "./dist/src/cli/main.js",
+    "slophammer-ts": "./dist/src/cli/main.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -13,13 +14,15 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "coverage": "vitest run --coverage",
-    "dry": "node dist/src/cli/main.js typescript dry ..",
+    "dry": "node dist/src/cli/main.js dry ..",
+    "bin-check": "node dist/scripts/check-package-bin.js",
     "mutate": "stryker run",
     "self-check": "node dist/src/cli/main.js check ..",
     "verify:equivalence": "vitest run tests/equivalence.test.ts",
-    "check": "npm run format && npm run lint && npm run typecheck && npm test && npm run coverage && npm run build && npm run dry && npm run self-check && npm run verify:equivalence"
+    "check": "npm run format && npm run lint && npm run typecheck && npm test && npm run coverage && npm run build && npm run bin-check && npm run dry && npm run self-check && npm run verify:equivalence"
   },
   "dependencies": {
+    "typescript": "^5.0.0",
     "yaml": "^2.8.1"
   },
   "devDependencies": {
@@ -31,7 +34,6 @@
     "@vitest/coverage-v8": "^3.0.0",
     "eslint": "^9.0.0",
     "prettier": "^3.0.0",
-    "typescript": "^5.0.0",
     "typescript-eslint": "^8.0.0",
     "vitest": "^3.0.0"
   }

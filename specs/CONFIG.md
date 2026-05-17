@@ -121,14 +121,14 @@ native DRY engine. The old top-level fields remain accepted for compatibility.
 
 The direct Go commands use these values as defaults:
 
-- `slophammer go dry` uses `go.dry_max_candidates` unless
+- `slophammer-go dry` uses `go.dry_max_candidates` unless
   `--max-candidates` is passed.
-- `slophammer go crap` uses `go.crap_max_score` unless `--max-score` is
+- `slophammer-go crap` uses `go.crap_max_score` unless `--max-score` is
   passed.
-- `slophammer go mutate` uses `go.mutation_targets` unless `--target` is
+- `slophammer-go mutate` uses `go.mutation_targets` unless `--target` is
   passed.
 
-`slophammer check --execute` runs configured Go tool checks and adds failures
+`slophammer-go check --execute` runs configured Go tool checks and adds failures
 to the normal report. Go tool execution runs from discovered Go module roots,
 so a repo-level config can drive a nested module such as `go/`. Embedded
 `fixtures/`, `templates/`, and `vendor/` modules are not execution targets.

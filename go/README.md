@@ -1,19 +1,39 @@
 # Slophammer Go
 
-Go implementation of the Slophammer repository quality checker.
+Go implementation of the Slophammer repository quality checker. The
+user-facing product name is `slophammer-go`.
+
+The Go implementation is native-first. It can also carry selected TypeScript or
+Python checks when those checks are covered by the shared specs and fixtures.
 
 ## Commands
 
+Installed command:
+
 ```sh
-go run ./cmd/slophammer check ..
-go run ./cmd/slophammer check .. --format json
-go run ./cmd/slophammer check .. --format sarif
-go run ./cmd/slophammer check .. --execute
-go run ./cmd/slophammer explain repo.agents-required
-go run ./cmd/slophammer go dry ..
-go run ./cmd/slophammer go dry .. --show-report
-go run ./cmd/slophammer go crap ..
-go run ./cmd/slophammer go mutate .. --scan
+slophammer-go check ..
+slophammer-go check .. --format json
+slophammer-go check .. --format sarif
+slophammer-go check .. --execute
+slophammer-go explain repo.agents-required
+slophammer-go dry ..
+slophammer-go dry .. --show-report
+slophammer-go crap ..
+slophammer-go mutate .. --scan
+```
+
+Source-tree development command:
+
+```sh
+go run ./cmd/slophammer-go check ..
+go run ./cmd/slophammer-go check .. --format json
+go run ./cmd/slophammer-go check .. --format sarif
+go run ./cmd/slophammer-go check .. --execute
+go run ./cmd/slophammer-go explain repo.agents-required
+go run ./cmd/slophammer-go dry ..
+go run ./cmd/slophammer-go dry .. --show-report
+go run ./cmd/slophammer-go crap ..
+go run ./cmd/slophammer-go mutate .. --scan
 ```
 
 ## Local Checks
@@ -24,18 +44,23 @@ golangci-lint fmt --diff
 go vet ./...
 go test ./...
 ./scripts/check-go-coverage.sh
-go run ./cmd/slophammer go dry ..
-go run ./cmd/slophammer go crap ..
-go run ./cmd/slophammer go mutate .. --scan
+go run ./cmd/slophammer-go dry ..
+go run ./cmd/slophammer-go crap ..
+go run ./cmd/slophammer-go mutate .. --scan
 go build ./cmd/slophammer
-go run ./cmd/slophammer check ..
-go run ./cmd/slophammer check .. --execute
+go build ./cmd/slophammer-go
+go run ./cmd/slophammer-go check ..
+go run ./cmd/slophammer-go check .. --execute
 ```
 
 The direct `go dry`, `go crap`, and `go mutate` commands read
 `slophammer.yml` from the target path and use its Go policy values as defaults
 when the matching CLI flag is not provided. `check --execute` runs configured
 Go tool checks and reports failures through the normal Slophammer report model.
+
+Public packaging exposes those as `slophammer-go dry`, `slophammer-go crap`,
+and `slophammer-go mutate`. The nested `go ...` source commands remain
+compatibility forms for the older local development shape.
 
 `go dry` is native to Slophammer. It combines structural function similarity
 with CPD-style copied-block detection under one `dry` report.

@@ -104,7 +104,7 @@
       "path": ".github/workflows",
       "message": "Go projects must declare a DRY check",
       "description": "Go projects should declare Slophammer's unified DRY check for structural and copied-block duplicate detection.",
-      "tool": "slophammer go dry",
+      "tool": "slophammer-go dry",
       "status": "implemented"
     },
     {
@@ -256,7 +256,7 @@
       "path": ".github/workflows",
       "message": "TypeScript projects must declare a DRY check",
       "description": "TypeScript projects should declare Slophammer's native copied-block duplicate detector.",
-      "tool": "slophammer typescript dry",
+      "tool": "slophammer-ts dry",
       "status": "implemented"
     },
     {

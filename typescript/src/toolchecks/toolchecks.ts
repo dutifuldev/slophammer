@@ -264,7 +264,11 @@ function complexityCheck(content: string): boolean {
 }
 
 function dryCheck(content: string): boolean {
-  return /\btypescript\s+dry\b/u.test(content);
+  return (
+    /\bslophammer-ts\s+dry\b/u.test(content) ||
+    /\bdist\/src\/cli\/main\.js\s+dry\b/u.test(content) ||
+    /\btypescript\s+dry\b/u.test(content)
+  );
 }
 
 function mutationCheck(content: string): boolean {

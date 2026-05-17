@@ -124,7 +124,12 @@ const typeScriptChecks: Readonly<Record<string, TypeScriptCheck>> = {
   [ruleIDs.tsTestRequired]: predicateCheck(hasTypeScriptTestCommand),
   [ruleIDs.tsCoverageRequired]: (definition, snapshot, cfg) =>
     hasCoverageGate(snapshot, cfg) ? [] : [finding(definition)],
-  [ruleIDs.tsDryRequired]: commandCheck(["slophammer typescript dry", "typescript dry"]),
+  [ruleIDs.tsDryRequired]: commandCheck([
+    "slophammer-ts dry",
+    "slophammer typescript dry",
+    "dist/src/cli/main.js dry",
+    "typescript dry"
+  ]),
   [ruleIDs.tsMutationRequired]: predicateCheck(hasTypeScriptMutationCommand),
   [ruleIDs.tsDependencyBoundariesRequired]: dependencyBoundaryFindings
 };

@@ -18,5 +18,5 @@
     "outDir": "dist",
     "rootDir": "."
   },
-  "include": ["src", "tests", "vitest.config.ts", "vitest.stryker.config.ts"]
+  "include": ["src", "tests", "scripts", "vitest.config.ts", "vitest.stryker.config.ts"]
 }

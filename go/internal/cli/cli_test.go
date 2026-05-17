@@ -18,7 +18,7 @@ func TestRunHelp(t *testing.T) {
 	if result.code != app.ExitOK {
 		t.Fatalf("code = %d, want %d", result.code, app.ExitOK)
 	}
-	if !strings.Contains(result.stdout, "slophammer check") {
+	if !strings.Contains(result.stdout, "slophammer-go check") {
 		t.Fatalf("stdout = %q", result.stdout)
 	}
 }
@@ -74,11 +74,11 @@ func TestRunExplain(t *testing.T) {
 }
 
 func TestRunExplainRejectsWrongArity(t *testing.T) {
-	assertCLIError(t, []string{"explain"}, "usage: slophammer explain")
+	assertCLIError(t, []string{"explain"}, "usage: slophammer-go explain")
 }
 
 func TestRunGoRejectsMissingSubcommand(t *testing.T) {
-	assertCLIError(t, []string{"go"}, "slophammer go dry")
+	assertCLIError(t, []string{"go"}, "slophammer-go dry")
 }
 
 func TestRunGoRejectsUnknownSubcommand(t *testing.T) {
@@ -224,11 +224,24 @@ func TestRunCheckRejectsDuplicatePath(t *testing.T) {
 }
 
 func TestRunCheckRejectsMissingPath(t *testing.T) {
-	assertCLIError(t, []string{"check"}, "usage: slophammer check")
+	assertCLIError(t, []string{"check"}, "usage: slophammer-go check")
 }
 
 func TestRunRejectsUnknownCommand(t *testing.T) {
 	assertCLIError(t, []string{"wat"}, "unknown command")
+}
+
+func TestRunAcceptsPublicGoSubcommands(t *testing.T) {
+	root := t.TempDir()
+
+	result := runCLI(t, "dry", root)
+
+	if result.code != app.ExitOK {
+		t.Fatalf("code = %d, want %d; stderr=%q", result.code, app.ExitOK, result.stderr)
+	}
+	if !strings.Contains(result.stdout, "DRY candidates: 0") {
+		t.Fatalf("stdout = %q", result.stdout)
+	}
 }
 
 func assertCLIError(t *testing.T, args []string, stderr string) {

@@ -3,7 +3,7 @@
 Reference implementations and templates for repository quality checks in
 agent-assisted software projects.
 
-`slophammer` checks whether a project has the basic constraints needed to keep
+Slophammer checks whether a project has the basic constraints needed to keep
 AI-generated code under control: agent instructions, CI, tests, strict typing,
 linting, coverage, documentation conventions, and project structure that humans
 can still review.
@@ -21,7 +21,9 @@ add, which targets to enforce, how to wire CI, and how to report the result.
 ## What This Is
 
 - A small product spec for a repo quality checker.
-- A production Go implementation of that product.
+- Separate user-facing implementations of that product.
+- A production Go implementation named `slophammer-go`.
+- A TypeScript implementation named `slophammer-ts`.
 - Go, TypeScript, and Python project templates with strict local checks.
 - A reference for project structure, testing, errors, reporting, and CI.
 - A source of patterns for agents working in different language ecosystems.
@@ -35,22 +37,41 @@ add, which targets to enforce, how to wire CI, and how to report the result.
 
 ## Product Shape
 
-Each implementation should support the same basic commands:
+Slophammer is the standard. Installable implementations use short,
+language-specific names:
 
 ```sh
-slophammer check <path>
-slophammer check <path> --format json
-slophammer check <path> --format sarif
-slophammer check <path> --execute
-slophammer explain <rule-id>
+slophammer-go
+slophammer-ts
+slophammer-py
 ```
+
+Each implementation supports the same basic commands under its own executable
+name:
+
+```sh
+slophammer-go check <path>
+slophammer-go check <path> --format json
+slophammer-go check <path> --format sarif
+slophammer-go check <path> --execute
+slophammer-go explain <rule-id>
+```
+
+The language suffix names the implementation and packaging target, not a hard
+limit on what the checker inspects. Each implementation is best at its native
+ecosystem first, and it can carry selected checks for other languages when
+those checks reuse the shared Slophammer contract without turning the tool into
+a pile of duplicated code.
+
+The public names are the documented interface. Older local commands remain
+compatibility forms during the transition.
 
 The Go implementation also includes direct Go quality checks:
 
 ```sh
-slophammer go dry [path] [--max-candidates n] [--show-report] [--format json|text]
-slophammer go crap [path] [--max-score n]
-slophammer go mutate [path] [--target file] [--scan]
+slophammer-go dry [path] [--max-candidates n] [--show-report] [--format json|text]
+slophammer-go crap [path] [--max-score n]
+slophammer-go mutate [path] [--target file] [--scan]
 ```
 
 When `slophammer.yml` defines Go policy values, the direct Go commands use
@@ -60,10 +81,10 @@ the configured Go tool checks and folds tool failures into the normal report.
 The TypeScript implementation also includes native copied-block detection:
 
 ```sh
-slophammer typescript dry [path] [--max-findings n] [--show-report] [--format json|text]
+slophammer-ts dry [path] [--max-findings n] [--show-report] [--format json|text]
 ```
 
-The checker should scan a target repository and report findings such as:
+The checker scans a target repository and reports findings such as:
 
 - missing `README.md`
 - missing `AGENTS.md`
@@ -77,7 +98,7 @@ The checker should scan a target repository and report findings such as:
 - missing DRY, gated `crap4go`, or `mutate4go` declaration
 - documentation that does not follow the repo convention
 
-The shared report model should stay simple:
+The shared report model stays simple:
 
 ```json
 {
@@ -115,6 +136,7 @@ The shared report model should stay simple:
 │   └── expected/
 ├── go/
 │   ├── cmd/slophammer/
+│   ├── cmd/slophammer-go/
 │   ├── internal/
 │   └── scripts/
 ├── typescript/
@@ -126,18 +148,26 @@ The shared report model should stay simple:
     └── typescript/
 ```
 
-`go/` and `typescript/` are working Slophammer implementations.
+`go/` and `typescript/` are working Slophammer implementations. Their public
+product names are `slophammer-go` and `slophammer-ts`. Source-tree development
+commands remain available through the local entrypoints.
 
 `templates/` contains language project references that agents can copy from.
 Those templates are not full Slophammer implementations yet.
 
 ## Implementation Status
 
-| Language   | Status                                           |
-| ---------- | ------------------------------------------------ |
-| Go         | Implemented checker, CLI, tool checks, fixtures, CI |
-| TypeScript | Implemented checker, CLI, native DRY, fixtures, CI  |
-| Python     | Template only; checker implementation planned       |
+| Language   | Product name       | Status                                           |
+| ---------- | ------------------ | ------------------------------------------------ |
+| Go         | `slophammer-go`    | Implemented checker, CLI, tool checks, fixtures, CI |
+| TypeScript | `slophammer-ts`    | Implemented checker, CLI, native DRY, fixtures, CI  |
+| Python     | `slophammer-py`    | Template only; checker implementation planned       |
+
+An implementation can check more than one language. For example,
+`slophammer-go` can operate as a strong single-binary checker for Go,
+TypeScript, and Python repos when those cross-language rules are cleanly
+implemented and covered by shared fixtures. Every implementation does not need
+the same language coverage or the same depth.
 
 The Go implementation currently provides:
 
@@ -164,7 +194,7 @@ The TypeScript implementation currently provides:
 - TypeScript rules for package setup, strict compiler options, unsafe-type lint
   rules, formatting, linting, tests, coverage, complexity, DRY, mutation
   declaration, and dependency boundaries
-- native CPD-style copied-block detection through `slophammer typescript dry`
+- native CPD-style copied-block detection through `slophammer-ts dry`
 - `slophammer.yml` config parsing with hard targets for coverage, complexity,
   and duplication budgets
 - text, JSON, and SARIF report output

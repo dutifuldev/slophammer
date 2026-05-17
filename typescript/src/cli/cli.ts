@@ -17,25 +17,31 @@ export async function run(args: readonly string[]): Promise<Result> {
 
 async function dispatch(args: readonly string[]): Promise<Result> {
   const command = args[0];
-  if (command === undefined || command === "-h" || command === "--help" || command === "help") {
+  if (command === undefined || helpFlag(command)) {
     return { code: exitOK, stdout: usage(), stderr: "" };
   }
-  if (command === "check") {
-    return await check(parseCheckArgs(args.slice(1)));
+  switch (command) {
+    case "check":
+      return await check(parseCheckArgs(args.slice(1)));
+    case "explain":
+      return runExplain(args.slice(1));
+    case "dry":
+      return await typescriptDry(parseDryArgs(args.slice(1)));
+    case "typescript":
+      return await runTypeScript(args.slice(1));
+    default:
+      return { code: exitError, stdout: "", stderr: `unknown command: ${command}\n${usage()}` };
   }
-  if (command === "explain") {
-    return runExplain(args.slice(1));
-  }
-  if (command === "typescript") {
-    return await runTypeScript(args.slice(1));
-  }
-  return { code: exitError, stdout: "", stderr: `unknown command: ${command}\n${usage()}` };
+}
+
+function helpFlag(command: string): boolean {
+  return command === "-h" || command === "--help" || command === "help";
 }
 
 function runExplain(args: readonly string[]): Result {
   const ruleID = args[0];
   if (ruleID === undefined || args.length !== 1) {
-    return { code: exitError, stdout: "", stderr: "usage: slophammer explain <rule-id>\n" };
+    return { code: exitError, stdout: "", stderr: "usage: slophammer-ts explain <rule-id>\n" };
   }
   return explain(ruleID);
 }
@@ -60,7 +66,7 @@ function parseCheckArgs(args: readonly string[]): CheckOptions {
     index += parsed.advance;
   }
   if (options.root === "") {
-    throw new Error("usage: slophammer check <path> [--format text|json|sarif] [--execute]");
+    throw new Error("usage: slophammer-ts check <path> [--format text|json|sarif] [--execute]");
   }
   return options;
 }
@@ -208,16 +214,16 @@ function nextValue(args: readonly string[], index: number, flag: string): string
 }
 
 function usage(): string {
-  return [
+  return `${[
     "usage:",
-    "  slophammer check <path> [--format text|json|sarif] [--execute]",
-    "  slophammer explain <rule-id>",
-    "  slophammer typescript dry <path>"
-  ].join("\n");
+    "  slophammer-ts check <path> [--format text|json|sarif] [--execute]",
+    "  slophammer-ts explain <rule-id>",
+    "  slophammer-ts dry <path>"
+  ].join("\n")}\n`;
 }
 
 function typescriptUsage(): string {
-  return "usage: slophammer typescript dry <path> [--max-findings n] [--show-report] [--format json|text]\n";
+  return "usage: slophammer-ts dry <path> [--max-findings n] [--show-report] [--format json|text]\n";
 }
 
 function errorMessage(error: unknown): string {
