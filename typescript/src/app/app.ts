@@ -201,6 +201,25 @@ export function rules(): {
   readonly stdout: string;
   readonly stderr: string;
 } {
+  return ruleCatalog({ format: "text" });
+}
+
+export type RuleCatalogOptions = {
+  readonly format: "text" | "json";
+};
+
+export function ruleCatalog(options: RuleCatalogOptions): {
+  readonly code: number;
+  readonly stdout: string;
+  readonly stderr: string;
+} {
+  if (options.format === "json") {
+    return {
+      code: exitOK,
+      stdout: `${JSON.stringify(defaultDefinitions, null, 2)}\n`,
+      stderr: ""
+    };
+  }
   return {
     code: exitOK,
     stdout: `${ruleCatalogText()}\n`,

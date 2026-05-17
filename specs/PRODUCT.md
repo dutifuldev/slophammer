@@ -8,11 +8,11 @@ though each implementation uses its language's normal project structure and
 tooling. Installable implementations use short language-specific product
 names:
 
-| Implementation | Public command    |
-| -------------- | ----------------- |
-| Go             | `slophammer-go`   |
-| TypeScript     | `slophammer-ts`   |
-| Python         | `slophammer-py`   |
+| Implementation | Public command  |
+| -------------- | --------------- |
+| Go             | `slophammer-go` |
+| TypeScript     | `slophammer-ts` |
+| Python         | `slophammer-py` |
 
 The product name identifies the implementation package. It does not forbid
 cross-language checking. An implementation is native-first, and it can also
@@ -30,7 +30,7 @@ slophammer-go check <path> --format json
 slophammer-go check <path> --format sarif
 slophammer-go check <path> --execute
 slophammer-go explain <rule-id>
-slophammer-go rules
+slophammer-go rules [--format text|json]
 ```
 
 During the rename from the early `slophammer ...` command shape,
@@ -60,8 +60,34 @@ Unknown rule IDs are command errors.
 The catalog includes rule ID, category, severity, implementation status, and
 the backing tool when one exists.
 
+The default `rules` format is text. `--format json` writes the same rule
+definitions as structured data for agents and automation.
+
 `rules` is an inspection command. It does not scan a repository and it exits
 successfully when the catalog is written.
+
+## Release Policy
+
+The Go implementation is the first releasable product.
+
+Go releases use the `go/` submodule tag shape:
+
+```sh
+git tag go/v0.1.0
+git push origin go/v0.1.0
+```
+
+Users install a tagged Go release with:
+
+```sh
+go install github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.0
+```
+
+The TypeScript package is private and package-checked, but it is not released
+yet. There is no npm publish step in the current release path.
+
+The Go release dry-run workflow validates `go/vX.Y.Z` tags, runs the Go release
+checks, runs shared conformance, and verifies tagged `go install` on tag push.
 
 ## Implementation Boundary
 

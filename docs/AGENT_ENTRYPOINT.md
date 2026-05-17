@@ -146,8 +146,8 @@ Slophammer tool, such as `slophammer-go`, instead of assuming
 Use the rule catalog command when a finding needs context:
 
 ```sh
-slophammer-go rules
-slophammer-ts rules
+slophammer-go rules --format json
+slophammer-ts rules --format json
 ```
 
 ## Language Baselines

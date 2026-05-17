@@ -1,0 +1,88 @@
+name: Go Release Dry Run
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Go release tag to validate, for example go/v0.1.0"
+        required: true
+        type: string
+  push:
+    tags:
+      - "go/v*"
+
+permissions:
+  contents: read
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go/go.mod
+          cache: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Resolve release tag
+        id: release
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            tag="${GITHUB_REF_NAME}"
+          else
+            tag="${{ inputs.tag }}"
+          fi
+          if ! printf '%s' "$tag" | grep -Eq '^go/v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "invalid Go release tag: $tag" >&2
+            exit 1
+          fi
+          if ! git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "release tag does not exist locally: $tag" >&2
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#go/}" >> "$GITHUB_OUTPUT"
+
+      - name: Check out release tag
+        run: git checkout --detach "${{ steps.release.outputs.tag }}"
+
+      - name: Install golangci-lint
+        working-directory: go
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh |
+            sh -s -- -b "$(go env GOPATH)/bin" v2.11.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Validate Go implementation
+        working-directory: go
+        run: |
+          test -z "$(gofmt -l .)"
+          golangci-lint fmt --diff
+          go vet ./...
+          go test ./...
+          ./scripts/check-go-coverage.sh
+          golangci-lint run
+          go build ./cmd/slophammer-go
+          ./scripts/check-go-install.sh
+          go run ./cmd/slophammer-go check ..
+          go run ./cmd/slophammer-go check .. --execute
+
+      - name: Validate shared conformance
+        run: |
+          npm ci --prefix typescript
+          node scripts/check-conformance.mjs
+
+      - name: Verify tagged go install
+        if: github.event_name == 'push'
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          tmp="$(mktemp -d)"
+          GOBIN="$tmp/bin" go install "github.com/dutifuldev/slophammer/go/cmd/slophammer-go@$RELEASE_VERSION"
+          "$tmp/bin/slophammer-go" help
+          "$tmp/bin/slophammer-go" rules --format json

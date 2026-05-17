@@ -2,13 +2,11 @@
   "name": "@dutifuldev/slophammer-ts",
   "version": "0.0.0",
   "type": "module",
+  "private": true,
   "files": [
     "dist/src/**",
     "README.md"
   ],
-  "publishConfig": {
-    "access": "public"
-  },
   "bin": {
     "slophammer": "./dist/src/cli/main.js",
     "slophammer-ts": "./dist/src/cli/main.js"

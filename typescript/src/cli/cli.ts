@@ -3,7 +3,7 @@ import {
   explain,
   exitError,
   exitOK,
-  rules,
+  ruleCatalog,
   typescriptDry,
   type CheckOptions
 } from "../app/app.js";
@@ -45,10 +45,7 @@ async function dispatch(args: readonly string[]): Promise<Result> {
 }
 
 function runRules(args: readonly string[]): Result {
-  if (args.length !== 0) {
-    return { code: exitError, stdout: "", stderr: "usage: slophammer-ts rules\n" };
-  }
-  return rules();
+  return ruleCatalog(parseRulesArgs(args));
 }
 
 function helpFlag(command: string): boolean {
@@ -86,6 +83,22 @@ function parseCheckArgs(args: readonly string[]): CheckOptions {
     throw new Error("usage: slophammer-ts check <path> [--format text|json|sarif] [--execute]");
   }
   return options;
+}
+
+function parseRulesArgs(args: readonly string[]): { readonly format: "text" | "json" } {
+  let format: "text" | "json" = "text";
+  for (let index = 0; index < args.length; index++) {
+    const arg = args[index];
+    if (arg === "--format") {
+      format = parseRulesFormat(nextValue(args, index, "--format"));
+      index++;
+    } else if (arg === "--json") {
+      format = "json";
+    } else {
+      throw new Error("usage: slophammer-ts rules [--format text|json]");
+    }
+  }
+  return { format };
 }
 
 function parseCheckArg(
@@ -211,6 +224,13 @@ function parseDryFormat(value: string): DryOptions["format"] {
   throw new Error(`unsupported typescript dry format: ${value}`);
 }
 
+function parseRulesFormat(value: string): "text" | "json" {
+  if (value === "text" || value === "json") {
+    return value;
+  }
+  throw new Error(`unsupported rules format: ${value}`);
+}
+
 function parseNonNegativeInteger(value: string): number {
   if (!/^(?:0|[1-9]\d*)$/u.test(value)) {
     throw new Error("--max-findings must be a non-negative integer");
@@ -235,7 +255,7 @@ function usage(): string {
     "usage:",
     "  slophammer-ts check <path> [--format text|json|sarif] [--execute]",
     "  slophammer-ts explain <rule-id>",
-    "  slophammer-ts rules",
+    "  slophammer-ts rules [--format text|json]",
     "  slophammer-ts dry <path>"
   ].join("\n")}\n`;
 }

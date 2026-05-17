@@ -67,11 +67,50 @@ func runExplainCommand(_ context.Context, args []string, out io.Writer, errOut i
 }
 
 func runRules(_ context.Context, args []string, out io.Writer, errOut io.Writer) int {
-	if len(args) != 0 {
-		_, _ = fmt.Fprintln(errOut, "usage: slophammer-go rules")
+	options, ok := parseRulesArgs(args, errOut)
+	if !ok {
 		return app.ExitError
 	}
-	return app.Rules(out, errOut)
+	return app.Rules(options, out, errOut)
+}
+
+func parseRulesArgs(args []string, errOut io.Writer) (app.RulesOptions, bool) {
+	options := app.RulesOptions{Format: "text"}
+	for i := 0; i < len(args); i++ {
+		advance, ok := parseRulesArg(&options, args, i, errOut)
+		if !ok {
+			return app.RulesOptions{}, false
+		}
+		i += advance
+	}
+	return options, true
+}
+
+func parseRulesArg(options *app.RulesOptions, args []string, index int, errOut io.Writer) (int, bool) {
+	switch args[index] {
+	case "--format":
+		return parseRulesFormat(options, args, index, errOut)
+	case "--json":
+		options.Format = "json"
+		return 0, true
+	default:
+		_, _ = fmt.Fprintln(errOut, "usage: slophammer-go rules [--format text|json]")
+		return 0, false
+	}
+}
+
+func parseRulesFormat(options *app.RulesOptions, args []string, index int, errOut io.Writer) (int, bool) {
+	value, ok := nextArg(args, index)
+	if !ok {
+		_, _ = fmt.Fprintln(errOut, "--format requires a value")
+		return 0, false
+	}
+	if value != "text" && value != "json" {
+		_, _ = fmt.Fprintf(errOut, "unsupported rules format: %s\n", value)
+		return 0, false
+	}
+	options.Format = value
+	return 1, true
 }
 
 func runGo(ctx context.Context, args []string, out io.Writer, errOut io.Writer) int {
@@ -341,7 +380,7 @@ func printUsage(out io.Writer) {
 	_, _ = fmt.Fprintln(out, "usage:")
 	_, _ = fmt.Fprintln(out, "  slophammer-go check <path> [--format text|json|sarif] [--execute]")
 	_, _ = fmt.Fprintln(out, "  slophammer-go explain <rule-id>")
-	_, _ = fmt.Fprintln(out, "  slophammer-go rules")
+	_, _ = fmt.Fprintln(out, "  slophammer-go rules [--format text|json]")
 	_, _ = fmt.Fprintln(out, "  slophammer-go dry [path] [--max-candidates n] [--show-report] [--format json|text]")
 	_, _ = fmt.Fprintln(out, "  slophammer-go crap [path] [--max-score n]")
 	_, _ = fmt.Fprintln(out, "  slophammer-go mutate [path] [--target file] [--scan]")

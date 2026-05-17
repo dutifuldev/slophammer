@@ -249,3 +249,54 @@ func TestLoadRejectsInvalidConfig(t *testing.T) {
 		t.Fatalf("error = %v", err)
 	}
 }
+
+func TestLoadRejectsUnknownConfigKeys(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    string
+	}{
+		{name: "root", content: "made_up: true\n", want: "root.made_up"},
+		{name: "rules", content: "rules:\n  repo.readme-required:\n    made_up: true\n", want: "rules.repo.readme-required.made_up"},
+		{name: "go", content: "go:\n  made_up: true\n", want: "go.made_up"},
+		{name: "go dry", content: "go:\n  dry:\n    made_up: true\n", want: "go.dry.made_up"},
+		{name: "go structural", content: "go:\n  dry:\n    structural:\n      made_up: true\n", want: "go.dry.structural.made_up"},
+		{name: "go boundary", content: "go:\n  dependency_boundaries:\n    - from: internal/app\n      made_up: true\n", want: "go.dependency_boundaries[0].made_up"},
+		{name: "typescript", content: "typescript:\n  made_up: true\n", want: "typescript.made_up"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := Load(repo.NewSnapshot("/repo", map[string]repo.File{
+				"slophammer.yml": {Path: "slophammer.yml", Content: tt.content},
+			}))
+			if err == nil {
+				t.Fatal("Load returned nil error")
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("error = %v, want %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestLoadAllowsSharedGoAndTypeScriptConfig(t *testing.T) {
+	_, err := Load(repo.NewSnapshot("/repo", map[string]repo.File{
+		"slophammer.yml": {
+			Path: "slophammer.yml",
+			Content: `go:
+  coverage_threshold: 85
+typescript:
+  coverage_threshold: 85
+  complexity_max: 8
+  dry:
+    copied_blocks:
+      enabled: true
+      min_tokens: 100
+`,
+		},
+	}))
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+}

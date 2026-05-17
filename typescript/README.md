@@ -14,14 +14,18 @@ npm install
 npm run check
 slophammer-ts check ..
 slophammer-ts rules
+slophammer-ts rules --format json
 slophammer-ts dry ..
 npm run mutate
 ```
 
-The npm package is publishable as `@dutifuldev/slophammer-ts`. The packed
-artifact contains runtime `dist/src/**` files and package metadata, exposes the
-public `slophammer-ts` bin, and keeps the legacy `slophammer` bin alias during
-the transition.
+The npm package is package-checked as `@dutifuldev/slophammer-ts`, but it is
+private and not released yet. The packed artifact contains runtime
+`dist/src/**` files and package metadata, exposes the public `slophammer-ts`
+bin, and keeps the legacy `slophammer` bin alias during the transition.
+
+For now, TypeScript release work stops at `npm pack` and temporary install
+verification in CI. There is no npm publish step in the current release plan.
 
 Source-tree development can also run the built CLI directly:
 

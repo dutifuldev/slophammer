@@ -33,12 +33,11 @@ Go requirements:
 - Run `slophammer-go help`.
 - Run `slophammer-go check` against at least one fixture repo.
 - Run `slophammer-go dry`, `slophammer-go crap`, and `slophammer-go mutate
-  --scan` against this repo where practical.
+--scan` against this repo where practical.
 
 TypeScript requirements:
 
-- Decide whether `@dutifuldev/slophammer-ts` remains private or becomes
-  publishable.
+- Keep `@dutifuldev/slophammer-ts` package-checked, but do not publish it yet.
 - Keep `slophammer-ts` as the public bin.
 - Keep the legacy `slophammer` bin alias during the transition.
 - Verify `npm pack`, temporary install, and command execution in CI.
@@ -89,13 +88,12 @@ Agents should be able to inspect the checker without reading source files.
 Commands to add:
 
 ```sh
-slophammer-go rules
-slophammer-ts rules
+slophammer-go rules [--format text|json]
+slophammer-ts rules [--format text|json]
 ```
 
-The commands should print the implemented rule catalog. JSON output can come
-later, but the first version should be stable enough for agents and humans to
-read.
+The commands should print the implemented rule catalog. Text output is for
+humans. JSON output is for agents and automation.
 
 Later command:
 
@@ -174,14 +172,25 @@ installable, package-checked, and conformance-tested.
 This roadmap is implemented in the release-hardening tranche.
 
 - `go/scripts/check-go-install.sh` installs and exercises `slophammer-go`.
-- `typescript/scripts/check-package-bin.ts` verifies the packed npm artifact.
+- `typescript/scripts/check-package-bin.ts` verifies the packed npm artifact,
+  but npm publishing is intentionally deferred.
 - `scripts/check-conformance.mjs` verifies shared fixture reports and exit
   codes.
 - `slophammer-go rules` and `slophammer-ts rules` print the implemented rule
-  catalogs.
+  catalogs in text and JSON formats.
 - CI generates and uploads Slophammer SARIF.
 - `fixtures/repos/adoption-before` captures a realistic before-state fixture.
+- `fixtures/repos/adoption-after` captures the matching clean after-state.
+- `.github/workflows/go-release-dry-run.yml` validates Go release tags and the
+  Go release path.
 - README and agent docs point to installed commands and conformance checks.
+
+## Required Follow-Up
+
+The required next work is tracked in
+[Required Next Work](2026-05-17-required-next-work.md). The important release
+decision is that Go can be released first, while TypeScript remains
+package-checked but unpublished.
 
 ## Acceptance Checklist
 
@@ -190,6 +199,9 @@ This roadmap is implemented in the release-hardening tranche.
 - [x] TypeScript package output excludes development-only files.
 - [x] Shared fixture conformance runs from one top-level command.
 - [x] Both implementations expose a `rules` command.
+- [x] Both implementations expose JSON rule catalog output.
 - [x] CI proves SARIF upload compatibility.
 - [x] A realistic adoption fixture exists.
+- [x] A matching adoption after-state fixture exists.
+- [x] Go release dry-run workflow exists.
 - [x] Documentation points agents to the install and conformance workflow.

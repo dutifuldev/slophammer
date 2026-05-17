@@ -144,8 +144,15 @@ func Load(snapshot repo.Snapshot) (Config, error) {
 	if !ok {
 		return Config{}, nil
 	}
+	var root yaml.Node
+	if err := yaml.Unmarshal([]byte(file.Content), &root); err != nil {
+		return Config{}, fmt.Errorf("%s: %w", file.Path, err)
+	}
+	if err := validateKnownKeys(&root); err != nil {
+		return Config{}, fmt.Errorf("%s: %w", file.Path, err)
+	}
 	var cfg Config
-	if err := yaml.Unmarshal([]byte(file.Content), &cfg); err != nil {
+	if err := root.Decode(&cfg); err != nil {
 		return Config{}, fmt.Errorf("%s: %w", file.Path, err)
 	}
 	if err := validate(cfg); err != nil {
@@ -174,6 +181,209 @@ func configFile(snapshot repo.Snapshot) (repo.File, bool) {
 		return file, true
 	}
 	return repo.File{}, false
+}
+
+func validateKnownKeys(root *yaml.Node) error {
+	node, ok, err := documentMapping(root, "root")
+	if err != nil || !ok {
+		return err
+	}
+	return validateMappingKeys(node, "root", set("rules", "go", "typescript"), validateTopLevelSection)
+}
+
+func validateTopLevelSection(key string, value *yaml.Node) error {
+	switch key {
+	case "rules":
+		return validateRulesKeys(value)
+	case "go":
+		return validateGoKeys(value)
+	case "typescript":
+		return validateTypeScriptKeys(value)
+	default:
+		return nil
+	}
+}
+
+func validateRulesKeys(node *yaml.Node) error {
+	return validateMappingKeys(node, "rules", nil, func(ruleID string, value *yaml.Node) error {
+		return validateMappingKeys(value, "rules."+ruleID, set("severity", "disabled", "reason", "threshold", "max"), nil)
+	})
+}
+
+func validateGoKeys(node *yaml.Node) error {
+	return validateMappingKeys(
+		node,
+		"go",
+		set(
+			"coverage_threshold",
+			"dry_max_candidates",
+			"dry_paths",
+			"dry_exclude",
+			"dry",
+			"crap_max_score",
+			"mutation_targets",
+			"dependency_boundaries",
+		),
+		func(key string, value *yaml.Node) error {
+			switch key {
+			case "dry":
+				return validateGoDryKeys(value)
+			case "dependency_boundaries":
+				return validateDependencyBoundaryKeys(value, "go.dependency_boundaries")
+			default:
+				return nil
+			}
+		},
+	)
+}
+
+func validateGoDryKeys(node *yaml.Node) error {
+	return validateMappingKeys(
+		node,
+		"go.dry",
+		set("max_findings", "paths", "exclude", "structural", "copied_blocks"),
+		func(key string, value *yaml.Node) error {
+			switch key {
+			case "structural":
+				return validateMappingKeys(value, "go.dry.structural", set("enabled", "threshold", "min_lines", "min_nodes"), nil)
+			case "copied_blocks":
+				return validateMappingKeys(value, "go.dry.copied_blocks", set("enabled", "min_tokens"), nil)
+			default:
+				return nil
+			}
+		},
+	)
+}
+
+func validateTypeScriptKeys(node *yaml.Node) error {
+	return validateMappingKeys(
+		node,
+		"typescript",
+		set("coverage_threshold", "complexity_max", "dry", "mutation_targets", "dependency_boundaries"),
+		func(key string, value *yaml.Node) error {
+			switch key {
+			case "dry":
+				return validateMappingKeys(value, "typescript.dry", set("max_findings", "paths", "exclude", "copied_blocks"), func(key string, value *yaml.Node) error {
+					if key == "copied_blocks" {
+						return validateMappingKeys(value, "typescript.dry.copied_blocks", set("enabled", "min_tokens"), nil)
+					}
+					return nil
+				})
+			case "dependency_boundaries":
+				return validateDependencyBoundaryKeys(value, "typescript.dependency_boundaries")
+			default:
+				return nil
+			}
+		},
+	)
+}
+
+func validateDependencyBoundaryKeys(node *yaml.Node, field string) error {
+	if node.Kind == 0 || node.Tag == "!!null" {
+		return nil
+	}
+	if node.Kind != yaml.SequenceNode {
+		return fmt.Errorf("%s must be a sequence", field)
+	}
+	for i, item := range node.Content {
+		if err := validateMappingKeys(item, fmt.Sprintf("%s[%d]", field, i), set("from", "allow"), nil); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateMappingKeys(
+	node *yaml.Node,
+	field string,
+	allowed map[string]struct{},
+	visit func(string, *yaml.Node) error,
+) error {
+	if node.Kind == 0 || node.Tag == "!!null" {
+		return nil
+	}
+	if node.Kind != yaml.MappingNode {
+		return fmt.Errorf("%s must be a mapping", field)
+	}
+	seen := map[string]struct{}{}
+	for i := 0; i < len(node.Content); i += 2 {
+		if err := validateMappingEntry(field, allowed, visit, seen, node.Content[i], node.Content[i+1]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateMappingEntry(
+	field string,
+	allowed map[string]struct{},
+	visit func(string, *yaml.Node) error,
+	seen map[string]struct{},
+	keyNode *yaml.Node,
+	valueNode *yaml.Node,
+) error {
+	key, err := mappingKey(field, keyNode)
+	if err != nil {
+		return err
+	}
+	if _, ok := seen[key]; ok {
+		return fmt.Errorf("%s.%s is duplicated", field, key)
+	}
+	seen[key] = struct{}{}
+	if err := validateAllowedKey(field, allowed, key); err != nil {
+		return err
+	}
+	if visit == nil {
+		return nil
+	}
+	return visit(key, valueNode)
+}
+
+func mappingKey(field string, node *yaml.Node) (string, error) {
+	if node.Kind != yaml.ScalarNode || node.Value == "" {
+		return "", fmt.Errorf("%s contains an invalid key", field)
+	}
+	return node.Value, nil
+}
+
+func validateAllowedKey(field string, allowed map[string]struct{}, key string) error {
+	if allowed == nil {
+		return nil
+	}
+	if _, ok := allowed[key]; ok {
+		return nil
+	}
+	return fmt.Errorf("%s.%s is not supported", field, key)
+}
+
+func documentMapping(root *yaml.Node, field string) (*yaml.Node, bool, error) {
+	node := unwrapDocumentNode(root)
+	if emptyYAMLNode(node) {
+		return nil, false, nil
+	}
+	if node.Kind != yaml.MappingNode {
+		return nil, false, fmt.Errorf("%s must be a mapping", field)
+	}
+	return node, true, nil
+}
+
+func unwrapDocumentNode(root *yaml.Node) *yaml.Node {
+	if root.Kind == yaml.DocumentNode && len(root.Content) > 0 {
+		return root.Content[0]
+	}
+	return root
+}
+
+func emptyYAMLNode(node *yaml.Node) bool {
+	return node.Kind == 0 || node.Tag == "!!null"
+}
+
+func set(values ...string) map[string]struct{} {
+	out := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		out[value] = struct{}{}
+	}
+	return out
 }
 
 func validate(cfg Config) error {

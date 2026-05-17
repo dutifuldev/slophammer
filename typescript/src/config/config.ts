@@ -71,7 +71,7 @@ export function loadConfig(snapshot: Snapshot): Config {
     return emptyConfig();
   }
   const parsed: unknown = YAML.parse(file.content);
-  const cfg = parseConfig(asRecord(parsed));
+  const cfg = parseConfig(asConfigRoot(parsed, file.path));
   validateConfig(cfg, file.path);
   return cfg;
 }
@@ -81,6 +81,8 @@ export function ruleSeverity(cfg: Config, ruleID: string, fallback: Severity): S
 }
 
 function parseConfig(root: Readonly<Record<string, unknown>>): Config {
+  assertKnownKeys(root, "root", ["rules", "go", "typescript"]);
+  validateIgnoredGoConfig(root["go"]);
   return {
     rules: parseRules(asRecord(root["rules"])),
     typescript: parseTypeScriptConfig(asRecord(root["typescript"]))
@@ -91,6 +93,7 @@ function parseRules(root: Readonly<Record<string, unknown>>): ReadonlyMap<string
   const rules = new Map<string, RuleConfig>();
   for (const [ruleID, value] of Object.entries(root)) {
     const raw = asRecord(value);
+    assertKnownKeys(raw, `rules.${ruleID}`, ["severity", "disabled", "reason", "threshold", "max"]);
     const severity = parseSeverity(ruleID, raw["severity"]);
     rules.set(ruleID, {
       severity,
@@ -104,8 +107,17 @@ function parseRules(root: Readonly<Record<string, unknown>>): ReadonlyMap<string
 }
 
 function parseTypeScriptConfig(root: Readonly<Record<string, unknown>>): TypeScriptConfig {
+  assertKnownKeys(root, "typescript", [
+    "coverage_threshold",
+    "complexity_max",
+    "dry",
+    "mutation_targets",
+    "dependency_boundaries"
+  ]);
   const dry = asRecord(root["dry"]);
+  assertKnownKeys(dry, "typescript.dry", ["max_findings", "paths", "exclude", "copied_blocks"]);
   const copiedBlocks = asRecord(dry["copied_blocks"]);
+  assertKnownKeys(copiedBlocks, "typescript.dry.copied_blocks", ["enabled", "min_tokens"]);
   return {
     coverageThreshold: optionalNumber(root["coverage_threshold"], "typescript.coverage_threshold"),
     complexityMax: optionalNumber(root["complexity_max"], "typescript.complexity_max"),
@@ -180,9 +192,88 @@ function validateBoundaries(cfg: TypeScriptConfig, filePath: string): void {
   }
 }
 
+function asConfigRoot(value: unknown, filePath: string): Readonly<Record<string, unknown>> {
+  if (value === undefined || value === null) {
+    return {};
+  }
+  if (typeof value === "object" && !Array.isArray(value)) {
+    return value as Readonly<Record<string, unknown>>;
+  }
+  throw new Error(`${filePath}: root must be an object`);
+}
+
 function asRecord(value: unknown): Readonly<Record<string, unknown>> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return {};
+  }
+  return value as Readonly<Record<string, unknown>>;
+}
+
+function assertKnownKeys(
+  root: Readonly<Record<string, unknown>>,
+  field: string,
+  allowed: readonly string[]
+): void {
+  const allowedSet = new Set(allowed);
+  for (const key of Object.keys(root)) {
+    if (!allowedSet.has(key)) {
+      throw new Error(`${field}.${key} is not supported`);
+    }
+  }
+}
+
+function validateIgnoredGoConfig(value: unknown): void {
+  const root = asRecord(value);
+  assertKnownKeys(root, "go", [
+    "coverage_threshold",
+    "dry_max_candidates",
+    "dry_paths",
+    "dry_exclude",
+    "dry",
+    "crap_max_score",
+    "mutation_targets",
+    "dependency_boundaries"
+  ]);
+  const dry = asRecord(root["dry"]);
+  assertKnownKeys(dry, "go.dry", [
+    "max_findings",
+    "paths",
+    "exclude",
+    "structural",
+    "copied_blocks"
+  ]);
+  assertKnownKeys(asRecord(dry["structural"]), "go.dry.structural", [
+    "enabled",
+    "threshold",
+    "min_lines",
+    "min_nodes"
+  ]);
+  assertKnownKeys(asRecord(dry["copied_blocks"]), "go.dry.copied_blocks", [
+    "enabled",
+    "min_tokens"
+  ]);
+  validateIgnoredDependencyBoundaryKeys(root["dependency_boundaries"], "go.dependency_boundaries");
+}
+
+function validateIgnoredDependencyBoundaryKeys(value: unknown, field: string): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!Array.isArray(value)) {
+    throw new Error(`${field} must be an object array`);
+  }
+  for (const [index, item] of value.entries()) {
+    assertKnownKeys(
+      asBoundaryRecord(item, `${field}[${String(index)}]`),
+      `${field}[${String(index)}]`,
+      ["from", "allow"]
+    );
+  }
+}
+
+function asBoundaryRecord(value: unknown, field: string): Readonly<Record<string, unknown>> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error(`${field} must be an object`);
   }
   return value as Readonly<Record<string, unknown>>;
 }
@@ -259,6 +350,7 @@ function asDependencyBoundaries(value: unknown): readonly DependencyBoundary[] {
       throw new Error(`${field} must be an object`);
     }
     const entry = item as Readonly<Record<string, unknown>>;
+    assertKnownKeys(entry, field, ["from", "allow"]);
     return {
       from: asString(entry["from"]) ?? "",
       allow: optionalStringArray(entry["allow"], `${field}.allow`)

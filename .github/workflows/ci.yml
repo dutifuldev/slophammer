@@ -21,9 +21,11 @@ jobs:
           test -f AGENTS.md
           test -f slophammer.yml
           test -f scripts/check-conformance.mjs
+          test -f .github/workflows/go-release-dry-run.yml
           test -f docs/2026-05-12-guardrails.md
           test -f docs/2026-05-16-typescript-implementation.md
           test -f docs/2026-05-17-release-hardening-roadmap.md
+          test -f docs/2026-05-17-required-next-work.md
           test -f specs/PRODUCT.md
           test -f specs/RULES.md
           test -f specs/CONFIG.md
@@ -40,6 +42,8 @@ jobs:
           test -f fixtures/expected/typescript-clean.json
           test -f fixtures/repos/adoption-before/SLOPHAMMER_REMEDIATION.md
           test -f fixtures/expected/adoption-before.json
+          test -f fixtures/repos/adoption-after/SLOPHAMMER_REMEDIATION.md
+          test -f fixtures/expected/adoption-after.json
       - run: npx -y @simpledoc/simpledoc check
 
   go-template:

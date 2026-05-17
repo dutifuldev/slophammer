@@ -18,6 +18,7 @@ slophammer-go check .. --format sarif
 slophammer-go check .. --execute
 slophammer-go explain repo.agents-required
 slophammer-go rules
+slophammer-go rules --format json
 slophammer-go dry ..
 slophammer-go dry .. --show-report
 slophammer-go crap ..
@@ -37,6 +38,30 @@ go run ./cmd/slophammer-go dry .. --show-report
 go run ./cmd/slophammer-go crap ..
 go run ./cmd/slophammer-go mutate .. --scan
 ```
+
+## Release
+
+The Go implementation is the first releasable Slophammer product.
+
+Release tags use the `go/` submodule prefix:
+
+```sh
+git tag go/v0.1.0
+git push origin go/v0.1.0
+```
+
+Users install a tagged release with:
+
+```sh
+go install github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.0
+```
+
+Before tagging, run the full Go validation set and the shared conformance
+script.
+
+The Go release dry-run workflow validates `go/vX.Y.Z` tags and runs the same
+release checks. On tag pushes, it also verifies the documented tagged
+`go install` command.
 
 ## Local Checks
 

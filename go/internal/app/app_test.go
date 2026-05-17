@@ -234,7 +234,7 @@ func TestRulesWritesRuleCatalog(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 
-	code := Rules(&out, &errOut)
+	code := Rules(RulesOptions{}, &out, &errOut)
 
 	if code != ExitOK {
 		t.Fatalf("code = %d, want %d; stderr=%q", code, ExitOK, errOut.String())
@@ -242,6 +242,24 @@ func TestRulesWritesRuleCatalog(t *testing.T) {
 	if !strings.Contains(out.String(), "repo.readme-required") ||
 		!strings.Contains(out.String(), "go.dry-required") {
 		t.Fatalf("rules output = %q", out.String())
+	}
+}
+
+func TestRulesWritesJSONRuleCatalog(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := Rules(RulesOptions{Format: "json"}, &out, &errOut)
+
+	if code != ExitOK {
+		t.Fatalf("code = %d, want %d; stderr=%q", code, ExitOK, errOut.String())
+	}
+	var definitions []rules.Definition
+	if err := json.Unmarshal(out.Bytes(), &definitions); err != nil {
+		t.Fatalf("json.Unmarshal returned error: %v", err)
+	}
+	if len(definitions) == 0 || definitions[0].ID != rules.ReadmeRequiredRuleID {
+		t.Fatalf("definitions = %#v", definitions)
 	}
 }
 

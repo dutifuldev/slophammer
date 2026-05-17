@@ -89,6 +89,18 @@ func TestRunRules(t *testing.T) {
 	}
 }
 
+func TestRunRulesJSON(t *testing.T) {
+	result := runCLI(t, "rules", "--format", "json")
+
+	if result.code != app.ExitOK {
+		t.Fatalf("code = %d, want %d; stderr=%q", result.code, app.ExitOK, result.stderr)
+	}
+	if !strings.Contains(result.stdout, `"id": "repo.readme-required"`) ||
+		!strings.Contains(result.stdout, `"id": "go.dry-required"`) {
+		t.Fatalf("stdout = %q", result.stdout)
+	}
+}
+
 func TestRunRulesRejectsArgs(t *testing.T) {
 	assertCLIError(t, []string{"rules", "repo.readme-required"}, "usage: slophammer-go rules")
 }

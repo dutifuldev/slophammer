@@ -59,6 +59,18 @@ describe("run", () => {
     expect(result.stdout).toContain("ts.dry-required");
   });
 
+  it("runs JSON rules from CLI args", async () => {
+    const result = await run(["rules", "--format", "json"]);
+
+    expect(result.code).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "repo.readme-required" }),
+        expect.objectContaining({ id: "ts.dry-required" })
+      ])
+    );
+  });
+
   it("rejects malformed rules args", async () => {
     const result = await run(["rules", "repo.readme-required"]);
 

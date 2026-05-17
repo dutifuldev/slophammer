@@ -135,6 +135,74 @@ describe("loadConfig", () => {
   });
 });
 
+describe("loadConfig strict keys", () => {
+  it("rejects unknown config keys", () => {
+    const cases = [
+      { name: "root", content: "made_up: true\n", want: "root.made_up" },
+      {
+        name: "rules",
+        content: "rules:\n  repo.readme-required:\n    made_up: true\n",
+        want: "rules.repo.readme-required.made_up"
+      },
+      { name: "typescript", content: "typescript:\n  made_up: true\n", want: "typescript.made_up" },
+      {
+        name: "typescript dry",
+        content: "typescript:\n  dry:\n    made_up: true\n",
+        want: "typescript.dry.made_up"
+      },
+      {
+        name: "typescript copied blocks",
+        content: "typescript:\n  dry:\n    copied_blocks:\n      made_up: true\n",
+        want: "typescript.dry.copied_blocks.made_up"
+      },
+      {
+        name: "typescript boundary",
+        content:
+          "typescript:\n  dependency_boundaries:\n    - from: src/app\n      made_up: true\n",
+        want: "typescript.dependency_boundaries[0].made_up"
+      },
+      { name: "ignored go", content: "go:\n  made_up: true\n", want: "go.made_up" }
+    ];
+
+    for (const testCase of cases) {
+      const snapshot = newSnapshot("/repo", [
+        {
+          path: "slophammer.yml",
+          content: testCase.content
+        }
+      ]);
+
+      expect(() => loadConfig(snapshot), testCase.name).toThrow(testCase.want);
+    }
+  });
+
+  it("allows shared Go and TypeScript config", () => {
+    const snapshot = newSnapshot("/repo", [
+      {
+        path: "slophammer.yml",
+        content: [
+          "go:",
+          "  coverage_threshold: 85",
+          "  dry:",
+          "    structural:",
+          "      enabled: true",
+          "      threshold: 0.82",
+          "typescript:",
+          "  coverage_threshold: 85",
+          "  complexity_max: 8",
+          "  dry:",
+          "    copied_blocks:",
+          "      enabled: true",
+          "      min_tokens: 100",
+          ""
+        ].join("\n")
+      }
+    ]);
+
+    expect(loadConfig(snapshot).typescript.coverageThreshold).toBe(85);
+  });
+});
+
 describe("loadConfig config discovery", () => {
   it("ignores nested configs when the root config is missing", () => {
     const snapshot = newSnapshot("/repo", [

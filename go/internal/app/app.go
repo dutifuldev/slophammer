@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -26,6 +27,10 @@ type CheckOptions struct {
 	Root    string
 	Format  string
 	Execute bool
+}
+
+type RulesOptions struct {
+	Format string
 }
 
 func Check(ctx context.Context, options CheckOptions, out io.Writer, errOut io.Writer) int {
@@ -73,7 +78,19 @@ func Explain(ruleID string, out io.Writer, errOut io.Writer) int {
 	return ExitOK
 }
 
-func Rules(out io.Writer, errOut io.Writer) int {
+func Rules(options RulesOptions, out io.Writer, errOut io.Writer) int {
+	switch options.Format {
+	case "", "text":
+		return writeRulesText(out, errOut)
+	case "json":
+		return writeRulesJSON(out, errOut)
+	default:
+		_, _ = fmt.Fprintf(errOut, "unsupported rules format: %s\n", options.Format)
+		return ExitError
+	}
+}
+
+func writeRulesText(out io.Writer, errOut io.Writer) int {
 	writer := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	_, _ = fmt.Fprintln(writer, "RULE ID\tCATEGORY\tSEVERITY\tSTATUS\tTOOL")
 	for _, definition := range rules.DefaultDefinitions() {
@@ -88,6 +105,16 @@ func Rules(out io.Writer, errOut io.Writer) int {
 		)
 	}
 	if err := writer.Flush(); err != nil {
+		_, _ = fmt.Fprintf(errOut, "write failed: %v\n", err)
+		return ExitError
+	}
+	return ExitOK
+}
+
+func writeRulesJSON(out io.Writer, errOut io.Writer) int {
+	encoder := json.NewEncoder(out)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(rules.DefaultDefinitions()); err != nil {
 		_, _ = fmt.Fprintf(errOut, "write failed: %v\n", err)
 		return ExitError
 	}

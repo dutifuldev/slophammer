@@ -29,15 +29,15 @@ type Report struct {
 }
 
 type Definition struct {
-	ID          string
-	Title       string
-	Category    string
-	Severity    Severity
-	Path        string
-	Message     string
-	Description string
-	Tool        string
-	Status      string
+	ID          string   `json:"id"`
+	Title       string   `json:"title"`
+	Category    string   `json:"category"`
+	Severity    Severity `json:"severity"`
+	Path        string   `json:"path"`
+	Message     string   `json:"message"`
+	Description string   `json:"description"`
+	Tool        string   `json:"tool,omitempty"`
+	Status      string   `json:"status"`
 }
 
 type Metadata struct {

@@ -8,6 +8,9 @@ Slophammer loads optional project config from the first matching file:
 Config is parsed after repository scanning and before rule evaluation. Invalid
 config fails the check with exit code `2`.
 
+Config keys are strict. Unknown root, rule, language, DRY, copied-block, or
+dependency-boundary keys fail instead of being ignored.
+
 ## Shape
 
 ```yaml
@@ -139,10 +142,10 @@ reference projects.
 
 `go.dependency_boundaries` is active now. Each boundary declares:
 
-| Field   | Meaning                                                   |
-| ------- | --------------------------------------------------------- |
-| `from`  | Repository-root or module-root-relative package path.     |
-| `allow` | Local package paths that code under `from` may import.    |
+| Field   | Meaning                                                |
+| ------- | ------------------------------------------------------ |
+| `from`  | Repository-root or module-root-relative package path.  |
+| `allow` | Local package paths that code under `from` may import. |
 
 External imports are ignored. Local imports are resolved through the nearest
 `go.mod` module path.
@@ -176,10 +179,10 @@ The configured DRY budget is zero for production code.
 
 `typescript.dependency_boundaries` declares import boundaries:
 
-| Field   | Meaning                                                   |
-| ------- | --------------------------------------------------------- |
-| `from`  | Repository-root-relative source path.                     |
-| `allow` | Local source paths that code under `from` may import.     |
+| Field   | Meaning                                               |
+| ------- | ----------------------------------------------------- |
+| `from`  | Repository-root-relative source path.                 |
+| `allow` | Local source paths that code under `from` may import. |
 
 External package imports are ignored. Relative imports are resolved against the
 importing source file.

@@ -55,7 +55,7 @@ slophammer-go check <path> --format json
 slophammer-go check <path> --format sarif
 slophammer-go check <path> --execute
 slophammer-go explain <rule-id>
-slophammer-go rules
+slophammer-go rules [--format text|json]
 ```
 
 The language suffix names the implementation and packaging target, not a hard
@@ -85,8 +85,9 @@ The TypeScript implementation also includes native copied-block detection:
 slophammer-ts dry [path] [--max-findings n] [--show-report] [--format json|text]
 ```
 
-Both working implementations expose a `rules` command so agents can inspect the
-implemented rule catalog without reading source files.
+Both working implementations expose a `rules` command with text and JSON output
+so agents can inspect the implemented rule catalog without reading source
+files.
 
 The checker scans a target repository and reports findings such as:
 
@@ -163,13 +164,18 @@ Those templates are not full Slophammer implementations yet.
 and TypeScript implementations. It verifies JSON report shape, findings, and
 exit codes for the fixture sets each implementation supports.
 
+The required next work before a Go release is tracked in
+[Required Next Work](docs/2026-05-17-required-next-work.md). Go is the
+releasable implementation. TypeScript remains private and package-checked in
+CI, but npm publishing is intentionally deferred.
+
 ## Implementation Status
 
-| Language   | Product name       | Status                                           |
-| ---------- | ------------------ | ------------------------------------------------ |
-| Go         | `slophammer-go`    | Implemented checker, CLI, tool checks, fixtures, CI |
-| TypeScript | `slophammer-ts`    | Implemented checker, CLI, native DRY, fixtures, CI  |
-| Python     | `slophammer-py`    | Template only; checker implementation planned       |
+| Language   | Product name    | Status                                              |
+| ---------- | --------------- | --------------------------------------------------- |
+| Go         | `slophammer-go` | Implemented checker, CLI, tool checks, fixtures, CI |
+| TypeScript | `slophammer-ts` | Implemented checker, CLI, native DRY, fixtures, CI  |
+| Python     | `slophammer-py` | Template only; checker implementation planned       |
 
 An implementation can check more than one language. For example,
 `slophammer-go` can operate as a strong single-binary checker for Go,
@@ -185,8 +191,10 @@ The Go implementation currently provides:
 - direct commands for native DRY, `crap4go`, and `mutate4go`
 - an installed-binary release check for `slophammer-go`
 - `slophammer.yml` config parsing
+- strict `slophammer.yml` key validation
 - native Go dependency boundary checks
 - text, JSON, and SARIF report output
+- JSON rule catalog output
 - shared fixtures and expected reports for clean and failing repos
 - CI gates for formatting, tests, vet, lint, coverage, tool checks, and
   Slophammer's own self-check
@@ -206,9 +214,12 @@ The TypeScript implementation currently provides:
 - native CPD-style copied-block detection through `slophammer-ts dry`
 - a narrowed npm package artifact with `slophammer-ts` and legacy `slophammer`
   bin verification
+- CI package checks, without npm publishing for now
 - `slophammer.yml` config parsing with hard targets for coverage, complexity,
   and duplication budgets
+- strict `slophammer.yml` key validation
 - text, JSON, and SARIF report output
+- JSON rule catalog output
 - shared fixture equivalence tests against the Go implementation
 - CI gates for formatting, linting, type checking, tests, coverage, build,
   native DRY, package installation, and fixture conformance
@@ -247,43 +258,45 @@ useful as a reference implementation:
 7. Release checks exercise installed artifacts.
    CI installs `slophammer-go` into a temporary `GOBIN`, packs and installs
    `@dutifuldev/slophammer-ts`, checks both public command names, and runs the
-   shared conformance script.
+   shared conformance script. The Go implementation is the release target;
+   TypeScript package publishing is deferred. The Go release dry-run workflow
+   validates `go/vX.Y.Z` tags before release.
 
 ## Shared Rule Set
 
 The current shared rule set is:
 
-| Rule ID                             | Meaning                                             |
-| ----------------------------------- | --------------------------------------------------- |
-| `repo.readme-required`              | The target repo should have a `README.md`.          |
-| `repo.agents-required`              | The target repo should have an `AGENTS.md`.         |
-| `repo.ci-required`                  | The target repo should have a CI workflow.          |
-| `go.module-required`                | Go projects should include a `go.mod`.              |
-| `go.tests-required`                 | Go projects should run `go test ./...`.             |
-| `go.vet-required`                   | Go projects should run `go vet ./...`.              |
-| `go.lint-required`                  | Go projects should run `golangci-lint`.             |
-| `go.coverage-required`              | Go projects should enforce coverage.                |
-| `go.complexity-required`            | Go projects should check complexity.                |
-| `go.dry-required`                   | Go projects should declare a DRY check.             |
-| `go.crap-required`                  | Go projects should gate `crap4go`.                  |
-| `go.mutation-required`              | Go projects should declare `mutate4go`.             |
-| `go.dependency-boundaries-required` | Go projects should obey configured import boundaries. |
-| `ts.package-required`               | TypeScript projects should include `package.json`.  |
-| `ts.typecheck-required`             | TypeScript projects should run `tsc --noEmit`.      |
-| `ts.strict-required`                | TypeScript projects should use strict mode.         |
-| `ts.no-explicit-any`                | TypeScript projects should reject `any`.            |
-| `ts.no-unsafe-types`                | TypeScript projects should reject unsafe type operations. |
-| `ts.lint-required`                  | TypeScript projects should run ESLint.              |
-| `ts.format-required`                | TypeScript projects should run a formatter check.   |
-| `ts.test-required`                  | TypeScript projects should run tests.               |
-| `ts.coverage-required`              | TypeScript projects should enforce coverage.        |
-| `ts.complexity-required`            | TypeScript projects should enforce complexity limits. |
-| `ts.dry-required`                   | TypeScript projects should run duplication detection. |
-| `ts.mutation-required`              | TypeScript projects should declare mutation testing. |
+| Rule ID                             | Meaning                                                       |
+| ----------------------------------- | ------------------------------------------------------------- |
+| `repo.readme-required`              | The target repo should have a `README.md`.                    |
+| `repo.agents-required`              | The target repo should have an `AGENTS.md`.                   |
+| `repo.ci-required`                  | The target repo should have a CI workflow.                    |
+| `go.module-required`                | Go projects should include a `go.mod`.                        |
+| `go.tests-required`                 | Go projects should run `go test ./...`.                       |
+| `go.vet-required`                   | Go projects should run `go vet ./...`.                        |
+| `go.lint-required`                  | Go projects should run `golangci-lint`.                       |
+| `go.coverage-required`              | Go projects should enforce coverage.                          |
+| `go.complexity-required`            | Go projects should check complexity.                          |
+| `go.dry-required`                   | Go projects should declare a DRY check.                       |
+| `go.crap-required`                  | Go projects should gate `crap4go`.                            |
+| `go.mutation-required`              | Go projects should declare `mutate4go`.                       |
+| `go.dependency-boundaries-required` | Go projects should obey configured import boundaries.         |
+| `ts.package-required`               | TypeScript projects should include `package.json`.            |
+| `ts.typecheck-required`             | TypeScript projects should run `tsc --noEmit`.                |
+| `ts.strict-required`                | TypeScript projects should use strict mode.                   |
+| `ts.no-explicit-any`                | TypeScript projects should reject `any`.                      |
+| `ts.no-unsafe-types`                | TypeScript projects should reject unsafe type operations.     |
+| `ts.lint-required`                  | TypeScript projects should run ESLint.                        |
+| `ts.format-required`                | TypeScript projects should run a formatter check.             |
+| `ts.test-required`                  | TypeScript projects should run tests.                         |
+| `ts.coverage-required`              | TypeScript projects should enforce coverage.                  |
+| `ts.complexity-required`            | TypeScript projects should enforce complexity limits.         |
+| `ts.dry-required`                   | TypeScript projects should run duplication detection.         |
+| `ts.mutation-required`              | TypeScript projects should declare mutation testing.          |
 | `ts.dependency-boundaries-required` | TypeScript projects should obey configured import boundaries. |
-| `python.mypy-required`              | Python projects should run mypy.                    |
-| `python.ruff-required`              | Python projects should run Ruff.                    |
-| `docs.simpledoc`                    | Docs should follow the repository convention.       |
+| `python.mypy-required`              | Python projects should run mypy.                              |
+| `python.ruff-required`              | Python projects should run Ruff.                              |
+| `docs.simpledoc`                    | Docs should follow the repository convention.                 |
 
 The exact shared rule behavior belongs in [Rules](specs/RULES.md) so each
 implementation can share the same contract.

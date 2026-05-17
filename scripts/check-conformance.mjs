@@ -6,7 +6,12 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-const repoFixtures = ["clean", "missing-agents", "missing-ci", "missing-readme"];
+const repoFixtures = [
+  "clean",
+  "missing-agents",
+  "missing-ci",
+  "missing-readme",
+];
 const goFixtures = [
   ...repoFixtures,
   "go-clean",
@@ -19,7 +24,7 @@ const goFixtures = [
   "go-missing-module",
   "go-missing-mutation",
   "go-missing-tests",
-  "go-missing-vet"
+  "go-missing-vet",
 ];
 const typeScriptFixtures = [
   ...repoFixtures,
@@ -27,7 +32,8 @@ const typeScriptFixtures = [
   "typescript-missing-any-rule",
   "typescript-missing-dry",
   "typescript-missing-strict",
-  "adoption-before"
+  "adoption-before",
+  "adoption-after",
 ];
 
 run("npm", ["run", "build"], path.join(root, "typescript"), [0]);
@@ -37,8 +43,15 @@ for (const fixture of goFixtures) {
     implementation: "go",
     fixture,
     command: "go",
-    args: ["run", "./cmd/slophammer-go", "check", fixturePath(fixture), "--format", "json"],
-    cwd: path.join(root, "go")
+    args: [
+      "run",
+      "./cmd/slophammer-go",
+      "check",
+      fixturePath(fixture),
+      "--format",
+      "json",
+    ],
+    cwd: path.join(root, "go"),
   });
 }
 
@@ -47,13 +60,19 @@ for (const fixture of typeScriptFixtures) {
     implementation: "typescript",
     fixture,
     command: "node",
-    args: ["dist/src/cli/main.js", "check", fixturePath(fixture), "--format", "json"],
-    cwd: path.join(root, "typescript")
+    args: [
+      "dist/src/cli/main.js",
+      "check",
+      fixturePath(fixture),
+      "--format",
+      "json",
+    ],
+    cwd: path.join(root, "typescript"),
   });
 }
 
 console.log(
-  `Conformance passed: ${String(goFixtures.length)} Go fixtures, ${String(typeScriptFixtures.length)} TypeScript fixtures`
+  `Conformance passed: ${String(goFixtures.length)} Go fixtures, ${String(typeScriptFixtures.length)} TypeScript fixtures`,
 );
 
 function assertFixture({ implementation, fixture, command, args, cwd }) {
@@ -64,13 +83,18 @@ function assertFixture({ implementation, fixture, command, args, cwd }) {
   const normalizedExpected = normalizeReport(expected);
   if (JSON.stringify(actual) !== JSON.stringify(normalizedExpected)) {
     throw new Error(
-      `${implementation} fixture ${fixture} report mismatch\nexpected:\n${JSON.stringify(normalizedExpected, null, 2)}\nactual:\n${JSON.stringify(actual, null, 2)}`
+      `${implementation} fixture ${fixture} report mismatch\nexpected:\n${JSON.stringify(normalizedExpected, null, 2)}\nactual:\n${JSON.stringify(actual, null, 2)}`,
     );
   }
 }
 
 function expectedReport(fixture) {
-  return JSON.parse(readFileSync(path.join(root, "fixtures", "expected", `${fixture}.json`), "utf8"));
+  return JSON.parse(
+    readFileSync(
+      path.join(root, "fixtures", "expected", `${fixture}.json`),
+      "utf8",
+    ),
+  );
 }
 
 function fixturePath(fixture) {
@@ -84,7 +108,7 @@ function normalizeReport(report) {
       const leftKey = `${left.rule_id}\0${left.path}\0${left.message}`;
       const rightKey = `${right.rule_id}\0${right.path}\0${right.message}`;
       return leftKey.localeCompare(rightKey);
-    })
+    }),
   };
 }
 
@@ -92,11 +116,11 @@ function run(command, args, cwd, acceptedCodes) {
   const result = spawnSync(command, args, {
     cwd,
     encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"]
+    stdio: ["ignore", "pipe", "pipe"],
   });
   if (!acceptedCodes.includes(result.status ?? -1)) {
     throw new Error(
-      `${command} ${args.join(" ")} failed with ${String(result.status)} in ${cwd}\n${result.stdout}${result.stderr}`
+      `${command} ${args.join(" ")} failed with ${String(result.status)} in ${cwd}\n${result.stdout}${result.stderr}`,
     );
   }
   return { stdout: result.stdout, stderr: result.stderr };
