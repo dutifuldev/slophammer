@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/unclebob_hammer.jpg" alt="Uncle Bob with a hammer" width="320">
+</p>
+
 # Slophammer
 
 Reference implementations and templates for repository quality checks in
