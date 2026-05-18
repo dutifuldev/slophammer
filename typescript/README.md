@@ -10,6 +10,16 @@ and fixtures.
 ## Commands
 
 ```sh
+npm install -g slophammer-ts
+slophammer-ts check .
+slophammer-ts rules
+slophammer-ts rules --format json
+slophammer-ts dry .
+```
+
+Source-tree development uses the local package scripts:
+
+```sh
 npm install
 npm run check
 slophammer-ts check ..
@@ -22,6 +32,10 @@ npm run mutate
 The npm package is released as `slophammer-ts`. The packed artifact contains
 runtime `dist/src/**` files and package metadata, and exposes the public
 `slophammer-ts` bin.
+
+Package releases are published by the repository TypeScript release workflow
+from `typescript/vX.Y.Z` tags, using npm trusted publishing with provenance.
+The first workflow-published release is `slophammer-ts@0.1.1`.
 
 The `slophammer` npm package name is reserved for a future umbrella package or
 default installer. The TypeScript implementation should not claim the

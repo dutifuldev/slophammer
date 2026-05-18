@@ -12,7 +12,7 @@ the Go implementation for release.
 
 ## Release Direction
 
-Go is the releasable implementation.
+Go and TypeScript are releasable implementations.
 
 The Go release should use the `go/` submodule tag shape:
 
@@ -27,8 +27,17 @@ Users install the released Go command with:
 go install github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.0
 ```
 
-TypeScript is released as the `slophammer-ts` npm package. The package remains
-package-checked in CI so the artifact stays clean.
+TypeScript is released as the `slophammer-ts` npm package. TypeScript releases
+use the `typescript/vX.Y.Z` tag shape:
+
+```sh
+git tag typescript/v0.1.1
+git push origin typescript/v0.1.1
+```
+
+The package remains package-checked in CI so the artifact stays clean. The
+`typescript/v0.1.1` tag was the first release published by npm trusted
+publishing with provenance.
 
 ## Required Tasks
 
