@@ -152,19 +152,38 @@ External imports are ignored. Local imports are resolved through the nearest
 
 ## TypeScript Config
 
-`typescript.coverage_threshold`, `typescript.complexity_max`,
-`typescript.dry`, `typescript.mutation_targets`, and
-`typescript.dependency_boundaries` are parsed as typed policy fields.
+`typescript.coverage_threshold`, `typescript.coverage`,
+`typescript.complexity_max`, `typescript.dry`, `typescript.mutation_targets`,
+and `typescript.dependency_boundaries` are parsed as typed policy fields.
 
 The TypeScript policy values have hard recommended bounds. Slophammer rejects
 config that weakens them:
 
 - `typescript.coverage_threshold` must be at least `85`.
+- `typescript.coverage.threshold` must be at least `85`.
 - `typescript.complexity_max` must be at most `8`.
 
 Projects may choose stricter values, such as higher coverage or lower
 complexity limits, but they cannot configure weaker values through
 `slophammer.yml`.
+
+The preferred TypeScript coverage shape keeps the threshold and scope together:
+
+```yaml
+typescript:
+  coverage:
+    threshold: 85
+    paths:
+      - src/runtime
+      - src/flows
+    exclude:
+      - "**/*.test.ts"
+      - "dist/**"
+```
+
+`typescript.coverage_threshold` remains supported as a shorthand for a
+whole-project coverage threshold. Use `typescript.coverage` when the gate is
+intentionally scoped to specific production paths.
 
 The nested `typescript.dry` shape configures native copied-block duplicate
 detection:
