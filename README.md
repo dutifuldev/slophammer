@@ -218,15 +218,10 @@ The TypeScript checker is released to npm:
 
 ```sh
 npm install -g slophammer-ts
+slophammer-ts check .
+slophammer-ts rules
+slophammer-ts dry .
 ```
-
-TypeScript npm releases are published by
-[`.github/workflows/typescript-release.yml`](.github/workflows/typescript-release.yml)
-from `typescript/vX.Y.Z` tags. Configure npm trusted publishing for the
-`slophammer-ts` package against that workflow before pushing a release tag:
-GitHub Actions, owner `dutifuldev`, repository `slophammer`, workflow
-`typescript-release.yml`, with no environment unless the workflow is later
-changed to declare one.
 
 [Required Next Work](docs/2026-05-17-required-next-work.md) records the release
 hardening tasks that were completed for the first Go release. TypeScript remains
