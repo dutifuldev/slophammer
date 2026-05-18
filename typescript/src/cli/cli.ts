@@ -1,4 +1,5 @@
 import {
+  boundaries,
   check,
   explain,
   exitError,
@@ -28,17 +29,23 @@ async function dispatch(args: readonly string[]): Promise<Result> {
   if (command === undefined || helpFlag(command)) {
     return { code: exitOK, stdout: usage(), stderr: "" };
   }
+  return await dispatchCommand(command, args.slice(1));
+}
+
+async function dispatchCommand(command: string, args: readonly string[]): Promise<Result> {
   switch (command) {
     case "check":
-      return await check(parseCheckArgs(args.slice(1)));
+      return await check(parseCheckArgs(args));
+    case "boundaries":
+      return await boundaries(parseBoundaryArgs(args));
     case "explain":
-      return runExplain(args.slice(1));
+      return runExplain(args);
     case "rules":
-      return runRules(args.slice(1));
+      return runRules(args);
     case "dry":
-      return await typescriptDry(parseDryArgs(args.slice(1)));
+      return await typescriptDry(parseDryArgs(args));
     case "typescript":
-      return await runTypeScript(args.slice(1));
+      return await runTypeScript(args);
     default:
       return { code: exitError, stdout: "", stderr: `unknown command: ${command}\n${usage()}` };
   }
@@ -73,16 +80,23 @@ function runTypeScript(args: readonly string[]): Promise<Result> | Result {
 }
 
 function parseCheckArgs(args: readonly string[]): CheckOptions {
-  let options: CheckOptions = { root: "", format: "text", execute: false };
+  let options: CheckOptions = { root: "", format: "text", execute: false, onlyRuleIDs: [] };
   for (let index = 0; index < args.length; index++) {
     const parsed = parseCheckArg(options, args, index);
     options = parsed.options;
     index += parsed.advance;
   }
   if (options.root === "") {
-    throw new Error("usage: slophammer-ts check <path> [--format text|json|sarif] [--execute]");
+    throw new Error(
+      "usage: slophammer-ts check <path> [--format text|json|sarif] [--execute] [--only rule-id]"
+    );
   }
   return options;
+}
+
+function parseBoundaryArgs(args: readonly string[]): Omit<CheckOptions, "onlyRuleIDs"> {
+  const parsed = parseCheckArgs(args);
+  return { root: parsed.root, format: parsed.format, execute: parsed.execute };
 }
 
 function parseRulesArgs(args: readonly string[]): { readonly format: "text" | "json" } {
@@ -108,19 +122,10 @@ function parseCheckArg(
 ): { readonly options: CheckOptions; readonly advance: number } {
   const arg = args[index];
   if (arg === "--format") {
-    return {
-      options: { ...options, format: parseFormat(nextValue(args, index, "--format")) },
-      advance: 1
-    };
-  }
-  if (arg === "--json") {
-    return { options: { ...options, format: "json" }, advance: 0 };
-  }
-  if (arg === "--execute") {
-    return { options: { ...options, execute: true }, advance: 0 };
+    return parseFormatOption(options, args, index);
   }
   if (arg?.startsWith("-")) {
-    throw new Error(`unknown check option: ${arg}`);
+    return parseCheckFlag(options, args, index);
   }
   if (arg !== undefined) {
     if (options.root !== "") {
@@ -129,6 +134,55 @@ function parseCheckArg(
     return { options: { ...options, root: arg }, advance: 0 };
   }
   return { options, advance: 0 };
+}
+
+function parseFormatOption(
+  options: CheckOptions,
+  args: readonly string[],
+  index: number
+): { readonly options: CheckOptions; readonly advance: number } {
+  return {
+    options: { ...options, format: parseFormat(nextValue(args, index, "--format")) },
+    advance: 1
+  };
+}
+
+function parseCheckFlag(
+  options: CheckOptions,
+  args: readonly string[],
+  index: number
+): { readonly options: CheckOptions; readonly advance: number } {
+  const arg = args[index];
+  if (arg === "--json") {
+    return { options: { ...options, format: "json" }, advance: 0 };
+  }
+  if (arg === "--execute") {
+    return { options: { ...options, execute: true }, advance: 0 };
+  }
+  if (arg === "--only") {
+    return {
+      options: {
+        ...options,
+        onlyRuleIDs: [
+          ...(options.onlyRuleIDs ?? []),
+          ...parseOnlyRuleIDs(nextValue(args, index, "--only"))
+        ]
+      },
+      advance: 1
+    };
+  }
+  throw new Error(`unknown check option: ${arg ?? ""}`);
+}
+
+function parseOnlyRuleIDs(value: string): readonly string[] {
+  const ruleIDs = value
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+  if (ruleIDs.length === 0) {
+    throw new Error("--only requires a rule id");
+  }
+  return ruleIDs;
 }
 
 function parseDryArgs(args: readonly string[]): DryOptions {
@@ -253,7 +307,8 @@ function nextValue(args: readonly string[], index: number, flag: string): string
 function usage(): string {
   return `${[
     "usage:",
-    "  slophammer-ts check <path> [--format text|json|sarif] [--execute]",
+    "  slophammer-ts check <path> [--format text|json|sarif] [--execute] [--only rule-id]",
+    "  slophammer-ts boundaries <path> [--format text|json|sarif]",
     "  slophammer-ts explain <rule-id>",
     "  slophammer-ts rules [--format text|json]",
     "  slophammer-ts dry <path>"

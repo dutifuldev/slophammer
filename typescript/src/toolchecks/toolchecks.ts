@@ -24,7 +24,8 @@ export const execRunner: Runner = {
 export async function executeTypeScriptChecks(
   root: string,
   runner: Runner,
-  workspaceRoot = root
+  workspaceRoot = root,
+  onlyRuleIDs: readonly string[] = []
 ): Promise<readonly Finding[]> {
   const packageJson = packageJSON(root);
   if (packageJson === undefined) {
@@ -32,7 +33,26 @@ export async function executeTypeScriptChecks(
   }
   const packageManager = detectPackageManager(root, workspaceRoot);
   const scripts = packageJson.scripts;
-  const checks = [
+  const allChecks = scriptChecks();
+  const checks = selectedChecks(allChecks, onlyRuleIDs);
+  const findings: Finding[] = [];
+  for (const group of scriptGroups(checks, scripts, packageManager, allChecks, onlyRuleIDs)) {
+    const result = await runner.run(root, packageManager.command, group.args);
+    if (result.infrastructureError === true) {
+      throw new Error(
+        `failed to run ${packageManager.command} ${group.args.join(" ")}: ${firstOutput(result)}`
+      );
+    }
+    if (result.code === 0) {
+      continue;
+    }
+    findings.push(groupFinding(group.checks, result));
+  }
+  return findings;
+}
+
+function scriptChecks(): readonly ScriptCheck[] {
+  return [
     scriptCheck("format", ruleIDs.tsFormatRequired, "formatter check failed", prettierCheck),
     scriptCheck("lint", ruleIDs.tsLintRequired, "ESLint failed", eslintCheck),
     scriptCheck("typecheck", ruleIDs.tsTypecheckRequired, "typecheck failed", typecheckCheck),
@@ -53,20 +73,17 @@ export async function executeTypeScriptChecks(
       ["--dryRunOnly"]
     )
   ];
-  const findings: Finding[] = [];
-  for (const group of scriptGroups(checks, scripts, packageManager)) {
-    const result = await runner.run(root, packageManager.command, group.args);
-    if (result.infrastructureError === true) {
-      throw new Error(
-        `failed to run ${packageManager.command} ${group.args.join(" ")}: ${firstOutput(result)}`
-      );
-    }
-    if (result.code === 0) {
-      continue;
-    }
-    findings.push(groupFinding(group.checks, result));
+}
+
+function selectedChecks(
+  checks: readonly ScriptCheck[],
+  onlyRuleIDs: readonly string[]
+): readonly ScriptCheck[] {
+  if (onlyRuleIDs.length === 0) {
+    return checks;
   }
-  return findings;
+  const wanted = new Set(onlyRuleIDs);
+  return checks.filter((check) => wanted.has(check.ruleID));
 }
 
 type ScriptGroup = {
@@ -77,11 +94,13 @@ type ScriptGroup = {
 function scriptGroups(
   checks: readonly ScriptCheck[],
   scripts: Readonly<Record<string, string>>,
-  packageManager: PackageManager
+  packageManager: PackageManager,
+  allChecks: readonly ScriptCheck[],
+  onlyRuleIDs: readonly string[]
 ): readonly ScriptGroup[] {
   const groups = new Map<string, { args: readonly string[]; checks: ScriptCheck[] }>();
   for (const check of checks) {
-    const script = scriptNameForCheck(scripts, check);
+    const script = scriptNameForCheck(scripts, check, allChecks, onlyRuleIDs);
     if (script === undefined) {
       continue;
     }
@@ -169,15 +188,20 @@ function optionalScriptCheck(
 
 function scriptNameForCheck(
   scripts: Readonly<Record<string, string>>,
-  check: ScriptCheck
+  check: ScriptCheck,
+  allChecks: readonly ScriptCheck[],
+  onlyRuleIDs: readonly string[]
 ): string | undefined {
   const scriptMap = packageScriptMap(scripts);
   const canonical = scripts[check.script];
-  if (canonical !== undefined && scriptMatches(canonical, check, scriptMap)) {
+  if (
+    canonical !== undefined &&
+    scriptMatches(canonical, check, scriptMap, allChecks, onlyRuleIDs)
+  ) {
     return check.script;
   }
   const match = Object.entries(scripts).find(([, content]) =>
-    scriptMatches(content, check, scriptMap)
+    scriptMatches(content, check, scriptMap, allChecks, onlyRuleIDs)
   );
   return match?.[0];
 }
@@ -185,10 +209,16 @@ function scriptNameForCheck(
 function scriptMatches(
   content: string,
   check: ScriptCheck,
-  scripts: ReadonlyMap<string, string>
+  scripts: ReadonlyMap<string, string>,
+  allChecks: readonly ScriptCheck[],
+  onlyRuleIDs: readonly string[]
 ): boolean {
   const segments = expandedScriptSegments(content, scripts);
-  return safeScriptForCheck(segments, check) && segments.some((segment) => check.matches(segment));
+  return (
+    safeScriptForCheck(segments, check) &&
+    filteredScriptForCheck(segments, allChecks, onlyRuleIDs) &&
+    segments.some((segment) => check.matches(segment))
+  );
 }
 
 function expandedScriptSegments(
@@ -208,6 +238,21 @@ function safeScriptForCheck(segments: readonly string[], check: ScriptCheck): bo
   return containsMutation && segments.every(mutationCheck);
 }
 
+function filteredScriptForCheck(
+  segments: readonly string[],
+  allChecks: readonly ScriptCheck[],
+  onlyRuleIDs: readonly string[]
+): boolean {
+  if (onlyRuleIDs.length === 0) {
+    return true;
+  }
+  const selected = new Set(onlyRuleIDs);
+  return segments.every((segment) => {
+    const segmentChecks = allChecks.filter((check) => check.matches(segment));
+    return segmentChecks.length === 0 || segmentChecks.some((check) => selected.has(check.ruleID));
+  });
+}
+
 function commandSegments(content: string): readonly string[] {
   return normalizeCommandContent(content)
     .split(/\n|&&|;/u)
@@ -220,15 +265,32 @@ function packageScriptMap(scripts: Readonly<Record<string, string>>): ReadonlyMa
 }
 
 function prettierCheck(content: string): boolean {
-  return /\bprettier\b/u.test(content) && /(?:--check\b|\s-c\b)/u.test(content);
+  return (
+    (/\bprettier\b/u.test(content) && /(?:--check\b|\s-c\b)/u.test(content)) ||
+    (/\boxfmt\b/u.test(content) && /--check\b/u.test(content)) ||
+    (/\bdprint\b/u.test(content) && /\bcheck\b/u.test(content)) ||
+    biomeFormatCheck(content)
+  );
+}
+
+function biomeFormatCheck(content: string): boolean {
+  return /\bbiome\s+(?:check|format)\b/u.test(content) && !mutatingFormatFlag(content);
+}
+
+function mutatingFormatFlag(content: string): boolean {
+  return /(?:^|\s)--(?:write|fix|unsafe)(?:\s|$)/u.test(content);
 }
 
 function eslintCheck(content: string): boolean {
-  return /\beslint\b/u.test(content);
+  return /\b(?:eslint|oxlint)\b/u.test(content) || biomeLintCheck(content);
+}
+
+function biomeLintCheck(content: string): boolean {
+  return /\bbiome\s+(?:check|lint)\b/u.test(content) && !mutatingFormatFlag(content);
 }
 
 function typecheckCheck(content: string): boolean {
-  return /\btsc\b(?=[^;&|]*--noemit(?:\s|$))/u.test(content);
+  return /\b(?:tsc|tsgo)\b(?=[^;&|]*--noemit(?:\s|$))/u.test(content);
 }
 
 function testCheck(content: string): boolean {
@@ -259,15 +321,17 @@ function coverageCheck(content: string): boolean {
 function complexityCheck(content: string): boolean {
   return (
     /\bcomplexity\b/u.test(content) ||
-    /\beslint\b(?=[^;&|]*--max-warnings(?:=|\s+)0\b)/u.test(content)
+    /\boxlint\b/u.test(content) ||
+    /\beslint\b(?=[^;&|]*--max-warnings(?:=|\s+)0\b)/u.test(content) ||
+    biomeLintCheck(content)
   );
 }
 
 function dryCheck(content: string): boolean {
   return (
-    /\bslophammer-ts\s+dry\b/u.test(content) ||
-    /\bdist\/src\/cli\/main\.js\s+dry\b/u.test(content) ||
-    /\btypescript\s+dry\b/u.test(content)
+    /\bslophammer-ts(?:@\S+)?\s+dry\b/u.test(content) ||
+    /\bdist\/src\/cli\/main\.js\s+(?:typescript\s+)?dry\b/u.test(content) ||
+    /\bslophammer(?:@\S+)?\s+typescript\s+dry\b/u.test(content)
   );
 }
 

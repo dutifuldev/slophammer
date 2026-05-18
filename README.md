@@ -360,11 +360,11 @@ The implemented rule set is:
 | `go.mutation-required`              | Go projects should declare `mutate4go`.                       |
 | `go.dependency-boundaries-required` | Go projects should obey configured import boundaries.         |
 | `ts.package-required`               | TypeScript projects should include `package.json`.            |
-| `ts.typecheck-required`             | TypeScript projects should run `tsc --noEmit`.                |
+| `ts.typecheck-required`             | TypeScript projects should run a no-emit typecheck.           |
 | `ts.strict-required`                | TypeScript projects should use strict mode.                   |
 | `ts.no-explicit-any`                | TypeScript projects should reject `any`.                      |
 | `ts.no-unsafe-types`                | TypeScript projects should reject unsafe type operations.     |
-| `ts.lint-required`                  | TypeScript projects should run ESLint.                        |
+| `ts.lint-required`                  | TypeScript projects should run a configured linter.           |
 | `ts.format-required`                | TypeScript projects should run a formatter check.             |
 | `ts.test-required`                  | TypeScript projects should run tests.                         |
 | `ts.coverage-required`              | TypeScript projects should enforce coverage.                  |

@@ -400,6 +400,10 @@ describe("TypeScript rule parsing", () => {
         packageWithScripts(),
         enabledESLintConfig(),
         {
+          path: "packages/api/package.json",
+          content: JSON.stringify({ scripts: packageScripts() })
+        },
+        {
           path: "packages/api/tsconfig.json",
           content: JSON.stringify({ compilerOptions: { strict: false } })
         },

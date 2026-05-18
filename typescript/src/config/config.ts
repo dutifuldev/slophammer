@@ -33,8 +33,15 @@ export type DryConfig = {
   readonly copiedBlocks: DryCopiedConfig;
 };
 
+export type CoverageConfig = {
+  readonly threshold: number;
+  readonly paths: readonly string[];
+  readonly exclude: readonly string[];
+};
+
 export type TypeScriptConfig = {
   readonly coverageThreshold: number;
+  readonly coverage: CoverageConfig;
   readonly complexityMax: number;
   readonly dry: DryConfig;
   readonly mutationTargets: readonly string[];
@@ -51,6 +58,7 @@ export function emptyConfig(): Config {
     rules: new Map(),
     typescript: {
       coverageThreshold: 0,
+      coverage: { threshold: 0, paths: [], exclude: [] },
       complexityMax: 0,
       dry: {
         maxFindings: 0,
@@ -109,17 +117,25 @@ function parseRules(root: Readonly<Record<string, unknown>>): ReadonlyMap<string
 function parseTypeScriptConfig(root: Readonly<Record<string, unknown>>): TypeScriptConfig {
   assertKnownKeys(root, "typescript", [
     "coverage_threshold",
+    "coverage",
     "complexity_max",
     "dry",
     "mutation_targets",
     "dependency_boundaries"
   ]);
+  const coverage = asRecord(root["coverage"]);
+  assertKnownKeys(coverage, "typescript.coverage", ["threshold", "paths", "exclude"]);
   const dry = asRecord(root["dry"]);
   assertKnownKeys(dry, "typescript.dry", ["max_findings", "paths", "exclude", "copied_blocks"]);
   const copiedBlocks = asRecord(dry["copied_blocks"]);
   assertKnownKeys(copiedBlocks, "typescript.dry.copied_blocks", ["enabled", "min_tokens"]);
   return {
     coverageThreshold: optionalNumber(root["coverage_threshold"], "typescript.coverage_threshold"),
+    coverage: {
+      threshold: optionalNumber(coverage["threshold"], "typescript.coverage.threshold"),
+      paths: optionalStringArray(coverage["paths"], "typescript.coverage.paths"),
+      exclude: optionalStringArray(coverage["exclude"], "typescript.coverage.exclude")
+    },
     complexityMax: optionalNumber(root["complexity_max"], "typescript.complexity_max"),
     dry: {
       maxFindings: optionalNumber(dry["max_findings"], "typescript.dry.max_findings"),
@@ -163,6 +179,9 @@ function validateTypeScriptConfig(cfg: TypeScriptConfig, filePath: string): void
 function validateCoverageThreshold(cfg: TypeScriptConfig, filePath: string): void {
   if (cfg.coverageThreshold > 0 && cfg.coverageThreshold < minimumCoverageThreshold) {
     throw new Error(`${filePath}: typescript.coverage_threshold must be at least 85`);
+  }
+  if (cfg.coverage.threshold > 0 && cfg.coverage.threshold < minimumCoverageThreshold) {
+    throw new Error(`${filePath}: typescript.coverage.threshold must be at least 85`);
   }
 }
 

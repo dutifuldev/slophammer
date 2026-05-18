@@ -1,13 +1,18 @@
 import path from "node:path";
-import ts from "typescript";
 import YAML from "yaml";
 
 import type { Config } from "../config/config.js";
 import { minimumCoverageThreshold } from "../config/config.js";
 import { ruleSeverity } from "../config/config.js";
 import { commandFiles, filesNamed, filesWithSuffix, type Snapshot } from "../repo/repo.js";
+import { dependencyBoundaryFindings } from "./dependency-boundaries.js";
 import { defaultDefinitions, ruleIDs } from "./definitions.js";
 import { complexityLimit, enforcedRuleValues, stripJavaScriptComments } from "./eslint-values.js";
+import {
+  hasOxlintComplexityRule,
+  hasOxlintRule,
+  hasTypeAwareOxlintRule
+} from "./oxlint-evidence.js";
 import { expandedPackageScriptSegments, packageScripts } from "./package-scripts.js";
 import { scopeSnapshot } from "./project-scope.js";
 import { compilerConfig, extendedConfigPaths } from "./typescript-config.js";
@@ -39,8 +44,15 @@ export function explain(ruleID: string): string | undefined {
   ].join("\n");
 }
 
-export function runRules(snapshot: Snapshot, cfg: Config): Report {
-  const findings = defaultRules().flatMap((rule) => rule.check(snapshot, cfg));
+export type RunRulesOptions = {
+  readonly onlyRuleIDs?: readonly string[];
+};
+
+export function runRules(snapshot: Snapshot, cfg: Config, options: RunRulesOptions = {}): Report {
+  const onlyRuleIDs = new Set(options.onlyRuleIDs ?? []);
+  const findings = defaultRules()
+    .filter((rule) => onlyRuleIDs.size === 0 || onlyRuleIDs.has(rule.metadata().id))
+    .flatMap((rule) => rule.check(snapshot, cfg));
   const sorted = findings.map((finding) => ({
     ...finding,
     severity: ruleSeverity(cfg, finding.rule_id, finding.severity)
@@ -111,9 +123,7 @@ type TypeScriptCheck = (
 const typeScriptChecks: Readonly<Record<string, TypeScriptCheck>> = {
   [ruleIDs.tsPackageRequired]: requiredNamedFileCheck("package.json"),
   [ruleIDs.tsStrictRequired]: predicateCheck(hasStrictTypeScriptConfig),
-  [ruleIDs.tsNoExplicitAny]: predicateCheck((snapshot) =>
-    hasTypeScriptESLintRule(snapshot, "no-explicit-any")
-  ),
+  [ruleIDs.tsNoExplicitAny]: predicateCheck((snapshot) => hasTypeScriptNoExplicitAnyRule(snapshot)),
   [ruleIDs.tsNoUnsafeTypes]: predicateCheck(hasUnsafeTypeRules),
   [ruleIDs.tsComplexityRequired]: (definition, snapshot, cfg) =>
     hasComplexityRule(snapshot, cfg) ? [] : [finding(definition)],
@@ -124,12 +134,7 @@ const typeScriptChecks: Readonly<Record<string, TypeScriptCheck>> = {
   [ruleIDs.tsTestRequired]: predicateCheck(hasTypeScriptTestCommand),
   [ruleIDs.tsCoverageRequired]: (definition, snapshot, cfg) =>
     hasCoverageGate(snapshot, cfg) ? [] : [finding(definition)],
-  [ruleIDs.tsDryRequired]: commandCheck([
-    "slophammer-ts dry",
-    "slophammer typescript dry",
-    "dist/src/cli/main.js dry",
-    "typescript dry"
-  ]),
+  [ruleIDs.tsDryRequired]: predicateCheck(hasTypeScriptDryCommand),
   [ruleIDs.tsMutationRequired]: predicateCheck(hasTypeScriptMutationCommand),
   [ruleIDs.tsDependencyBoundariesRequired]: dependencyBoundaryFindings
 };
@@ -141,11 +146,6 @@ function requiredNamedFileCheck(fileName: string): TypeScriptCheck {
 
 function predicateCheck(predicate: (snapshot: Snapshot) => boolean): TypeScriptCheck {
   return (definition, snapshot) => (predicate(snapshot) ? [] : [finding(definition)]);
-}
-
-function commandCheck(needles: readonly string[]): TypeScriptCheck {
-  return (definition, snapshot) =>
-    hasCommandSignal(snapshot, needles) ? [] : [finding(definition)];
 }
 
 function finding(definition: Definition, pathOverride?: string, messageOverride?: string): Finding {
@@ -181,37 +181,74 @@ type ProjectScope = {
 };
 
 function typeScriptProjectScopes(snapshot: Snapshot): readonly ProjectScope[] {
-  const roots = new Set<string>();
-  const packageRoots = new Set<string>();
-  for (const file of snapshot.files.values()) {
-    if (ignoredProjectDataPath(file.path)) {
-      continue;
-    }
-    if (path.posix.basename(file.path).toLowerCase() === "package.json") {
-      packageRoots.add(parentDirectory(file.path));
-      if (packageHasTypeScriptSignal(file)) {
-        roots.add(parentDirectory(file.path));
-      }
-      continue;
-    }
-    if (path.posix.basename(file.path).toLowerCase() === "tsconfig.json") {
-      roots.add(parentDirectory(file.path));
-      continue;
-    }
-    if (typeScriptSourcePath(file.path)) {
-      roots.add(typeScriptSourceRoot(snapshot, file.path));
-    }
-  }
-  const sortedRoots = [...roots].sort((left, right) => left.localeCompare(right));
-  const boundaryRoots = [...new Set([...sortedRoots, ...packageRoots])].sort((left, right) =>
-    left.localeCompare(right)
+  const sortedRoots = sortedTypeScriptProjectRoots(snapshot);
+  const boundaryRoots = [...new Set([...sortedRoots, ...packageProjectRoots(snapshot)])].sort(
+    (left, right) => left.localeCompare(right)
   );
   return sortedRoots
     .map((root) => ({ root, snapshot: scopeSnapshot(snapshot, root, boundaryRoots) }))
     .filter((scope) => isTypeScriptProject(scope.snapshot));
 }
 
+function sortedTypeScriptProjectRoots(snapshot: Snapshot): readonly string[] {
+  const roots = new Set<string>();
+  for (const file of snapshot.files.values()) {
+    addTypeScriptProjectRoot(snapshot, roots, file);
+  }
+  return [...roots].sort((left, right) => left.localeCompare(right));
+}
+
+function addTypeScriptProjectRoot(
+  snapshot: Snapshot,
+  roots: Set<string>,
+  file: { readonly path: string; readonly content: string }
+): void {
+  if (ignoredProjectDataPath(file.path)) {
+    return;
+  }
+  const baseName = path.posix.basename(file.path).toLowerCase();
+  if (baseName === "package.json" && packageHasTypeScriptSignal(file)) {
+    roots.add(parentDirectory(file.path));
+    return;
+  }
+  if (baseName === "tsconfig.json") {
+    addTypeScriptConfigRoot(snapshot, roots, file.path);
+    return;
+  }
+  if (typeScriptSourcePath(file.path)) {
+    roots.add(typeScriptSourceRoot(snapshot, file.path));
+  }
+}
+
+function addTypeScriptConfigRoot(snapshot: Snapshot, roots: Set<string>, filePath: string): void {
+  const root = parentDirectory(filePath);
+  if (
+    root === "." ||
+    hasPackageFile(snapshot, root) ||
+    nearestPackageRoot(snapshot, root) === undefined
+  ) {
+    roots.add(root);
+  }
+}
+
+function packageProjectRoots(snapshot: Snapshot): readonly string[] {
+  const roots = new Set<string>();
+  for (const file of snapshot.files.values()) {
+    if (
+      !ignoredProjectDataPath(file.path) &&
+      path.posix.basename(file.path).toLowerCase() === "package.json"
+    ) {
+      roots.add(parentDirectory(file.path));
+    }
+  }
+  return [...roots].sort((left, right) => left.localeCompare(right));
+}
+
 function typeScriptSourceRoot(snapshot: Snapshot, filePath: string): string {
+  const packageRoot = nearestPackageRoot(snapshot, filePath);
+  if (packageRoot !== undefined) {
+    return packageRoot;
+  }
   const markerRoot = nearestTypeScriptMarkerRoot(snapshot, filePath);
   if (markerRoot !== undefined) {
     return markerRoot;
@@ -221,6 +258,17 @@ function typeScriptSourceRoot(snapshot: Snapshot, filePath: string): string {
     return sourceRoot;
   }
   return parentDirectory(filePath);
+}
+
+function nearestPackageRoot(snapshot: Snapshot, filePath: string): string | undefined {
+  for (let current = parentDirectory(filePath); ; current = parentDirectory(current)) {
+    if (hasPackageFile(snapshot, current)) {
+      return current;
+    }
+    if (current === ".") {
+      return undefined;
+    }
+  }
 }
 
 function sourceDirectoryRoot(filePath: string): string | undefined {
@@ -286,7 +334,7 @@ function packageScriptsHaveTypeScriptSignal(root: Readonly<Record<string, unknow
       .map(([name, value]) => `${name}: ${value}`)
       .join("\n")
   );
-  return content.includes("typecheck") || /\btsc\b/u.test(content);
+  return content.includes("typecheck") || /\b(?:tsc|tsgo)\b/u.test(content);
 }
 
 function packageDependenciesHaveTypeScriptSignal(root: Readonly<Record<string, unknown>>): boolean {
@@ -302,6 +350,7 @@ function packageDependenciesHaveTypeScriptSignal(root: Readonly<Record<string, u
 function typeScriptDependencyName(name: string): boolean {
   return (
     name === "typescript" ||
+    name === "@typescript/native-preview" ||
     name === "ts-node" ||
     name === "tsx" ||
     name === "ts-jest" ||
@@ -321,24 +370,29 @@ function hasRootFileNamed(snapshot: Snapshot, name: string): boolean {
 }
 
 function hasStrictTypeScriptConfig(snapshot: Snapshot): boolean {
-  const files = productionFilesNamed(snapshot, "tsconfig.json");
+  const files = productionTypeScriptConfigFiles(snapshot);
   if (files.length === 0) {
     return false;
   }
   return files.every((file) => {
     const options = effectiveCompilerOptions(snapshot, file.path, new Set());
-    return [
-      "strict",
-      "noImplicitAny",
-      "noImplicitOverride",
-      "noUncheckedIndexedAccess",
-      "exactOptionalPropertyTypes",
-      "noFallthroughCasesInSwitch",
-      "noPropertyAccessFromIndexSignature",
-      "useUnknownInCatchVariables",
-      "noEmitOnError"
-    ].every((option) => options[option] === true);
+    return options["strict"] === true;
   });
+}
+
+function productionTypeScriptConfigFiles(
+  snapshot: Snapshot
+): readonly { readonly path: string; readonly content: string }[] {
+  return productionFilesNamed(snapshot, "tsconfig.json").filter(
+    (file) => parentDirectory(file.path) === "."
+  );
+}
+
+function hasTypeScriptNoExplicitAnyRule(snapshot: Snapshot): boolean {
+  return (
+    (hasESLintCommand(snapshot) && hasTypeScriptESLintRule(snapshot, "no-explicit-any")) ||
+    (hasOxlintCommand(snapshot) && hasOxlintRule(snapshot, "typescript/no-explicit-any"))
+  );
 }
 
 function hasTypeScriptESLintRule(snapshot: Snapshot, ruleName: string): boolean {
@@ -356,20 +410,28 @@ function hasUnsafeTypeRules(snapshot: Snapshot): boolean {
     "no-unsafe-member-access",
     "no-unsafe-return"
   ];
-  return eslintConfigContent(snapshot).some((content) =>
-    rules.every(
-      (rule) => enforcedRuleValues(content, rule, warningsFail, "typescript-eslint").length > 0
-    )
+  return (
+    (hasESLintCommand(snapshot) &&
+      eslintConfigContent(snapshot).some((content) =>
+        rules.every(
+          (rule) => enforcedRuleValues(content, rule, warningsFail, "typescript-eslint").length > 0
+        )
+      )) ||
+    rules.every((rule) => hasTypeAwareOxlintRule(snapshot, `typescript/${rule}`))
   );
 }
 
 function hasComplexityRule(snapshot: Snapshot, cfg: Config): boolean {
   const warningsFail = hasESLintMaxWarningsZero(snapshot);
   const maximum = cfg.typescript.complexityMax > 0 ? cfg.typescript.complexityMax : 8;
-  return eslintConfigContent(snapshot).some((content) =>
-    enforcedRuleValues(content, "complexity", warningsFail, "core").some((value) =>
-      complexityLimit(value, maximum)
-    )
+  return (
+    (hasESLintCommand(snapshot) &&
+      eslintConfigContent(snapshot).some((content) =>
+        enforcedRuleValues(content, "complexity", warningsFail, "core").some((value) =>
+          complexityLimit(value, maximum)
+        )
+      )) ||
+    (hasOxlintCommand(snapshot) && hasOxlintComplexityRule(snapshot, maximum))
   );
 }
 
@@ -439,18 +501,6 @@ function quoteReservedYAMLRuleKeys(content: string): string {
   );
 }
 
-function hasCommandSignal(snapshot: Snapshot, needles: readonly string[]): boolean {
-  const scripts = packageScripts(snapshot);
-  const normalizedNeedles = needles.map(normalizeCommandContent);
-  return commandFiles(snapshot).some((file) =>
-    commandSegments(file.content)
-      .flatMap((segment) => expandedPackageScriptSegments(segment, scripts))
-      .some((segment) =>
-        normalizedNeedles.some((needle) => normalizeCommandContent(segment).includes(needle))
-      )
-  );
-}
-
 function hasESLintMaxWarningsZero(snapshot: Snapshot): boolean {
   const scripts = packageScripts(snapshot);
   return commandFiles(snapshot).some((file) =>
@@ -461,37 +511,87 @@ function hasESLintMaxWarningsZero(snapshot: Snapshot): boolean {
 }
 
 function hasCoverageGate(snapshot: Snapshot, cfg: Config): boolean {
-  const threshold =
-    cfg.typescript.coverageThreshold > 0
-      ? cfg.typescript.coverageThreshold
-      : minimumCoverageThreshold;
+  const threshold = configuredCoverageThreshold(cfg);
   return (
     hasCoverageCommandThreshold(snapshot, threshold) || hasRunnerCoverageConfig(snapshot, threshold)
   );
 }
 
+function configuredCoverageThreshold(cfg: Config): number {
+  if (cfg.typescript.coverage.threshold > 0) {
+    return cfg.typescript.coverage.threshold;
+  }
+  if (cfg.typescript.coverageThreshold > 0) {
+    return cfg.typescript.coverageThreshold;
+  }
+  return minimumCoverageThreshold;
+}
+
 function hasTypeScriptTypecheckCommand(snapshot: Snapshot): boolean {
-  return commandFiles(snapshot).some((file) =>
-    commandSegments(file.content).some((segment) =>
-      /\btsc\b(?=[^;&|]*--noemit(?:\s|$))/u.test(segment)
-    )
+  return commandSegmentsWithPackageExpansion(snapshot).some((segment) =>
+    /\b(?:tsc|tsgo)\b(?=[^;&|]*--noemit(?:\s|$))/u.test(segment)
   );
 }
 
 function hasTypeScriptLintCommand(snapshot: Snapshot): boolean {
-  return commandFiles(snapshot).some((file) =>
-    commandSegments(file.content).some((segment) => /\beslint\b/u.test(segment))
+  return commandSegmentsWithPackageExpansion(snapshot).some(
+    (segment) =>
+      /\b(?:eslint|oxlint)\b/u.test(segment) ||
+      (/\bbiome\s+(?:check|lint)\b/u.test(segment) && !mutatingFormatFlag(segment))
+  );
+}
+
+function hasESLintCommand(snapshot: Snapshot): boolean {
+  return commandSegmentsWithPackageExpansion(snapshot).some((segment) =>
+    /\beslint\b/u.test(segment)
+  );
+}
+
+function hasOxlintCommand(snapshot: Snapshot): boolean {
+  return commandSegmentsWithPackageExpansion(snapshot).some((segment) =>
+    /\boxlint\b/u.test(segment)
   );
 }
 
 function hasTypeScriptFormatCommand(snapshot: Snapshot): boolean {
-  return commandFiles(snapshot).some((file) =>
-    commandSegments(file.content).some((segment) => prettierCheckCommand(segment))
+  return commandSegmentsWithPackageExpansion(snapshot).some((segment) =>
+    formatterCheckCommand(segment)
   );
 }
 
 function prettierCheckCommand(segment: string): boolean {
   return /\bprettier\b/u.test(segment) && /(?:--check\b|\s-c\b)/u.test(segment);
+}
+
+function formatterCheckCommand(segment: string): boolean {
+  return (
+    prettierCheckCommand(segment) ||
+    (/\boxfmt\b/u.test(segment) && /--check\b/u.test(segment)) ||
+    (/\bdprint\b/u.test(segment) && /\bcheck\b/u.test(segment)) ||
+    (/\bbiome\s+(?:check|format)\b/u.test(segment) && !mutatingFormatFlag(segment))
+  );
+}
+
+function mutatingFormatFlag(segment: string): boolean {
+  return /(?:^|\s)--(?:write|fix|unsafe)(?:\s|$)/u.test(segment);
+}
+
+function hasTypeScriptDryCommand(snapshot: Snapshot): boolean {
+  return commandSegmentsWithPackageExpansion(snapshot).some(
+    (segment) =>
+      /\bslophammer-ts(?:@\S+)?\s+dry\b/u.test(segment) ||
+      /\bslophammer(?:@\S+)?\s+typescript\s+dry\b/u.test(segment) ||
+      /\bdist\/src\/cli\/main\.js\s+(?:typescript\s+)?dry\b/u.test(segment)
+  );
+}
+
+function commandSegmentsWithPackageExpansion(snapshot: Snapshot): readonly string[] {
+  const scripts = packageScripts(snapshot);
+  return commandFiles(snapshot).flatMap((file) =>
+    commandSegments(file.content).flatMap((segment) =>
+      expandedPackageScriptSegments(segment, scripts)
+    )
+  );
 }
 
 function hasCoverageCommandThreshold(snapshot: Snapshot, threshold: number): boolean {
@@ -720,119 +820,6 @@ function effectiveCompilerOptions(
   return { ...inherited, ...asRecord(config["compilerOptions"]) };
 }
 
-function dependencyBoundaryFindings(
-  definition: Definition,
-  snapshot: Snapshot,
-  cfg: Config
-): readonly Finding[] {
-  if (cfg.typescript.dependencyBoundaries.length === 0) {
-    return [finding(definition)];
-  }
-  return cfg.typescript.dependencyBoundaries.flatMap((boundary) =>
-    importsUnder(snapshot, boundary.from)
-      .filter((edge) => !boundaryAllows(edge.to, [boundary.from, ...boundary.allow]))
-      .map((edge) =>
-        finding(
-          definition,
-          edge.from,
-          `Import ${edge.to} is outside allowed dependencies for ${boundary.from}`
-        )
-      )
-  );
-}
-
-type ImportEdge = {
-  readonly from: string;
-  readonly to: string;
-};
-
-function importsUnder(snapshot: Snapshot, root: string): readonly ImportEdge[] {
-  return [...snapshot.files.values()]
-    .filter((file) => file.path.startsWith(`${root}/`) && sourceExtension(file.path))
-    .flatMap((file) =>
-      importSpecifiers(file.content).map((specifier) => ({
-        from: file.path,
-        to: resolveImport(file.path, specifier)
-      }))
-    );
-}
-
-function importSpecifiers(content: string): readonly string[] {
-  const specifiers: string[] = [];
-  const source = ts.createSourceFile("input.ts", content, ts.ScriptTarget.Latest, true);
-  const visit = (node: ts.Node): void => {
-    const specifier = importSpecifierFromNode(node);
-    if (specifier?.startsWith(".")) {
-      specifiers.push(specifier);
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(source);
-  return specifiers;
-}
-
-function importSpecifierFromNode(node: ts.Node): string | undefined {
-  if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
-    return stringLiteralText(node.moduleSpecifier);
-  }
-  if (ts.isCallExpression(node)) {
-    return callImportSpecifier(node);
-  }
-  if (ts.isImportEqualsDeclaration(node)) {
-    return importEqualsSpecifier(node);
-  }
-  if (ts.isImportTypeNode(node)) {
-    return importTypeSpecifier(node);
-  }
-  return undefined;
-}
-
-function callImportSpecifier(node: ts.CallExpression): string | undefined {
-  if (node.expression.kind === ts.SyntaxKind.ImportKeyword || requireCall(node)) {
-    return stringLiteralText(node.arguments[0]);
-  }
-  return undefined;
-}
-
-function importTypeSpecifier(node: ts.ImportTypeNode): string | undefined {
-  const argument = node.argument;
-  if (!ts.isLiteralTypeNode(argument)) {
-    return undefined;
-  }
-  return stringLiteralText(argument.literal);
-}
-
-function importEqualsSpecifier(node: ts.ImportEqualsDeclaration): string | undefined {
-  if (!ts.isExternalModuleReference(node.moduleReference)) {
-    return undefined;
-  }
-  return stringLiteralText(node.moduleReference.expression);
-}
-
-function requireCall(node: ts.CallExpression): boolean {
-  return ts.isIdentifier(node.expression) && node.expression.text === "require";
-}
-
-function stringLiteralText(node: ts.Node | undefined): string | undefined {
-  return node !== undefined && ts.isStringLiteral(node) ? node.text : undefined;
-}
-
-function resolveImport(from: string, specifier: string): string {
-  return path.posix.normalize(path.posix.join(path.posix.dirname(from), specifier));
-}
-
-function boundaryAllows(target: string, allowed: readonly string[]): boolean {
-  const normalizedTarget = boundaryPath(target);
-  return allowed.some((root) => {
-    const normalizedRoot = boundaryPath(root);
-    return normalizedTarget === normalizedRoot || normalizedTarget.startsWith(`${normalizedRoot}/`);
-  });
-}
-
-function boundaryPath(filePath: string): string {
-  return filePath.replace(/\.(?:[cm]?js|jsx|[cm]?ts|tsx)$/u, "");
-}
-
 function normalizeCommandContent(content: string): string {
   return content.replaceAll("\\\n", " ").replace(/\s+/g, " ").toLowerCase();
 }
@@ -842,19 +829,6 @@ function asRecord(value: unknown): Readonly<Record<string, unknown>> {
     return {};
   }
   return value as Readonly<Record<string, unknown>>;
-}
-
-function sourceExtension(filePath: string): boolean {
-  return (
-    filePath.endsWith(".ts") ||
-    filePath.endsWith(".tsx") ||
-    filePath.endsWith(".mts") ||
-    filePath.endsWith(".cts") ||
-    filePath.endsWith(".js") ||
-    filePath.endsWith(".jsx") ||
-    filePath.endsWith(".mjs") ||
-    filePath.endsWith(".cjs")
-  );
 }
 
 function typeScriptSourceExtension(filePath: string): boolean {

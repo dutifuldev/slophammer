@@ -66,9 +66,10 @@ export const defaultDefinitions: readonly Definition[] = [
     category: "typescript",
     severity: "error",
     path: ".github/workflows",
-    message: "TypeScript projects must declare tsc --noEmit in CI or scripts",
-    description: "TypeScript projects should declare tsc --noEmit in CI or scripts.",
-    tool: "tsc --noEmit",
+    message: "TypeScript projects must declare a no-emit typecheck in CI or scripts",
+    description:
+      "TypeScript projects should declare tsc, tsgo, or an equivalent no-emit typecheck.",
+    tool: "tsc/tsgo --noEmit",
     status: "implemented"
   },
   {
@@ -89,8 +90,8 @@ export const defaultDefinitions: readonly Definition[] = [
     severity: "error",
     path: "eslint.config.mjs",
     message: "TypeScript projects must reject explicit any",
-    description: "TypeScript projects should configure ESLint to reject explicit any.",
-    tool: "eslint",
+    description: "TypeScript projects should configure lint rules to reject explicit any.",
+    tool: "eslint/oxlint",
     status: "implemented"
   },
   {
@@ -101,8 +102,8 @@ export const defaultDefinitions: readonly Definition[] = [
     path: "eslint.config.mjs",
     message: "TypeScript projects must reject unsafe type operations",
     description:
-      "TypeScript projects should configure ESLint to reject unsafe assignments, calls, member access, and returns.",
-    tool: "eslint",
+      "TypeScript projects should configure lint rules to reject unsafe assignments, calls, member access, and returns.",
+    tool: "eslint/oxlint",
     status: "implemented"
   },
   {
@@ -111,9 +112,10 @@ export const defaultDefinitions: readonly Definition[] = [
     category: "typescript",
     severity: "error",
     path: ".github/workflows",
-    message: "TypeScript projects must declare ESLint in CI or scripts",
-    description: "TypeScript projects should declare ESLint in CI, scripts, or package.json.",
-    tool: "eslint",
+    message: "TypeScript projects must declare a linter in CI or scripts",
+    description:
+      "TypeScript projects should declare ESLint, Oxlint, Biome, or an equivalent linter.",
+    tool: "eslint/oxlint/biome",
     status: "implemented"
   },
   {
@@ -123,8 +125,9 @@ export const defaultDefinitions: readonly Definition[] = [
     severity: "error",
     path: ".github/workflows",
     message: "TypeScript projects must declare a formatter check",
-    description: "TypeScript projects should declare a formatter check, normally Prettier.",
-    tool: "prettier",
+    description:
+      "TypeScript projects should declare a formatter check through Prettier, Oxfmt, Biome, Dprint, or an equivalent tool.",
+    tool: "prettier/oxfmt/biome/dprint",
     status: "implemented"
   },
   {
@@ -134,8 +137,8 @@ export const defaultDefinitions: readonly Definition[] = [
     severity: "error",
     path: ".github/workflows",
     message: "TypeScript projects must declare tests in CI or scripts",
-    description: "TypeScript projects should declare a test command.",
-    tool: "vitest",
+    description: "TypeScript projects should declare a real test runner command.",
+    tool: "node --test/vitest/jest",
     status: "implemented"
   },
   {
@@ -146,7 +149,7 @@ export const defaultDefinitions: readonly Definition[] = [
     path: ".github/workflows",
     message: "TypeScript projects must declare a coverage gate",
     description: "TypeScript projects should declare a coverage gate with a target of at least 85.",
-    tool: "vitest coverage",
+    tool: "c8/nyc/vitest/jest coverage",
     status: "implemented"
   },
   {
@@ -156,8 +159,9 @@ export const defaultDefinitions: readonly Definition[] = [
     severity: "error",
     path: "eslint.config.mjs",
     message: "TypeScript projects must enforce complexity limits",
-    description: "TypeScript projects should enforce complexity limits through ESLint.",
-    tool: "eslint",
+    description:
+      "TypeScript projects should enforce complexity limits through a configured linter.",
+    tool: "eslint/oxlint/biome",
     status: "implemented"
   },
   {

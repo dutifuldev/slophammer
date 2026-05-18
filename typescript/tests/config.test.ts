@@ -146,6 +146,11 @@ describe("loadConfig strict keys", () => {
       },
       { name: "typescript", content: "typescript:\n  made_up: true\n", want: "typescript.made_up" },
       {
+        name: "typescript coverage",
+        content: "typescript:\n  coverage:\n    made_up: true\n",
+        want: "typescript.coverage.made_up"
+      },
+      {
         name: "typescript dry",
         content: "typescript:\n  dry:\n    made_up: true\n",
         want: "typescript.dry.made_up"

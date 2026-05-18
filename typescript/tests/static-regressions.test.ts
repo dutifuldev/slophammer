@@ -92,6 +92,127 @@ describe("TypeScript static rule regressions", () => {
 
     expect(report.findings.map((finding) => finding.rule_id)).not.toContain("ts.coverage-required");
   });
+
+  it("does not accept Oxlint unsafe rules without a type-aware Oxlint command", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles(),
+        packageWithScripts({ lint: "oxlint src" }),
+        enabledOxlintConfig()
+      ]),
+      emptyConfig()
+    );
+
+    expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.no-unsafe-types");
+  });
+
+  it("accepts Oxlint warning rules when deny-warnings runs", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles(),
+        packageWithScripts({ lint: "oxlint --deny-warnings src" }),
+        enabledOxlintNoExplicitAnyWarnConfig()
+      ]),
+      emptyConfig(),
+      { onlyRuleIDs: ["ts.no-explicit-any"] }
+    );
+
+    expect(report.findings).toEqual([]);
+  });
+
+  it("does not satisfy lint-rule evidence with an unused ESLint config", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles(),
+        packageWithScripts({ lint: "biome check ." }),
+        enabledESLintConfig()
+      ]),
+      emptyConfig()
+    );
+
+    expect(report.findings.map((finding) => finding.rule_id)).toEqual(
+      expect.arrayContaining(["ts.no-explicit-any", "ts.no-unsafe-types", "ts.complexity-required"])
+    );
+  });
+});
+
+describe("TypeScript tool evidence false positives", () => {
+  it("does not accept Oxlint rules disabled by later overrides", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles(),
+        packageWithScripts({ lint: "oxlint --type-aware --deny-warnings src" }),
+        disabledOxlintOverrideConfig()
+      ]),
+      emptyConfig()
+    );
+
+    expect(report.findings.map((finding) => finding.rule_id)).toEqual(
+      expect.arrayContaining(["ts.no-explicit-any", "ts.no-unsafe-types", "ts.complexity-required"])
+    );
+  });
+
+  it("does not let test-only Oxlint overrides disable production rule evidence", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles(),
+        packageWithScripts({ lint: "oxlint --deny-warnings src" }),
+        testOverrideOxlintConfig()
+      ]),
+      emptyConfig(),
+      { onlyRuleIDs: ["ts.no-explicit-any"] }
+    );
+
+    expect(report.findings).toEqual([]);
+  });
+
+  it("does not treat echoed workflow matrix values as executed commands", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles(),
+        {
+          path: ".github/workflows/ci.yml",
+          content: echoedMatrixWorkflow()
+        },
+        enabledESLintConfig()
+      ]),
+      emptyConfig()
+    );
+
+    expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.typecheck-required");
+  });
+
+  it("does not treat action input command keys as workflow matrix commands", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles(),
+        {
+          path: ".github/workflows/ci.yml",
+          content: actionInputCommandWorkflow()
+        },
+        enabledESLintConfig()
+      ]),
+      emptyConfig()
+    );
+
+    expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.typecheck-required");
+  });
+
+  it("does not share workflow matrix commands across jobs", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles(),
+        {
+          path: ".github/workflows/ci.yml",
+          content: multiJobMatrixWorkflow()
+        },
+        enabledESLintConfig()
+      ]),
+      emptyConfig()
+    );
+
+    expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.typecheck-required");
+  });
 });
 
 describe("TypeScript command failure regressions", () => {
@@ -216,6 +337,142 @@ function enabledESLintConfig(): { readonly path: string; readonly content: strin
     content:
       'export default [{rules:{"@typescript-eslint/no-explicit-any":"error","@typescript-eslint/no-unsafe-assignment":"error","@typescript-eslint/no-unsafe-call":"error","@typescript-eslint/no-unsafe-member-access":"error","@typescript-eslint/no-unsafe-return":"error",complexity:["error",8]}}];'
   };
+}
+
+function enabledOxlintConfig(): { readonly path: string; readonly content: string } {
+  return {
+    path: ".oxlintrc.json",
+    content: JSON.stringify({
+      rules: {
+        "typescript/no-explicit-any": "error",
+        "typescript/no-unsafe-assignment": "error",
+        "typescript/no-unsafe-call": "error",
+        "typescript/no-unsafe-member-access": "error",
+        "typescript/no-unsafe-return": "error",
+        "eslint/complexity": ["error", { max: 8 }]
+      }
+    })
+  };
+}
+
+function enabledOxlintNoExplicitAnyWarnConfig(): {
+  readonly path: string;
+  readonly content: string;
+} {
+  return {
+    path: ".oxlintrc.json",
+    content: JSON.stringify({
+      rules: {
+        "typescript/no-explicit-any": "warn"
+      }
+    })
+  };
+}
+
+function disabledOxlintOverrideConfig(): {
+  readonly path: string;
+  readonly content: string;
+} {
+  return {
+    path: ".oxlintrc.json",
+    content: JSON.stringify({
+      rules: {
+        "typescript/no-explicit-any": "error",
+        "typescript/no-unsafe-assignment": "error",
+        "typescript/no-unsafe-call": "error",
+        "typescript/no-unsafe-member-access": "error",
+        "typescript/no-unsafe-return": "error",
+        "eslint/complexity": ["error", { max: 8 }]
+      },
+      overrides: [
+        {
+          files: ["src/**/*.ts"],
+          rules: {
+            "typescript/no-explicit-any": "off",
+            "typescript/no-unsafe-assignment": "off",
+            "typescript/no-unsafe-call": "off",
+            "typescript/no-unsafe-member-access": "off",
+            "typescript/no-unsafe-return": "off",
+            "eslint/complexity": "off"
+          }
+        }
+      ]
+    })
+  };
+}
+
+function testOverrideOxlintConfig(): {
+  readonly path: string;
+  readonly content: string;
+} {
+  return {
+    path: ".oxlintrc.json",
+    content: JSON.stringify({
+      rules: {
+        "typescript/no-explicit-any": "error"
+      },
+      overrides: [
+        {
+          files: ["**/*.test.ts"],
+          rules: {
+            "typescript/no-explicit-any": "off"
+          }
+        }
+      ]
+    })
+  };
+}
+
+function echoedMatrixWorkflow(): string {
+  return [
+    "name: CI",
+    "jobs:",
+    "  checks:",
+    "    strategy:",
+    "      matrix:",
+    "        include:",
+    "          - command: tsc --noEmit",
+    "    steps:",
+    "      - run: echo ${{ matrix.command }}"
+  ].join("\n");
+}
+
+function actionInputCommandWorkflow(): string {
+  return [
+    "name: CI",
+    "jobs:",
+    "  checks:",
+    "    strategy:",
+    "      matrix:",
+    "        command:",
+    "          - echo ok",
+    "    steps:",
+    "      - uses: example/action@v1",
+    "        with:",
+    "          command: tsc --noEmit",
+    "      - run: ${{ matrix.command }}"
+  ].join("\n");
+}
+
+function multiJobMatrixWorkflow(): string {
+  return [
+    "name: CI",
+    "jobs:",
+    "  typecheck-template:",
+    "    strategy:",
+    "      matrix:",
+    "        command:",
+    "          - tsc --noEmit",
+    "    steps:",
+    "      - run: echo config only",
+    "  checks:",
+    "    strategy:",
+    "      matrix:",
+    "        command:",
+    "          - echo ok",
+    "    steps:",
+    "      - run: ${{ matrix.command }}"
+  ].join("\n");
 }
 
 function coverageConfig(): { readonly path: string; readonly content: string } {
