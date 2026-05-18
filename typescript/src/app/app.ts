@@ -7,6 +7,7 @@ import type { Snapshot } from "../repo/repo.js";
 import { newReport, writeJSON, writeSARIF, writeText } from "../report/report.js";
 import { scanRepo } from "../scan/scan.js";
 import { defaultDefinitions } from "../rules/definitions.js";
+import { ruleIDs } from "../rules/definitions.js";
 import { explain as explainRule, runRules } from "../rules/rules.js";
 import type { Finding } from "../rules/types.js";
 import { executeTypeScriptChecks, execRunner, type Runner } from "../toolchecks/toolchecks.js";
@@ -19,6 +20,7 @@ export type CheckOptions = {
   readonly root: string;
   readonly format: "text" | "json" | "sarif";
   readonly execute: boolean;
+  readonly onlyRuleIDs?: readonly string[];
 };
 
 export async function check(
@@ -28,10 +30,19 @@ export async function check(
   try {
     const snapshot = await scanRepo(options.root);
     const cfg = loadConfig(snapshot);
-    const base = runRules(snapshot, cfg);
-    const findings = options.execute
-      ? [...base.findings, ...applySeverityOverrides(await executeChecks(snapshot, runner), cfg)]
-      : base.findings;
+    const onlyRuleIDs = options.onlyRuleIDs ?? [];
+    validateOnlyRuleIDs(onlyRuleIDs);
+    const base = runRules(snapshot, cfg, { onlyRuleIDs });
+    const findings =
+      options.execute && shouldExecuteTypeScriptChecks(onlyRuleIDs)
+        ? [
+            ...base.findings,
+            ...filterFindings(
+              applySeverityOverrides(await executeChecks(snapshot, runner, onlyRuleIDs), cfg),
+              onlyRuleIDs
+            )
+          ]
+        : base.findings;
     const report = newReport(findings);
     return {
       code: report.ok ? exitOK : exitFindings,
@@ -43,6 +54,49 @@ export async function check(
   }
 }
 
+export async function boundaries(
+  options: Omit<CheckOptions, "onlyRuleIDs">
+): Promise<{ readonly code: number; readonly stdout: string; readonly stderr: string }> {
+  return await check({ ...options, onlyRuleIDs: [ruleIDs.tsDependencyBoundariesRequired] });
+}
+
+function validateOnlyRuleIDs(onlyRuleIDs: readonly string[]): void {
+  const known = new Set(defaultDefinitions.map((definition) => definition.id));
+  const unknown = onlyRuleIDs.filter((ruleID) => !known.has(ruleID));
+  if (unknown.length > 0) {
+    throw new Error(`unknown rule: ${unknown.join(", ")}`);
+  }
+}
+
+function filterFindings(
+  findings: readonly Finding[],
+  onlyRuleIDs: readonly string[]
+): readonly Finding[] {
+  if (onlyRuleIDs.length === 0) {
+    return findings;
+  }
+  const wanted = new Set(onlyRuleIDs);
+  return findings.filter((finding) => wanted.has(finding.rule_id));
+}
+
+const executableTypeScriptRuleIDs = new Set<string>([
+  ruleIDs.tsFormatRequired,
+  ruleIDs.tsLintRequired,
+  ruleIDs.tsTypecheckRequired,
+  ruleIDs.tsTestRequired,
+  ruleIDs.tsCoverageRequired,
+  ruleIDs.tsComplexityRequired,
+  ruleIDs.tsDryRequired,
+  ruleIDs.tsMutationRequired
+]);
+
+function shouldExecuteTypeScriptChecks(onlyRuleIDs: readonly string[]): boolean {
+  return (
+    onlyRuleIDs.length === 0 ||
+    onlyRuleIDs.some((ruleID) => executableTypeScriptRuleIDs.has(ruleID))
+  );
+}
+
 function applySeverityOverrides(findings: readonly Finding[], cfg: Config): readonly Finding[] {
   return findings.map((finding) => ({
     ...finding,
@@ -50,11 +104,15 @@ function applySeverityOverrides(findings: readonly Finding[], cfg: Config): read
   }));
 }
 
-async function executeChecks(snapshot: Snapshot, runner: Runner): Promise<readonly Finding[]> {
+async function executeChecks(
+  snapshot: Snapshot,
+  runner: Runner,
+  onlyRuleIDs: readonly string[]
+): Promise<readonly Finding[]> {
   const findings: Finding[] = [];
   for (const packageRoot of typeScriptPackageRoots(snapshot)) {
     const root = path.join(snapshot.root, packageRoot.split("/").join(path.sep));
-    const packageFindings = await executeTypeScriptChecks(root, runner, snapshot.root);
+    const packageFindings = await executeTypeScriptChecks(root, runner, snapshot.root, onlyRuleIDs);
     findings.push(...packageFindings.map((finding) => prefixPackageFinding(packageRoot, finding)));
   }
   return findings;
@@ -111,7 +169,7 @@ function packageContentHasTypeScriptSignal(content: string): boolean {
       .toLowerCase();
     return (
       scriptContent.includes("typecheck") ||
-      /\btsc\b/u.test(scriptContent) ||
+      /\b(?:tsc|tsgo)\b/u.test(scriptContent) ||
       packageDependenciesHaveTypeScriptSignal(root)
     );
   } catch {
@@ -125,7 +183,19 @@ function packageDependenciesHaveTypeScriptSignal(root: Readonly<Record<string, u
     ...Object.keys(asRecord(root["devDependencies"])),
     ...Object.keys(asRecord(root["peerDependencies"])),
     ...Object.keys(asRecord(root["optionalDependencies"]))
-  ].some((name) => name === "typescript" || name.startsWith("@typescript-eslint/"));
+  ].some((name) => typeScriptDependencyName(name));
+}
+
+function typeScriptDependencyName(name: string): boolean {
+  return (
+    name === "typescript" ||
+    name === "@typescript/native-preview" ||
+    name === "ts-node" ||
+    name === "tsx" ||
+    name === "ts-jest" ||
+    name === "typescript-eslint" ||
+    name.startsWith("@typescript-eslint/")
+  );
 }
 
 function prefixPackageFinding(packageRoot: string, finding: Finding): Finding {

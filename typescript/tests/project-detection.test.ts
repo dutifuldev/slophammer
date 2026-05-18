@@ -95,7 +95,7 @@ describe("TypeScript project detection", () => {
     expect(report.findings).toEqual([]);
   });
 
-  it("does not accept root package metadata as nested package metadata", () => {
+  it("treats package-less TypeScript below the root as root-owned", () => {
     const report = runRules(newSnapshot("/repo", nestedPackageWithoutPackageFile()), {
       ...emptyConfig(),
       typescript: {
@@ -106,8 +106,8 @@ describe("TypeScript project detection", () => {
 
     expect(report.findings).toEqual([
       expect.objectContaining({
-        rule_id: "ts.package-required",
-        path: "packages/app/package.json"
+        rule_id: "ts.strict-required",
+        path: "tsconfig.json"
       })
     ]);
   });
@@ -349,6 +349,33 @@ describe("TypeScript project scoping workflows", () => {
 
     expect(report.findings).toEqual([]);
   });
+
+  it("keeps workflow matrix commands under matching package scopes", () => {
+    const report = runRules(newSnapshot("/repo", matrixCommandPackageFiles()), {
+      ...emptyConfig(),
+      typescript: {
+        ...emptyConfig().typescript,
+        dependencyBoundaries: [
+          { from: "packages/app/src", allow: [] },
+          { from: "packages/lib/src", allow: [] }
+        ]
+      }
+    });
+
+    expect(report.findings).toEqual([]);
+  });
+
+  it("preserves workflow matrix command wrappers while scoping packages", () => {
+    const report = runRules(newSnapshot("/repo", matrixWrapperPackageFiles()), {
+      ...emptyConfig(),
+      typescript: {
+        ...emptyConfig().typescript,
+        dependencyBoundaries: [{ from: "packages/app/src", allow: [] }]
+      }
+    });
+
+    expect(report.findings).toEqual([]);
+  });
 });
 
 function packageScripts(): Readonly<Record<string, string>> {
@@ -535,6 +562,31 @@ function prefixPackageWorkflowFiles(): readonly {
   ];
 }
 
+function matrixCommandPackageFiles(): readonly {
+  readonly path: string;
+  readonly content: string;
+}[] {
+  return [
+    { path: "README.md", content: "# Repo\n" },
+    { path: "AGENTS.md", content: "# Agents\n" },
+    { path: ".github/workflows/ci.yml", content: matrixCommandWorkflow() },
+    ...packageFiles("packages/app"),
+    ...packageFiles("packages/lib")
+  ];
+}
+
+function matrixWrapperPackageFiles(): readonly {
+  readonly path: string;
+  readonly content: string;
+}[] {
+  return [
+    { path: "README.md", content: "# Repo\n" },
+    { path: "AGENTS.md", content: "# Agents\n" },
+    { path: ".github/workflows/ci.yml", content: matrixWrapperWorkflow() },
+    ...packageFiles("packages/app")
+  ];
+}
+
 function nestedPackageWithRootTSConfigBase(): readonly {
   readonly path: string;
   readonly content: string;
@@ -689,6 +741,54 @@ function workflowDefaultWorkflow(root: string): string {
     "      - run: vitest run --coverage --coverage.thresholds.lines=85 --coverage.thresholds.functions=85 --coverage.thresholds.branches=85 --coverage.thresholds.statements=85",
     "      - run: slophammer typescript dry .",
     "      - run: stryker run"
+  ].join("\n");
+}
+
+function matrixCommandWorkflow(): string {
+  const commands = [
+    "prettier --check .",
+    "eslint .",
+    "tsc --noEmit",
+    "vitest run",
+    "vitest run --coverage --coverage.thresholds.lines=85 --coverage.thresholds.functions=85 --coverage.thresholds.branches=85 --coverage.thresholds.statements=85",
+    "slophammer typescript dry .",
+    "stryker run"
+  ];
+  return [
+    "name: CI",
+    "jobs:",
+    "  checks:",
+    "    strategy:",
+    "      matrix:",
+    "        include:",
+    ...["packages/app", "packages/lib"].flatMap((root) =>
+      commands.map((command) => `          - command: cd ${root} && ${command}`)
+    ),
+    "    steps:",
+    "      - run: ${{ matrix.command }}"
+  ].join("\n");
+}
+
+function matrixWrapperWorkflow(): string {
+  const commands = [
+    "prettier --check .",
+    "eslint .",
+    "tsc --noEmit",
+    "vitest run",
+    "vitest run --coverage --coverage.thresholds.lines=85 --coverage.thresholds.functions=85 --coverage.thresholds.branches=85 --coverage.thresholds.statements=85",
+    "slophammer typescript dry .",
+    "stryker run"
+  ];
+  return [
+    "name: CI",
+    "jobs:",
+    "  checks:",
+    "    strategy:",
+    "      matrix:",
+    "        command:",
+    ...commands.map((command) => `          - ${command}`),
+    "    steps:",
+    "      - run: cd packages/app && ${{matrix.command}}"
   ].join("\n");
 }
 

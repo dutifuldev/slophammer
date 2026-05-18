@@ -218,3 +218,38 @@ Specifically:
 
 The goal is not to bless every tool forever. The goal is to make Slophammer's
 quality contract portable across serious TypeScript toolchains.
+
+## Implemented Shape
+
+The TypeScript implementation recognizes the common production stack variants
+without requiring fake config:
+
+- `tsc --noEmit` and `tsgo --noEmit` satisfy typecheck evidence.
+- ESLint and Oxlint satisfy explicit-`any`, unsafe-type, lint, and complexity
+  evidence when the relevant rules are configured.
+- Prettier, Oxfmt, Biome, and Dprint satisfy formatter evidence when run as
+  checks.
+- Node's built-in test runner, Vitest, Jest, Mocha, Ava, Uvu, Tap, `tsx
+  --test`, and Playwright satisfy test evidence.
+- `c8`, `nyc`, and Vitest threshold flags satisfy coverage evidence when all
+  line, branch, function, and statement thresholds meet the configured target.
+- Workflow matrix commands are inspected when a workflow executes
+  `${{ matrix.command }}`.
+- Package-less nested TypeScript examples are treated as root-owned by default
+  instead of independent packages.
+- `slophammer-ts check . --only <rule-id>` runs a single rule.
+- `slophammer-ts boundaries .` runs the dependency-boundary rule directly.
+
+Scoped coverage config is accepted through:
+
+```yaml
+typescript:
+  coverage:
+    threshold: 85
+    paths:
+      - src/runtime
+    exclude:
+      - dist/**
+```
+
+The legacy `typescript.coverage_threshold` shorthand remains supported.

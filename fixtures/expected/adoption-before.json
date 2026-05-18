@@ -47,7 +47,7 @@
       "rule_id": "ts.lint-required",
       "severity": "error",
       "path": ".github/workflows",
-      "message": "TypeScript projects must declare ESLint in CI or scripts"
+      "message": "TypeScript projects must declare a linter in CI or scripts"
     },
     {
       "rule_id": "ts.mutation-required",

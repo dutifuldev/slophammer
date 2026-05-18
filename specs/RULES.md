@@ -43,11 +43,11 @@ TypeScript project.
 | Rule ID                               | Severity | Finding path        | Finding message                                                |
 | ------------------------------------- | -------- | ------------------- | -------------------------------------------------------------- |
 | `ts.package-required`                 | `error`  | `package.json`      | `TypeScript projects must include package.json`                |
-| `ts.typecheck-required`               | `error`  | `.github/workflows` | `TypeScript projects must declare tsc --noEmit in CI or scripts` |
+| `ts.typecheck-required`               | `error`  | `.github/workflows` | `TypeScript projects must declare a no-emit typecheck in CI or scripts` |
 | `ts.strict-required`                  | `error`  | `tsconfig.json`     | `TypeScript projects must enable strict mode`                  |
 | `ts.no-explicit-any`                  | `error`  | `eslint.config.mjs` | `TypeScript projects must reject explicit any`                 |
 | `ts.no-unsafe-types`                  | `error`  | `eslint.config.mjs` | `TypeScript projects must reject unsafe type operations`       |
-| `ts.lint-required`                    | `error`  | `.github/workflows` | `TypeScript projects must declare ESLint in CI or scripts`     |
+| `ts.lint-required`                    | `error`  | `.github/workflows` | `TypeScript projects must declare a linter in CI or scripts`   |
 | `ts.format-required`                  | `error`  | `.github/workflows` | `TypeScript projects must declare a formatter check`           |
 | `ts.test-required`                    | `error`  | `.github/workflows` | `TypeScript projects must declare tests in CI or scripts`      |
 | `ts.coverage-required`                | `error`  | `.github/workflows` | `TypeScript projects must declare a coverage gate`             |
@@ -168,40 +168,40 @@ directory such as `typescript/`.
 
 ### `ts.typecheck-required`
 
-TypeScript projects should declare `tsc --noEmit` in an inspectable workflow,
-script, or `package.json`. A script named `typecheck` does not satisfy this rule
-unless it actually runs the TypeScript compiler with `--noEmit`.
+TypeScript projects should declare `tsc --noEmit`, `tsgo --noEmit`, or an
+equivalent no-emit typecheck in an inspectable workflow, script, or
+`package.json`. A script named `typecheck` does not satisfy this rule unless it
+actually runs a TypeScript-compatible checker with `--noEmit`.
 
 ### `ts.strict-required`
 
-TypeScript projects should enable strict compiler settings in `tsconfig.json`.
-
-The rule requires `strict`, `noImplicitAny`, `noImplicitOverride`,
-`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`,
-`noFallthroughCasesInSwitch`, `noPropertyAccessFromIndexSignature`,
-`useUnknownInCatchVariables`, and `noEmitOnError`.
+TypeScript projects should enable `strict` compiler mode in the project
+`tsconfig.json`.
 
 ### `ts.no-explicit-any`
 
-TypeScript projects should configure ESLint to reject explicit `any`.
+TypeScript projects should configure ESLint, Oxlint, or an equivalent typed lint
+rule to reject explicit `any`.
 
 ### `ts.no-unsafe-types`
 
-TypeScript projects should configure ESLint to reject unsafe assignments, calls,
-member access, and returns.
+TypeScript projects should configure ESLint, Oxlint, or an equivalent typed lint
+rule to reject unsafe assignments, calls, member access, and returns.
 
 ### `ts.lint-required`
 
-TypeScript projects should declare ESLint in CI, scripts, or `package.json`.
+TypeScript projects should declare ESLint, Oxlint, Biome, or an equivalent
+linter in CI, scripts, or `package.json`.
 
 ### `ts.format-required`
 
-TypeScript projects should declare a formatter check, normally Prettier.
+TypeScript projects should declare a formatter check through Prettier, Oxfmt,
+Biome, Dprint, or an equivalent tool.
 
 ### `ts.test-required`
 
-TypeScript projects should declare a test command, normally Vitest or
-`npm test`.
+TypeScript projects should declare a real test command, such as Node's built-in
+test runner, Vitest, Jest, or an equivalent runner.
 
 ### `ts.coverage-required`
 
@@ -210,8 +210,8 @@ TypeScript projects should declare a coverage gate. The recommended minimum is
 
 ### `ts.complexity-required`
 
-TypeScript projects should enforce complexity limits through ESLint. The
-recommended cyclomatic complexity maximum is `8`.
+TypeScript projects should enforce complexity limits through a configured
+linter. The recommended cyclomatic complexity maximum is `8`.
 
 ### `ts.dry-required`
 

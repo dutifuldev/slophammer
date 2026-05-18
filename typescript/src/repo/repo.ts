@@ -1,3 +1,5 @@
+import { parse as parseYAML } from "yaml";
+
 export type RepoFile = {
   readonly path: string;
   readonly content: string;
@@ -113,6 +115,10 @@ function shellCommandFile(file: RepoFile): RepoFile {
 }
 
 function extractWorkflowRunContent(content: string): string {
+  const workflow = workflowRecord(content);
+  if (workflow !== undefined) {
+    return workflowCommands(workflow).join("\n");
+  }
   const lines = content.replaceAll("\r\n", "\n").split("\n");
   const commands: string[] = [];
   for (let index = 0; index < lines.length; index += 1) {
@@ -134,6 +140,36 @@ function extractWorkflowRunContent(content: string): string {
   return commands.join("\n");
 }
 
+const matrixCommandExpressionPattern = /\$\{\{\s*matrix\.command\s*\}\}/u;
+
+function workflowCommands(workflow: Readonly<Record<string, unknown>>): readonly string[] {
+  return Object.values(asRecord(workflow["jobs"])).flatMap(jobWorkflowCommands);
+}
+
+function jobWorkflowCommands(job: unknown): readonly string[] {
+  const record = asRecord(job);
+  const matrixCommands = jobMatrixCommands(record);
+  return arrayValues(record["steps"]).flatMap((step) => stepWorkflowCommands(step, matrixCommands));
+}
+
+function stepWorkflowCommands(step: unknown, matrixCommands: readonly string[]): readonly string[] {
+  const command = stringValue(asRecord(step)["run"]);
+  if (command === "") {
+    return [];
+  }
+  if (!directMatrixCommand(command) || matrixCommands.length === 0) {
+    return [command];
+  }
+  return matrixCommands;
+}
+
+function directMatrixCommand(command: string): boolean {
+  return (
+    matrixCommandExpressionPattern.test(command) &&
+    command.replace(matrixCommandExpressionPattern, "").trim() === ""
+  );
+}
+
 function workflowRunEntry(
   line: string
 ): { readonly indent: number; readonly value: string } | undefined {
@@ -145,6 +181,25 @@ function workflowRunEntry(
     indent: match[1]?.length ?? 0,
     value: (match[2] ?? "").trimEnd()
   };
+}
+
+function workflowRecord(content: string): Readonly<Record<string, unknown>> | undefined {
+  try {
+    return asRecord(parseYAML(content) as unknown);
+  } catch {
+    return undefined;
+  }
+}
+
+function jobMatrixCommands(job: unknown): readonly string[] {
+  const matrix = asRecord(asRecord(asRecord(job)["strategy"])["matrix"]);
+  const includeCommands = arrayValues(matrix["include"])
+    .map((item) => stringValue(asRecord(item)["command"]))
+    .filter((item) => item !== "");
+  const directCommands = arrayValues(matrix["command"])
+    .map(stringValue)
+    .filter((item) => item !== "");
+  return [...includeCommands, ...directCommands];
 }
 
 function inlineRunCommand(value: string): string | undefined {
@@ -215,4 +270,12 @@ function asRecord(value: unknown): Readonly<Record<string, unknown>> {
     return {};
   }
   return value as Readonly<Record<string, unknown>>;
+}
+
+function arrayValues(value: unknown): readonly unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function stringValue(value: unknown): string {
+  return typeof value === "string" ? value : "";
 }

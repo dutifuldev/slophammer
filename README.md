@@ -81,6 +81,7 @@ slophammer-go check <path>
 slophammer-go check <path> --format json
 slophammer-go check <path> --format sarif
 slophammer-go check <path> --execute
+slophammer-go check <path> --only <rule-id>
 slophammer-go explain <rule-id>
 slophammer-go rules [--format text|json]
 ```
@@ -109,6 +110,8 @@ the configured Go tool checks and folds tool failures into the normal report.
 The TypeScript implementation also includes native copied-block detection:
 
 ```sh
+slophammer-ts check <path> --only <rule-id>
+slophammer-ts boundaries <path> [--format text|json|sarif]
 slophammer-ts dry [path] [--max-findings n] [--show-report] [--format json|text]
 ```
 
@@ -246,11 +249,11 @@ projects may use stricter thresholds but not weaker ones.
 
 ## Implementation Status
 
-| Language   | Product name    | Status                                                     |
-| ---------- | --------------- | ---------------------------------------------------------- |
-| Go         | `slophammer-go` | Released checker, CLI, tool checks, fixtures, CI           |
-| TypeScript | `slophammer-ts` | Released npm checker, CLI, native DRY, fixtures, CI |
-| Python     | `slophammer-py` | Template only; checker implementation planned              |
+| Language   | Product name    | Status                                                          |
+| ---------- | --------------- | --------------------------------------------------------------- |
+| Go         | `slophammer-go` | Released checker, CLI, tool checks, fixtures, CI                |
+| TypeScript | `slophammer-ts` | Released npm checker, CLI, native DRY, boundaries, fixtures, CI |
+| Python     | `slophammer-py` | Template only; checker implementation planned                   |
 
 An implementation can check more than one language. For example,
 `slophammer-go` can operate as a strong single-binary checker for Go,
@@ -286,6 +289,11 @@ The TypeScript implementation currently provides:
 - TypeScript rules for package setup, strict compiler options, unsafe-type lint
   rules, formatting, linting, tests, coverage, complexity, DRY, mutation
   declaration, and dependency boundaries
+- tool-agnostic TypeScript evidence for `tsc` or `tsgo` type checks,
+  ESLint/Oxlint/Biome linting, Prettier/Oxfmt/Dprint/Biome formatting, common
+  Node test runners, and `c8`/`nyc`/Vitest/Jest coverage gates
+- direct `slophammer-ts boundaries` and `check --only <rule-id>` commands for
+  focused adoption checks
 - native CPD-style copied-block detection through `slophammer-ts dry`
 - a narrowed npm package artifact with `slophammer-ts` bin verification
 - CI package checks and npm publishing for the TypeScript package
@@ -360,11 +368,11 @@ The implemented rule set is:
 | `go.mutation-required`              | Go projects should declare `mutate4go`.                       |
 | `go.dependency-boundaries-required` | Go projects should obey configured import boundaries.         |
 | `ts.package-required`               | TypeScript projects should include `package.json`.            |
-| `ts.typecheck-required`             | TypeScript projects should run `tsc --noEmit`.                |
+| `ts.typecheck-required`             | TypeScript projects should run a no-emit typecheck.           |
 | `ts.strict-required`                | TypeScript projects should use strict mode.                   |
 | `ts.no-explicit-any`                | TypeScript projects should reject `any`.                      |
 | `ts.no-unsafe-types`                | TypeScript projects should reject unsafe type operations.     |
-| `ts.lint-required`                  | TypeScript projects should run ESLint.                        |
+| `ts.lint-required`                  | TypeScript projects should run a configured linter.           |
 | `ts.format-required`                | TypeScript projects should run a formatter check.             |
 | `ts.test-required`                  | TypeScript projects should run tests.                         |
 | `ts.coverage-required`              | TypeScript projects should enforce coverage.                  |

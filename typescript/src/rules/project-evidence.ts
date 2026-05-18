@@ -13,6 +13,13 @@ const rootESLintConfigPaths = new Set([
   ".eslintrc.yaml"
 ]);
 
+const rootOxlintConfigPaths = new Set([
+  ".oxlintrc.json",
+  ".oxlintrc.jsonc",
+  "oxlint.config.json",
+  "oxlint.config.jsonc"
+]);
+
 const rootTestRunnerConfigPaths = new Set([
   "vite.config.ts",
   "vite.config.mts",
@@ -83,6 +90,7 @@ function rootEvidencePath(filePath: string): boolean {
     repoWorkflowPath(filePath) ||
     repoScriptPath(filePath) ||
     rootESLintConfigPaths.has(filePath) ||
+    rootOxlintConfigPaths.has(filePath) ||
     rootTestRunnerConfigPaths.has(filePath)
   );
 }
@@ -176,9 +184,21 @@ function jobWorkflowCommands(
   const defaultWorkingDirectory =
     stringValue(asRecord(asRecord(record["defaults"])["run"])["working-directory"]) ||
     workflowWorkingDirectory;
+  const matrixCommands = jobMatrixCommands(record);
   return arrayValues(record["steps"]).flatMap((step) =>
-    stepWorkflowCommand(step, defaultWorkingDirectory)
+    stepWorkflowCommand(step, defaultWorkingDirectory, matrixCommands)
   );
+}
+
+function jobMatrixCommands(job: Readonly<Record<string, unknown>>): readonly string[] {
+  const matrix = asRecord(asRecord(job["strategy"])["matrix"]);
+  const includeCommands = arrayValues(matrix["include"])
+    .map((item) => stringValue(asRecord(item)["command"]))
+    .filter((item) => item !== "");
+  const directCommands = arrayValues(matrix["command"])
+    .map(stringValue)
+    .filter((item) => item !== "");
+  return [...includeCommands, ...directCommands];
 }
 
 function workflowDefaultWorkingDirectory(workflow: Readonly<Record<string, unknown>>): string {
@@ -187,7 +207,8 @@ function workflowDefaultWorkingDirectory(workflow: Readonly<Record<string, unkno
 
 function stepWorkflowCommand(
   step: unknown,
-  defaultWorkingDirectory: string
+  defaultWorkingDirectory: string,
+  matrixCommands: readonly string[]
 ): readonly WorkflowCommand[] {
   const record = asRecord(step);
   const run = stringValue(record["run"]);
@@ -195,7 +216,22 @@ function stepWorkflowCommand(
     return [];
   }
   const workingDirectory = stringValue(record["working-directory"]) || defaultWorkingDirectory;
+  if (executableMatrixCommand(run) && matrixCommands.length > 0) {
+    return matrixCommands.map((command) => ({
+      run: run.replace(matrixCommandExpressionPattern, command),
+      workingDirectory
+    }));
+  }
   return [{ run, workingDirectory }];
+}
+
+const matrixCommandExpressionPattern = /\$\{\{\s*matrix\.command\s*\}\}/gu;
+const matrixCommandExpressionTestPattern = /\$\{\{\s*matrix\.command\s*\}\}/u;
+
+function executableMatrixCommand(command: string): boolean {
+  return splitCommandSegments(command).some(
+    (segment) => segment.replace(matrixCommandExpressionTestPattern, "").trim() === ""
+  );
 }
 
 function scopedWorkflowCommand(

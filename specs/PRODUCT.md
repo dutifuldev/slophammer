@@ -29,6 +29,7 @@ slophammer-go check <path>
 slophammer-go check <path> --format json
 slophammer-go check <path> --format sarif
 slophammer-go check <path> --execute
+slophammer-go check <path> --only <rule-id>
 slophammer-go explain <rule-id>
 slophammer-go rules [--format text|json]
 ```
@@ -47,6 +48,14 @@ with `--format json` and `--format sarif`.
 
 `--execute` is opt-in. It runs configured tool checks and adds tool failures to
 the same report model as static findings.
+
+`--only <rule-id>` evaluates a focused rule without requiring every other rule
+to pass first. Implementations support it when focused adoption checks are part
+of their command surface.
+
+Direct language commands may exist for checks that Slophammer owns natively.
+For example, `slophammer-ts boundaries <path>` runs the TypeScript dependency
+boundary rule directly while preserving the normal finding and exit-code model.
 
 ## Explain
 
@@ -68,7 +77,7 @@ successfully when the catalog is written.
 
 ## Release Policy
 
-The Go implementation is the first releasable product.
+The Go and TypeScript implementations are releasable products.
 
 Go releases use the `go/` submodule tag shape:
 
@@ -83,8 +92,10 @@ Users install a tagged Go release with:
 go install github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.0
 ```
 
-The TypeScript package is private and package-checked, but it is not released
-yet. There is no npm publish step in the current release path.
+The TypeScript checker is released as the `slophammer-ts` npm package. The
+TypeScript release workflow validates `typescript/vX.Y.Z` tags, runs the full
+TypeScript package gate, runs shared conformance, and publishes with npm trusted
+publishing.
 
 The Go release dry-run workflow validates `go/vX.Y.Z` tags, runs the Go release
 checks, runs shared conformance, and verifies tagged `go install` on tag push.
