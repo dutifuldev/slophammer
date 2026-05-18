@@ -37,9 +37,10 @@ Go requirements:
 
 TypeScript requirements:
 
-- Keep `@dutifuldev/slophammer-ts` package-checked, but do not publish it yet.
+- Keep `slophammer-ts` package-checked before publishing.
 - Keep `slophammer-ts` as the public bin.
-- Keep the legacy `slophammer` bin alias during the transition.
+- Reserve the `slophammer` npm package name for a future umbrella package or
+  default installer instead of publishing it as a TypeScript bin alias.
 - Verify `npm pack`, temporary install, and command execution in CI.
 - Run the packed command against at least one fixture repo.
 
@@ -172,8 +173,7 @@ installable, package-checked, and conformance-tested.
 This roadmap is implemented in the release-hardening tranche.
 
 - `go/scripts/check-go-install.sh` installs and exercises `slophammer-go`.
-- `typescript/scripts/check-package-bin.ts` verifies the packed npm artifact,
-  but npm publishing is intentionally deferred.
+- `typescript/scripts/check-package-bin.ts` verifies the packed npm artifact.
 - `scripts/check-conformance.mjs` verifies shared fixture reports and exit
   codes.
 - `slophammer-go rules` and `slophammer-ts rules` print the implemented rule
@@ -189,8 +189,8 @@ This roadmap is implemented in the release-hardening tranche.
 
 The required next work is tracked in
 [Required Next Work](2026-05-17-required-next-work.md). The important release
-decision is that Go can be released first, while TypeScript remains
-package-checked but unpublished.
+decision was that Go could be released first, while TypeScript stayed
+package-checked until npm publication.
 
 ## Acceptance Checklist
 

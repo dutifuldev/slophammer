@@ -16,7 +16,6 @@ try {
   run("npm", ["install", "--silent", "--prefix", temp, tarball], root);
 
   assertHelpIncludesPublicUsage("slophammer-ts");
-  assertHelpIncludesPublicUsage("slophammer");
   assertFixtureCheckPasses("slophammer-ts");
 } finally {
   if (tarball !== undefined) {

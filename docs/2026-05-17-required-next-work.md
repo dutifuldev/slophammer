@@ -27,9 +27,8 @@ Users install the released Go command with:
 go install github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.0
 ```
 
-TypeScript is not released for now. The TypeScript package remains private and
-package-checked in CI so the artifact stays clean, but there is no npm publish
-step in the required release path.
+TypeScript is released as the `slophammer-ts` npm package. The package remains
+package-checked in CI so the artifact stays clean.
 
 ## Required Tasks
 
@@ -71,7 +70,7 @@ release.
 
 These are useful later, but they do not block the Go release:
 
-- npm publishing for `@dutifuldev/slophammer-ts`
+- a future `slophammer` npm umbrella package or default installer
 - better SARIF metadata
 - a `fixtures` command
 - dogfooding reports from external repositories

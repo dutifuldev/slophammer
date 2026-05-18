@@ -54,7 +54,7 @@ Use this selection model:
 | Target repo language | Slophammer command | Current availability                                                             |
 | -------------------- | ------------------ | -------------------------------------------------------------------------------- |
 | Go                   | `slophammer-go`    | Public Go install                                                                |
-| TypeScript           | `slophammer-ts`    | Available from this repo's TypeScript implementation; npm publishing is deferred |
+| TypeScript           | `slophammer-ts`    | Available from npm and this repo's TypeScript implementation |
 | Python               | `slophammer-py`    | Not implemented yet                                                              |
 
 For a Go target outside this source tree, install the current released checker:

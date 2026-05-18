@@ -1,15 +1,38 @@
 {
-  "name": "@dutifuldev/slophammer-ts",
-  "version": "0.0.0",
+  "name": "slophammer-ts",
+  "version": "0.1.0",
+  "description": "TypeScript implementation of the Slophammer repository quality checker.",
+  "license": "MIT",
   "type": "module",
-  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dutifuldev/slophammer.git",
+    "directory": "typescript"
+  },
+  "bugs": {
+    "url": "https://github.com/dutifuldev/slophammer/issues"
+  },
+  "homepage": "https://github.com/dutifuldev/slophammer#readme",
+  "keywords": [
+    "slophammer",
+    "quality",
+    "repository",
+    "typescript",
+    "cli",
+    "agents"
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
     "dist/src/**",
     "README.md"
   ],
   "bin": {
-    "slophammer": "./dist/src/cli/main.js",
-    "slophammer-ts": "./dist/src/cli/main.js"
+    "slophammer-ts": "dist/src/cli/main.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

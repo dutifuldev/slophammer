@@ -43,7 +43,7 @@ implementation, and say clearly if no matching implementation exists.
 - A small product spec for a repo quality checker.
 - Separate user-facing implementations of that product.
 - A released Go implementation named `slophammer-go`.
-- A private, package-checked TypeScript implementation named `slophammer-ts`.
+- A released npm TypeScript implementation named `slophammer-ts`.
 - Go, TypeScript, and Python project templates with strict local checks.
 - A reference for project structure, testing, errors, reporting, and CI.
 - A source of patterns for agents working in different language ecosystems.
@@ -65,9 +65,13 @@ slophammer-ts
 slophammer-py
 ```
 
-`slophammer-go` is released. `slophammer-ts` is implemented and package-checked
-but not published to npm yet. `slophammer-py` is the planned Python command; the
-current Python work is a template, not a checker implementation.
+`slophammer-go` is released. `slophammer-ts` is released to npm. `slophammer-py`
+is the planned Python command; the current Python work is a template, not a
+checker implementation.
+
+The `slophammer` npm package name is reserved for a future umbrella package or
+default installer. Language implementation packages should keep their
+language-specific names.
 
 Each implemented checker supports the same basic commands under its own
 executable name:
@@ -210,9 +214,15 @@ the current release with:
 go install github.com/dutifuldev/slophammer/go/cmd/slophammer-go@latest
 ```
 
+The TypeScript checker is released to npm:
+
+```sh
+npm install -g slophammer-ts
+```
+
 [Required Next Work](docs/2026-05-17-required-next-work.md) records the release
-hardening tasks that were completed for that Go release. TypeScript remains
-private and package-checked in CI, but npm publishing is intentionally deferred.
+hardening tasks that were completed for the first Go release. TypeScript remains
+package-checked in CI and is published from the `typescript/` package.
 
 ## Policy Targets
 
@@ -236,7 +246,7 @@ projects may use stricter thresholds but not weaker ones.
 | Language   | Product name    | Status                                                     |
 | ---------- | --------------- | ---------------------------------------------------------- |
 | Go         | `slophammer-go` | Released checker, CLI, tool checks, fixtures, CI           |
-| TypeScript | `slophammer-ts` | Implemented private checker, CLI, native DRY, fixtures, CI |
+| TypeScript | `slophammer-ts` | Released npm checker, CLI, native DRY, fixtures, CI |
 | Python     | `slophammer-py` | Template only; checker implementation planned              |
 
 An implementation can check more than one language. For example,
@@ -274,9 +284,8 @@ The TypeScript implementation currently provides:
   rules, formatting, linting, tests, coverage, complexity, DRY, mutation
   declaration, and dependency boundaries
 - native CPD-style copied-block detection through `slophammer-ts dry`
-- a narrowed npm package artifact with `slophammer-ts` and legacy `slophammer`
-  bin verification
-- CI package checks, without npm publishing for now
+- a narrowed npm package artifact with `slophammer-ts` bin verification
+- CI package checks and npm publishing for the TypeScript package
 - `slophammer.yml` config parsing with hard targets for coverage, complexity,
   and duplication budgets
 - strict `slophammer.yml` key validation
@@ -319,11 +328,9 @@ useful as a reference implementation:
 
 7. Release checks exercise installed artifacts.
    CI installs `slophammer-go` into a temporary `GOBIN`, packs and installs
-   `@dutifuldev/slophammer-ts`, checks both public command names, and runs the
-   shared conformance script. The Go implementation is the release target;
-   TypeScript package publishing is deferred. The Go release dry-run workflow
-   validates release tags and verifies tagged `go install` on release tag
-   pushes.
+   `slophammer-ts`, checks the public command name, and runs the shared
+   conformance script. The Go release dry-run workflow validates release tags
+   and verifies tagged `go install` on release tag pushes.
 
 ## Shared Rule Set
 
