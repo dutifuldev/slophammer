@@ -66,6 +66,13 @@ release.
    the documented `go install` command works for the tagged version. The first
    workflow should not publish TypeScript.
 
+5. [x] TypeScript npm release workflow.
+
+   The TypeScript release workflow verifies `typescript/vX.Y.Z` tags, checks
+   the tag against `typescript/package.json`, runs the full TypeScript package
+   gate and shared conformance, and publishes `slophammer-ts` with npm trusted
+   publishing provenance.
+
 ## Not Required For The Go Release
 
 These are useful later, but they do not block the Go release:

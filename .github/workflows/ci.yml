@@ -22,6 +22,7 @@ jobs:
           test -f slophammer.yml
           test -f scripts/check-conformance.mjs
           test -f .github/workflows/go-release-dry-run.yml
+          test -f .github/workflows/typescript-release.yml
           test -f docs/2026-05-12-guardrails.md
           test -f docs/2026-05-16-typescript-implementation.md
           test -f docs/2026-05-17-release-hardening-roadmap.md
