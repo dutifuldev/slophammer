@@ -33,6 +33,7 @@ type RuleConfig struct {
 
 type GoConfig struct {
 	CoverageThreshold    float64              `yaml:"coverage_threshold"`
+	CoverageProfile      string               `yaml:"coverage_profile"`
 	Targets              []string             `yaml:"targets"`
 	Exclude              []string             `yaml:"exclude"`
 	DRYMaxCandidates     int                  `yaml:"dry_max_candidates"`
@@ -98,6 +99,7 @@ func (cfg *GoConfig) UnmarshalYAML(value *yaml.Node) error {
 	}
 	type goConfig struct {
 		CoverageThreshold    float64              `yaml:"coverage_threshold"`
+		CoverageProfile      string               `yaml:"coverage_profile"`
 		Targets              []string             `yaml:"targets"`
 		Exclude              []string             `yaml:"exclude"`
 		DRYMaxCandidates     *int                 `yaml:"dry_max_candidates"`
@@ -113,6 +115,7 @@ func (cfg *GoConfig) UnmarshalYAML(value *yaml.Node) error {
 		return err
 	}
 	cfg.CoverageThreshold = parsed.CoverageThreshold
+	cfg.CoverageProfile = parsed.CoverageProfile
 	cfg.Targets = parsed.Targets
 	cfg.Exclude = parsed.Exclude
 	if parsed.DRYMaxCandidates != nil {
@@ -204,6 +207,10 @@ func (cfg Config) GoScope() ([]string, []string) {
 	return scopedConfigPaths(cfg.SourceDir, cfg.Go.Targets), scopedConfigExcludePaths(cfg.SourceDir, cfg.Go.Exclude)
 }
 
+func (cfg Config) GoCoverageProfile() string {
+	return scopedConfigPath(cfg.SourceDir, cfg.Go.CoverageProfile)
+}
+
 func (cfg Config) RuleSeverity(ruleID string, fallback string) string {
 	rule, ok := cfg.Rules[ruleID]
 	if !ok || rule.Severity == "" {
@@ -244,6 +251,36 @@ func scopedConfigPaths(sourceDir string, values []string) []string {
 		scoped = append(scoped, path.Join(sourceDir, value))
 	}
 	return scoped
+}
+
+func scopedConfigPath(sourceDir string, value string) string {
+	if value == "" || sourceDir == "" || sourceDir == "." || isAbsoluteConfigPath(value) {
+		return value
+	}
+	return path.Join(sourceDir, value)
+}
+
+func isAbsoluteConfigPath(value string) bool {
+	return path.IsAbs(value) || isWindowsAbsoluteConfigPath(value)
+}
+
+func isWindowsAbsoluteConfigPath(value string) bool {
+	return strings.HasPrefix(value, `\\`) || isWindowsDriveAbsolutePath(value)
+}
+
+func isWindowsDriveAbsolutePath(value string) bool {
+	if len(value) < 3 {
+		return false
+	}
+	return isASCIIAlpha(value[0]) && value[1] == ':' && isWindowsPathSeparator(value[2])
+}
+
+func isASCIIAlpha(value byte) bool {
+	return (value >= 'A' && value <= 'Z') || (value >= 'a' && value <= 'z')
+}
+
+func isWindowsPathSeparator(value byte) bool {
+	return value == '\\' || value == '/'
 }
 
 func scopedConfigExcludePaths(sourceDir string, values []string) []string {
@@ -292,6 +329,7 @@ func validateGoKeys(node *yaml.Node) error {
 		"go",
 		set(
 			"coverage_threshold",
+			"coverage_profile",
 			"targets",
 			"exclude",
 			"dry_max_candidates",

@@ -92,11 +92,11 @@ func dryOptionsForModule(options toolchecks.DryOptions, snapshot repo.Snapshot, 
 }
 
 func crapOptionsForModule(options toolchecks.CRAPOptions, snapshot repo.Snapshot, moduleRoot string) (toolchecks.CRAPOptions, bool) {
-	return optionsForModuleGoFiles(options, snapshot, moduleRoot, options.Root, options.Targets, options.Exclude, setCRAPModuleFiles)
+	return optionsForModuleGoFilesWithCoverageProfile(options, snapshot, moduleRoot, options.Root, options.CoverageProfile, options.Targets, options.Exclude, setCRAPCoverageProfile, setCRAPModuleFiles)
 }
 
 func coverageOptionsForModule(options toolchecks.CoverageOptions, snapshot repo.Snapshot, moduleRoot string) (toolchecks.CoverageOptions, bool) {
-	return optionsForModuleGoFiles(options, snapshot, moduleRoot, options.Root, options.Targets, options.Exclude, setCoverageModuleFiles)
+	return optionsForModuleGoFilesWithCoverageProfile(options, snapshot, moduleRoot, options.Root, options.CoverageProfile, options.Targets, options.Exclude, setCoverageProfile, setCoverageModuleFiles)
 }
 
 func setDryModuleFiles(moduleOptions *toolchecks.DryOptions, root string, files []string) {
@@ -109,6 +109,29 @@ func setCRAPModuleFiles(moduleOptions *toolchecks.CRAPOptions, root string, file
 
 func setCoverageModuleFiles(moduleOptions *toolchecks.CoverageOptions, root string, files []string) {
 	moduleOptions.Root, moduleOptions.Targets = root, files
+}
+
+func setCRAPCoverageProfile(moduleOptions *toolchecks.CRAPOptions, profile string) {
+	moduleOptions.CoverageProfile = profile
+}
+
+func setCoverageProfile(moduleOptions *toolchecks.CoverageOptions, profile string) {
+	moduleOptions.CoverageProfile = profile
+}
+
+func optionsForModuleGoFilesWithCoverageProfile[T any](
+	options T,
+	snapshot repo.Snapshot,
+	moduleRoot string,
+	root string,
+	profile string,
+	includes []string,
+	excludes []string,
+	setProfile func(*T, string),
+	apply func(*T, string, []string),
+) (T, bool) {
+	setProfile(&options, rootedCoverageProfile(root, profile))
+	return optionsForModuleGoFiles(options, snapshot, moduleRoot, root, includes, excludes, apply)
 }
 
 func optionsForModuleGoFiles[T any](
@@ -280,6 +303,17 @@ func moduleToolRoot(root string, moduleRoot string) string {
 		return commandRoot(root)
 	}
 	return filepath.Join(commandRoot(root), filepath.FromSlash(moduleRoot))
+}
+
+func rootedCoverageProfile(root string, profile string) string {
+	if profile == "" || filepath.IsAbs(profile) {
+		return profile
+	}
+	absolute, err := filepath.Abs(filepath.Join(commandRoot(root), profile))
+	if err != nil {
+		return filepath.Join(commandRoot(root), profile)
+	}
+	return absolute
 }
 
 func goModuleRoots(snapshot repo.Snapshot) []string {

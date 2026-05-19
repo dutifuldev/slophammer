@@ -180,7 +180,7 @@ func parseCheckArgs(args []string, errOut io.Writer) (app.CheckOptions, bool) {
 		i += advance
 	}
 	if options.Root == "" {
-		_, _ = fmt.Fprintln(errOut, "usage: slophammer-go check <path> [--format text|json|sarif] [--execute]")
+		_, _ = fmt.Fprintln(errOut, "usage: slophammer-go check <path> [--format text|json|sarif] [--execute] [--coverage-profile file]")
 		return app.CheckOptions{}, false
 	}
 	return options, true
@@ -202,6 +202,13 @@ func parseCheckArg(options *app.CheckOptions, args []string, index int, errOut i
 	case "--execute":
 		options.Execute = true
 		return 0, true
+	case "--coverage-profile":
+		value, ok := parseFileFlag(args, index, "--coverage-profile", errOut)
+		if !ok {
+			return 0, false
+		}
+		options.CoverageProfile = value
+		return 1, true
 	default:
 		return 0, parseCheckPath(options, args[index], errOut)
 	}
@@ -270,11 +277,56 @@ func parseGoCoverageArgs(args []string, errOut io.Writer) (toolchecks.CoverageOp
 }
 
 func parseGoCoverageArg(options *toolchecks.CoverageOptions, args []string, index int, errOut io.Writer) (int, bool) {
-	return parseGoFloatToolArg(args, index, "--threshold", "go coverage", &options.Root, &options.Threshold, &options.ThresholdSet, errOut)
+	profileFlag := "--profile"
+	return parseGoProfileFloatToolArg(
+		args,
+		index,
+		profileFlag,
+		"--threshold",
+		"go coverage",
+		&options.Root,
+		&options.CoverageProfile,
+		&options.Threshold,
+		&options.ThresholdSet,
+		errOut,
+	)
 }
 
 func parseGoCRAPArg(options *toolchecks.CRAPOptions, args []string, index int, errOut io.Writer) (int, bool) {
-	return parseGoFloatToolArg(args, index, "--max-score", "go crap", &options.Root, &options.MaximumScore, &options.MaximumSet, errOut)
+	root := &options.Root
+	profile := &options.CoverageProfile
+	return parseGoProfileFloatToolArg(
+		args,
+		index,
+		"--coverage-profile",
+		"--max-score",
+		"go crap",
+		root,
+		profile,
+		&options.MaximumScore,
+		&options.MaximumSet,
+		errOut,
+	)
+}
+
+func parseGoProfileFloatToolArg(
+	args []string,
+	index int,
+	profileFlag string,
+	floatFlag string,
+	commandName string,
+	root *string,
+	profile *string,
+	value *float64,
+	valueSet *bool,
+	errOut io.Writer,
+) (int, bool) {
+	if args[index] == profileFlag {
+		parsed, ok := parseFileFlag(args, index, profileFlag, errOut)
+		*profile = parsed
+		return 1, ok
+	}
+	return parseGoFloatToolArg(args, index, floatFlag, commandName, root, value, valueSet, errOut)
 }
 
 func parseGoFloatToolArg(
@@ -368,13 +420,17 @@ func parseNonNegativeFloatFlag(args []string, index int, flag string, errOut io.
 }
 
 func parseTargetFlag(args []string, index int, errOut io.Writer) (string, bool) {
+	return parseFileFlag(args, index, "--target", errOut)
+}
+
+func parseFileFlag(args []string, index int, flag string, errOut io.Writer) (string, bool) {
 	value, ok := nextArg(args, index)
 	if !ok {
-		_, _ = fmt.Fprintln(errOut, "--target requires a value")
+		_, _ = fmt.Fprintf(errOut, "%s requires a value\n", flag)
 		return "", false
 	}
 	if value == "" || value[0] == '-' {
-		_, _ = fmt.Fprintln(errOut, "--target requires a file value")
+		_, _ = fmt.Fprintf(errOut, "%s requires a file value\n", flag)
 		return "", false
 	}
 	return value, true
@@ -401,19 +457,19 @@ func parseSinglePathOption(currentRoot string, arg string, command string, errOu
 
 func printUsage(out io.Writer) {
 	_, _ = fmt.Fprintln(out, "usage:")
-	_, _ = fmt.Fprintln(out, "  slophammer-go check <path> [--format text|json|sarif] [--execute]")
+	_, _ = fmt.Fprintln(out, "  slophammer-go check <path> [--format text|json|sarif] [--execute] [--coverage-profile file]")
 	_, _ = fmt.Fprintln(out, "  slophammer-go explain <rule-id>")
 	_, _ = fmt.Fprintln(out, "  slophammer-go rules [--format text|json]")
 	_, _ = fmt.Fprintln(out, "  slophammer-go dry [path] [--max-candidates n] [--show-report] [--format json|text]")
-	_, _ = fmt.Fprintln(out, "  slophammer-go coverage [path] [--threshold n]")
-	_, _ = fmt.Fprintln(out, "  slophammer-go crap [path] [--max-score n]")
+	_, _ = fmt.Fprintln(out, "  slophammer-go coverage [path] [--threshold n] [--profile file]")
+	_, _ = fmt.Fprintln(out, "  slophammer-go crap [path] [--max-score n] [--coverage-profile file]")
 	_, _ = fmt.Fprintln(out, "  slophammer-go mutate [path] [--target file] [--scan]")
 }
 
 func printGoUsage(out io.Writer) {
 	_, _ = fmt.Fprintln(out, "usage:")
 	_, _ = fmt.Fprintln(out, "  slophammer-go dry [path] [--max-candidates n] [--show-report] [--format json|text]")
-	_, _ = fmt.Fprintln(out, "  slophammer-go coverage [path] [--threshold n]")
-	_, _ = fmt.Fprintln(out, "  slophammer-go crap [path] [--max-score n]")
+	_, _ = fmt.Fprintln(out, "  slophammer-go coverage [path] [--threshold n] [--profile file]")
+	_, _ = fmt.Fprintln(out, "  slophammer-go crap [path] [--max-score n] [--coverage-profile file]")
 	_, _ = fmt.Fprintln(out, "  slophammer-go mutate [path] [--target file] [--scan]")
 }

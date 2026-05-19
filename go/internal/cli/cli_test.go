@@ -52,12 +52,12 @@ func TestRunCheckParsesSARIFFormat(t *testing.T) {
 
 func TestParseCheckArgsAllowsExecute(t *testing.T) {
 	var errOut bytes.Buffer
-	options, ok := parseCheckArgs([]string{"/repo", "--format", "json", "--execute"}, &errOut)
+	options, ok := parseCheckArgs([]string{"/repo", "--format", "json", "--execute", "--coverage-profile", "coverage.out"}, &errOut)
 
 	if !ok {
 		t.Fatalf("ok = false; stderr=%q", errOut.String())
 	}
-	if options.Root != "/repo" || options.Format != "json" || !options.Execute {
+	if options.Root != "/repo" || options.Format != "json" || !options.Execute || options.CoverageProfile != "coverage.out" {
 		t.Fatalf("options = %#v", options)
 	}
 }
@@ -140,24 +140,24 @@ func TestParseGoDryArgsRejectsInvalidFormat(t *testing.T) {
 
 func TestParseGoCRAPArgs(t *testing.T) {
 	var errOut bytes.Buffer
-	options, ok := parseGoCRAPArgs([]string{"/repo", "--max-score", "25.5"}, &errOut)
+	options, ok := parseGoCRAPArgs([]string{"/repo", "--max-score", "25.5", "--coverage-profile", "coverage.out"}, &errOut)
 
 	if !ok {
 		t.Fatalf("ok = false; stderr=%q", errOut.String())
 	}
-	if options.Root != "/repo" || options.MaximumScore != 25.5 || !options.MaximumSet {
+	if options.Root != "/repo" || options.MaximumScore != 25.5 || !options.MaximumSet || options.CoverageProfile != "coverage.out" {
 		t.Fatalf("options = %#v", options)
 	}
 }
 
 func TestParseGoCoverageArgs(t *testing.T) {
 	var errOut bytes.Buffer
-	options, ok := parseGoCoverageArgs([]string{"/repo", "--threshold", "85.5"}, &errOut)
+	options, ok := parseGoCoverageArgs([]string{"/repo", "--threshold", "85.5", "--profile", "coverage.out"}, &errOut)
 
 	if !ok {
 		t.Fatalf("ok = false; stderr=%q", errOut.String())
 	}
-	if options.Root != "/repo" || options.Threshold != 85.5 || !options.ThresholdSet {
+	if options.Root != "/repo" || options.Threshold != 85.5 || !options.ThresholdSet || options.CoverageProfile != "coverage.out" {
 		t.Fatalf("options = %#v", options)
 	}
 }

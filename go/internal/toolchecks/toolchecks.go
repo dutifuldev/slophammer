@@ -7,10 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"path"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -71,11 +69,12 @@ func (options DryOptions) RootPath() string {
 }
 
 type CRAPOptions struct {
-	Root         string
-	MaximumScore float64
-	MaximumSet   bool
-	Targets      []string
-	Exclude      []string
+	Root            string
+	MaximumScore    float64
+	MaximumSet      bool
+	CoverageProfile string
+	Targets         []string
+	Exclude         []string
 }
 
 func (options CRAPOptions) RootPath() string {
@@ -83,11 +82,12 @@ func (options CRAPOptions) RootPath() string {
 }
 
 type CoverageOptions struct {
-	Root         string
-	Threshold    float64
-	ThresholdSet bool
-	Targets      []string
-	Exclude      []string
+	Root            string
+	Threshold       float64
+	ThresholdSet    bool
+	CoverageProfile string
+	Targets         []string
+	Exclude         []string
 }
 
 func (options CoverageOptions) RootPath() string {
@@ -176,9 +176,9 @@ func dryCandidateLimit(options DryOptions) int {
 func CheckCRAP(ctx context.Context, options CRAPOptions, out io.Writer, errOut io.Writer, runner Runner) int {
 	root := defaultRoot(options.Root)
 	maximumScore := crapScoreLimit(options)
-	targets := crapTargets(options)
-	if len(targets) > 0 {
-		return checkTargetedCRAP(ctx, root, targets, maximumScore, out, errOut, runner)
+	targets, profileTargets, targeted := targetedCRAPScope(options)
+	if targeted {
+		return checkTargetedCRAP(ctx, root, targets, profileTargets, maximumScore, options.CoverageProfile, out, errOut, runner)
 	}
 
 	result, err := runner.Run(ctx, root, "go", gotools.CRAP4Go.GoRunArgs(gotools.Latest, crapTargets(options)...)...)
@@ -203,33 +203,64 @@ func CheckCRAP(ctx context.Context, options CRAPOptions, out io.Writer, errOut i
 	return 0
 }
 
+func targetedCRAPScope(options CRAPOptions) ([]string, []string, bool) {
+	targets := crapTargets(options)
+	if len(targets) > 0 {
+		return targets, targets, true
+	}
+	if strings.TrimSpace(options.CoverageProfile) != "" {
+		return []string{"."}, nil, true
+	}
+	return nil, nil, false
+}
+
 func checkTargetedCRAP(
 	ctx context.Context,
 	root string,
 	targets []string,
+	profileTargets []string,
 	maximumScore float64,
+	coverageProfile string,
 	out io.Writer,
 	errOut io.Writer,
 	runner Runner,
 ) int {
-	inputs, ok := targetedCRAPInputs(ctx, root, targets, errOut, runner)
+	analysis, ok := targetedCRAPAnalysis(ctx, root, targets, coverageProfile, errOut, runner)
 	if !ok {
 		return 2
 	}
-	profilePath, cleanup, ok := runTargetedCoverage(ctx, root, inputs.coverPackages, inputs.testPackages, out, errOut, runner)
-	defer cleanup()
+	if len(analysis.complexity) == 0 && checkNoComplexityCRAP(ctx, root, analysis.inputs.modulePath, profileTargets, coverageProfile, maximumScore, out, errOut, runner) {
+		return 0
+	}
+	if len(analysis.complexity) == 0 {
+		return 2
+	}
+	coverage, ok := targetedCRAPCoverage(ctx, root, analysis.inputs, coverageProfile, profileTargets, analysis.complexity, out, errOut, runner)
 	if !ok {
 		return 2
+	}
+	return reportTargetedCRAP(analysis.complexity, coverage, maximumScore, out, errOut)
+}
+
+type targetedCRAPData struct {
+	inputs     targetedCoverageConfig
+	complexity map[string]functionComplexity
+}
+
+func targetedCRAPAnalysis(ctx context.Context, root string, targets []string, coverageProfile string, errOut io.Writer, runner Runner) (targetedCRAPData, bool) {
+	generateCoverage := coverageProfile == ""
+	inputs, ok := targetedCRAPInputs(ctx, root, targets, generateCoverage, generateCoverage, errOut, runner)
+	if !ok {
+		return targetedCRAPData{}, false
 	}
 	complexity, ok := gocycloComplexity(ctx, root, targets, errOut, runner)
 	if !ok {
-		return 2
+		return targetedCRAPData{}, false
 	}
-	coverage, ok := coverFunctionCoverage(ctx, root, inputs.modulePath, profilePath, errOut, runner)
-	if !ok {
-		return 2
-	}
+	return targetedCRAPData{inputs: inputs, complexity: complexity}, true
+}
 
+func reportTargetedCRAP(complexity map[string]functionComplexity, coverage map[string]float64, maximumScore float64, out io.Writer, errOut io.Writer) int {
 	violations := targetedCRAPViolations(complexity, coverage, maximumScore)
 	for _, violation := range violations {
 		_, _ = fmt.Fprintf(errOut, "CRAP score %.1f exceeds maximum %.1f for %s\n", violation.Score, maximumScore, violation.Name)
@@ -241,49 +272,117 @@ func checkTargetedCRAP(
 	return 0
 }
 
-type targetedCRAPConfig struct {
+func checkNoComplexityCRAP(
+	ctx context.Context,
+	root string,
+	modulePath string,
+	profileTargets []string,
+	coverageProfile string,
+	maximumScore float64,
+	out io.Writer,
+	errOut io.Writer,
+	runner Runner,
+) bool {
+	if !checkEmptyCRAPCoverageProfile(ctx, root, modulePath, profileTargets, coverageProfile, errOut, runner) {
+		return false
+	}
+	_, _ = fmt.Fprintf(out, "CRAP scores meet maximum %.1f\n", maximumScore)
+	return true
+}
+
+func targetedCRAPCoverage(
+	ctx context.Context,
+	root string,
+	inputs targetedCoverageConfig,
+	coverageProfile string,
+	profileTargets []string,
+	complexity map[string]functionComplexity,
+	out io.Writer,
+	errOut io.Writer,
+	runner Runner,
+) (map[string]float64, bool) {
+	profilePath, coverOutput, _, cleanup, ok := targetedCoverageProfile(ctx, root, inputs.modulePath, coverageProfile, profileTargets, inputs.coverPackages, inputs.testPackages, out, errOut, runner)
+	defer cleanup()
+	if !ok {
+		return nil, false
+	}
+	coverage, ok := coverFunctionCoverageFromOutput(inputs.modulePath, coverOutput)
+	if !ok {
+		_, _ = fmt.Fprintf(errOut, "coverage profile %s did not include function coverage for module %s\n", profilePath, inputs.modulePath)
+		return nil, false
+	}
+	if strings.TrimSpace(coverageProfile) != "" && !validateCRAPCoverageComplete(profilePath, complexity, coverage, errOut) {
+		return nil, false
+	}
+	return coverage, true
+}
+
+func validateCRAPCoverageComplete(profilePath string, complexity map[string]functionComplexity, coverage map[string]float64, errOut io.Writer) bool {
+	for key, item := range complexity {
+		if _, ok := coverage[key]; ok {
+			continue
+		}
+		_, _ = fmt.Fprintf(errOut, "coverage profile %s does not include coverage for analyzed function %s.%s at %s\n", profilePath, item.Package, item.Name, key)
+		return false
+	}
+	return true
+}
+
+func checkEmptyCRAPCoverageProfile(ctx context.Context, root string, modulePath string, profileTargets []string, coverageProfile string, errOut io.Writer, runner Runner) bool {
+	if strings.TrimSpace(coverageProfile) == "" {
+		return true
+	}
+	profilePath, ok := suppliedCoverageProfilePath(root, coverageProfile, errOut)
+	if !ok {
+		return false
+	}
+	_, _, ok = suppliedCoverageProfileOutput(ctx, root, modulePath, profilePath, profileTargets, errOut, runner)
+	return ok
+}
+
+type targetedCoverageConfig struct {
 	modulePath    string
 	coverPackages []string
 	testPackages  []string
 }
 
-func targetedCRAPInputs(ctx context.Context, root string, targets []string, errOut io.Writer, runner Runner) (targetedCRAPConfig, bool) {
+func targetedCRAPInputs(ctx context.Context, root string, targets []string, includeCoverPackages bool, includeTestPackages bool, errOut io.Writer, runner Runner) (targetedCoverageConfig, bool) {
 	modulePath, ok := goListModulePath(ctx, root, errOut, runner)
 	if !ok {
-		return targetedCRAPConfig{}, false
+		return targetedCoverageConfig{}, false
+	}
+	if !includeCoverPackages {
+		return targetedCoverageConfig{modulePath: modulePath}, true
 	}
 	coverPackages, ok := goListPackages(ctx, root, packageDirs(targets), errOut, runner)
 	if !ok {
-		return targetedCRAPConfig{}, false
+		return targetedCoverageConfig{}, false
+	}
+	if !includeTestPackages {
+		return targetedCoverageConfig{modulePath: modulePath, coverPackages: coverPackages}, true
 	}
 	testPackages, ok := goListPackages(ctx, root, []string{"./..."}, errOut, runner)
 	if !ok {
-		return targetedCRAPConfig{}, false
+		return targetedCoverageConfig{}, false
 	}
-	return targetedCRAPConfig{modulePath: modulePath, coverPackages: coverPackages, testPackages: testPackages}, true
+	return targetedCoverageConfig{modulePath: modulePath, coverPackages: coverPackages, testPackages: testPackages}, true
 }
 
 func CheckCoverage(ctx context.Context, options CoverageOptions, out io.Writer, errOut io.Writer, runner Runner) int {
 	root := defaultRoot(options.Root)
 	threshold := coverageThreshold(options)
-	if _, ok := goListModulePath(ctx, root, errOut, runner); !ok {
-		return 2
-	}
-	coverPackages, ok := goListPackages(ctx, root, coveragePackagePatterns(options), errOut, runner)
+	inputs, ok := targetedCoverageInputs(ctx, root, options, errOut, runner)
 	if !ok {
 		return 2
 	}
-	testPackages, ok := goListPackages(ctx, root, []string{"./..."}, errOut, runner)
-	if !ok {
-		return 2
-	}
-	profilePath, cleanup, ok := runTargetedCoverage(ctx, root, coverPackages, testPackages, out, errOut, runner)
+	profilePath, coverOutput, scopedFiles, cleanup, ok := targetedCoverageProfile(ctx, root, inputs.modulePath, options.CoverageProfile, coverageTargets(options), inputs.coverPackages, inputs.testPackages, out, errOut, runner)
 	defer cleanup()
 	if !ok {
 		return 2
 	}
-	total, ok := coverTotalCoverage(ctx, root, profilePath, errOut, runner)
+	total, ok := coverageTotal(profilePath, inputs.modulePath, options.CoverageProfile, scopedFiles, coverOutput, errOut)
 	if !ok {
+		_, _ = fmt.Fprintf(errOut, "coverage profile %s did not include total coverage\n", profilePath)
 		return 2
 	}
 	if total < threshold {
@@ -292,43 +391,6 @@ func CheckCoverage(ctx context.Context, options CoverageOptions, out io.Writer, 
 	}
 	_, _ = fmt.Fprintf(out, "coverage %.1f%% meets required %.1f%%\n", total, threshold)
 	return 0
-}
-
-func runTargetedCoverage(
-	ctx context.Context,
-	root string,
-	coverPackages []string,
-	testPackages []string,
-	out io.Writer,
-	errOut io.Writer,
-	runner Runner,
-) (string, func(), bool) {
-	profileDir, err := os.MkdirTemp("", "slophammer-crap-*")
-	if err != nil {
-		_, _ = fmt.Fprintf(errOut, "coverage profile setup failed: %v\n", err)
-		return "", func() {}, false
-	}
-	cleanup := func() {
-		_ = os.RemoveAll(profileDir)
-	}
-	profilePath := filepath.Join(profileDir, "coverage.out")
-	args := []string{
-		"test",
-		"-count=1",
-		"-covermode=count",
-		"-coverpkg=" + strings.Join(coverPackages, ","),
-		"-coverprofile=" + profilePath,
-	}
-	args = append(args, testPackages...)
-	result, err := runner.Run(ctx, root, "go", args...)
-	if err != nil {
-		writeBytes(out, result.Stdout)
-		writeBytes(errOut, result.Stderr)
-		_, _ = fmt.Fprintf(errOut, "coverage test failed: %v\n", err)
-		cleanup()
-		return "", func() {}, false
-	}
-	return profilePath, cleanup, true
 }
 
 func goListModulePath(ctx context.Context, root string, errOut io.Writer, runner Runner) (string, bool) {
@@ -420,61 +482,6 @@ func gocycloComplexity(ctx context.Context, root string, targets []string, errOu
 	return complexity, true
 }
 
-func coverFunctionCoverage(ctx context.Context, root string, modulePath string, profilePath string, errOut io.Writer, runner Runner) (map[string]float64, bool) {
-	result, err := runner.Run(ctx, root, "go", "tool", "cover", "-func="+profilePath)
-	writeBytes(errOut, result.Stderr)
-	if err != nil {
-		_, _ = fmt.Fprintf(errOut, "go tool cover failed: %v\n", err)
-		return nil, false
-	}
-	coverage := map[string]float64{}
-	for _, line := range strings.Split(string(result.Stdout), "\n") {
-		fields := strings.Fields(line)
-		if len(fields) < 3 || !strings.HasSuffix(fields[len(fields)-1], "%") {
-			continue
-		}
-		key, ok := coverFileLineKey(fields[0], modulePath)
-		if !ok {
-			continue
-		}
-		valueText := strings.TrimSuffix(fields[len(fields)-1], "%")
-		value, err := strconv.ParseFloat(valueText, 64)
-		if err != nil {
-			continue
-		}
-		coverage[key] = value
-	}
-	return coverage, true
-}
-
-func coverTotalCoverage(ctx context.Context, root string, profilePath string, errOut io.Writer, runner Runner) (float64, bool) {
-	result, err := runner.Run(ctx, root, "go", "tool", "cover", "-func="+profilePath)
-	writeBytes(errOut, result.Stderr)
-	if err != nil {
-		_, _ = fmt.Fprintf(errOut, "go tool cover failed: %v\n", err)
-		return 0, false
-	}
-	for _, line := range strings.Split(string(result.Stdout), "\n") {
-		if value, ok := parseCoverageTotalLine(line); ok {
-			return value, true
-		}
-	}
-	_, _ = fmt.Fprintln(errOut, "go tool cover output did not include total coverage")
-	return 0, false
-}
-
-func parseCoverageTotalLine(line string) (float64, bool) {
-	fields := strings.Fields(line)
-	if len(fields) < 3 || fields[0] != "total:" || !strings.HasSuffix(fields[len(fields)-1], "%") {
-		return 0, false
-	}
-	value, err := strconv.ParseFloat(strings.TrimSuffix(fields[len(fields)-1], "%"), 64)
-	if err != nil {
-		return 0, false
-	}
-	return value, true
-}
-
 func targetedCRAPViolations(complexity map[string]functionComplexity, coverage map[string]float64, maximumScore float64) []CRAPViolation {
 	violations := make([]CRAPViolation, 0)
 	for key, item := range complexity {
@@ -511,6 +518,17 @@ func coverFileLineKey(location string, modulePath string) (string, bool) {
 		return "", false
 	}
 	return fileLineKey(strings.TrimPrefix(location, modulePath+"/"))
+}
+
+func coverFilePath(location string, modulePath string) (string, bool) {
+	if !strings.HasPrefix(location, modulePath+"/") {
+		return "", false
+	}
+	filePath, _, _ := strings.Cut(strings.TrimPrefix(location, modulePath+"/"), ":")
+	if filePath == "" {
+		return "", false
+	}
+	return cleanGoTargetPath(filePath), true
 }
 
 func fileLineKey(location string) (string, bool) {

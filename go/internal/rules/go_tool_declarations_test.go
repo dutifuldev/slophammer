@@ -182,6 +182,26 @@ jobs:
 	}
 }
 
+func TestGoCRAPRuleAcceptsConfigBackedCommandWithCoverageProfileBeforePath(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		"slophammer.yml": {
+			Path: "slophammer.yml",
+			Content: `go:
+  crap_max_score: 8
+`,
+		},
+		"go/scripts/check-crap.sh": {
+			Path:    "go/scripts/check-crap.sh",
+			Content: "slophammer-go crap --coverage-profile coverage.out .\n",
+		},
+	})
+	snapshot := repo.NewSnapshot("/repo", files)
+
+	if !hasCRAP4GoGate(snapshot) {
+		t.Fatal("hasCRAP4GoGate = false, want true with coverage profile before root path")
+	}
+}
+
 func TestGoMutationRuleRequiresTargetForSlophammerCommand(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
 		"main.go": {Path: "main.go"},
