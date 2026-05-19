@@ -700,6 +700,111 @@ jobs:
 	}
 }
 
+func TestConfigBackedMutationCommandWorkflowWorkingDir(t *testing.T) {
+	tests := []struct {
+		name string
+		root string
+		run  string
+		want bool
+	}{
+		{name: "default module command", root: "go", run: "slophammer-go mutate --scan", want: true},
+		{name: "dot module command", root: "go", run: "slophammer-go mutate . --scan", want: true},
+		{name: "double module path", root: "go", run: "slophammer-go mutate go --scan"},
+		{name: "different module", root: "services/api", run: "slophammer-go mutate --scan"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+				".github/workflows/ci.yml": {
+					Path: ".github/workflows/ci.yml",
+					Content: `name: CI
+defaults:
+  run:
+    working-directory: go
+jobs:
+  test:
+    steps:
+      - run: ` + tt.run + `
+`,
+				},
+			})
+
+			got := hasConfigBackedSlophammerGoMutationCommandInWorkflowWorkingDir(snapshot, tt.root)
+			if got != tt.want {
+				t.Fatalf("hasConfigBackedSlophammerGoMutationCommandInWorkflowWorkingDir = %t, want %t", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRepoRootConfiguredGoMutationScopeExcludesRoot(t *testing.T) {
+	tests := []struct {
+		name  string
+		files map[string]repo.File
+		root  string
+		roots []string
+		want  bool
+	}{
+		{
+			name: "targeted root included",
+			files: map[string]repo.File{
+				"a/go.mod":  {Path: "a/go.mod"},
+				"a/main.go": {Path: "a/main.go"},
+				"slophammer.yml": {Path: "slophammer.yml", Content: `go:
+  targets:
+    - a
+`},
+			},
+			root:  "a",
+			roots: []string{"a", "b"},
+		},
+		{
+			name: "other root excluded",
+			files: map[string]repo.File{
+				"a/go.mod":  {Path: "a/go.mod"},
+				"a/main.go": {Path: "a/main.go"},
+				"b/go.mod":  {Path: "b/go.mod"},
+				"b/main.go": {Path: "b/main.go"},
+				"slophammer.yml": {Path: "slophammer.yml", Content: `go:
+  targets:
+    - a
+`},
+			},
+			root:  "b",
+			roots: []string{"a", "b"},
+			want:  true,
+		},
+		{
+			name: "nested config cannot exclude repo root",
+			files: map[string]repo.File{
+				"go/slophammer.yml": {Path: "go/slophammer.yml", Content: `go:
+  targets:
+    - .
+`},
+				"go/main.go": {Path: "go/main.go"},
+			},
+			root:  "go",
+			roots: []string{"go"},
+		},
+		{
+			name: "empty scope",
+			files: map[string]repo.File{
+				"slophammer.yml": {Path: "slophammer.yml", Content: "go:\n  crap_max_score: 8\n"},
+			},
+			root:  "go",
+			roots: []string{"go"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := repoRootConfiguredGoMutationScopeExcludesRoot(repo.NewSnapshot("/repo", tt.files), tt.root, tt.roots)
+			if got != tt.want {
+				t.Fatalf("repoRootConfiguredGoMutationScopeExcludesRoot = %t, want %t", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestGoToolRulesAcceptConfigBackedRootSlophammerCommands(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
 		"main.go": {Path: "main.go"},
