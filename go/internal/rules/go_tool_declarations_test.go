@@ -268,6 +268,43 @@ jobs:
 	}
 }
 
+func TestGoMutationRuleDoesNotAcceptUnrelatedModuleLocalConfig(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"a/go.mod":  {Path: "a/go.mod"},
+		"a/main.go": {Path: "a/main.go"},
+		"a/slophammer.yml": {
+			Path: "a/slophammer.yml",
+			Content: `go:
+  targets:
+    - .
+`,
+		},
+		"b/go.mod":  {Path: "b/go.mod"},
+		"b/main.go": {Path: "b/main.go"},
+		"b/slophammer.yml": {
+			Path: "b/slophammer.yml",
+			Content: `go:
+  targets:
+    - .
+`,
+		},
+		"scripts/check-mutation.sh": {
+			Path:    "scripts/check-mutation.sh",
+			Content: "cd a && slophammer-go mutate --scan\n",
+		},
+	})
+	roots := goProjectRoots(snapshot)
+
+	aScoped := goProjectSnapshot(snapshot, "a", roots)
+	if !hasMutate4GoCommandForRoot(snapshot, aScoped, "a", roots) {
+		t.Fatal("hasMutate4GoCommandForRoot(a) = false, want true")
+	}
+	bScoped := goProjectSnapshot(snapshot, "b", roots)
+	if hasMutate4GoCommandForRoot(snapshot, bScoped, "b", roots) {
+		t.Fatal("hasMutate4GoCommandForRoot(b) = true, want false")
+	}
+}
+
 func TestGoMutationRuleUsesSingleModuleFallbackForRootConfig(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
 		"go/go.mod":              {Path: "go/go.mod"},

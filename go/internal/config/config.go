@@ -237,6 +237,7 @@ func scopedConfigExcludePaths(sourceDir string, values []string) []string {
 			scoped = append(scoped, value)
 			continue
 		}
+		scoped = append(scoped, value)
 		scoped = append(scoped, path.Join(sourceDir, value))
 	}
 	return scoped

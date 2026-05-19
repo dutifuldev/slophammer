@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dutifuldev/slophammer/go/internal/gotargets"
 	"github.com/dutifuldev/slophammer/go/internal/repo"
 )
 
@@ -155,8 +156,40 @@ func TestGoMutationScopeIsRelativeToConfigFile(t *testing.T) {
 	if !reflect.DeepEqual(targets, []string{"go/internal"}) {
 		t.Fatalf("targets = %#v", targets)
 	}
-	if !reflect.DeepEqual(exclude, []string{"go/generated/**"}) {
+	if !reflect.DeepEqual(exclude, []string{"generated/**", "go/generated/**"}) {
 		t.Fatalf("exclude = %#v", exclude)
+	}
+}
+
+func TestGoMutationScopeNestedConfigExcludesTargetRelativePaths(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"go/slophammer.yml": {
+			Path: "go/slophammer.yml",
+			Content: `go:
+  targets:
+    - internal
+  exclude:
+    - "generated/**"
+`,
+		},
+		"go/internal/example.go":         {Path: "go/internal/example.go"},
+		"go/internal/generated/model.go": {Path: "go/internal/generated/model.go"},
+	})
+	cfg, err := Load(snapshot)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	targets, exclude := cfg.GoMutationScope()
+	got, err := gotargets.Resolve(snapshot, gotargets.Options{
+		Targets: targets,
+		Exclude: exclude,
+	})
+	if err != nil {
+		t.Fatalf("Resolve returned error: %v", err)
+	}
+	if !reflect.DeepEqual(got, []string{"go/internal/example.go"}) {
+		t.Fatalf("Resolve = %#v", got)
 	}
 }
 
@@ -210,7 +243,7 @@ func TestGoMutationScopeUsesMutationOverride(t *testing.T) {
 	if !reflect.DeepEqual(targets, []string{"go/cmd"}) {
 		t.Fatalf("targets = %#v", targets)
 	}
-	if !reflect.DeepEqual(exclude, []string{"go/cmd/generated/**"}) {
+	if !reflect.DeepEqual(exclude, []string{"cmd/generated/**", "go/cmd/generated/**"}) {
 		t.Fatalf("exclude = %#v", exclude)
 	}
 }

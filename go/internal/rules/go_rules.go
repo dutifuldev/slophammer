@@ -227,7 +227,7 @@ func hasMutate4GoCommandForRoot(full repo.Snapshot, scoped repo.Snapshot, root s
 		return hasConfigBackedSlophammerGoMutationCommand(scoped, false) ||
 			hasConfigBackedSlophammerGoMutationCommand(full, false)
 	}
-	return hasConfiguredGoMutationScopeInSnapshot(full)
+	return repoRootConfiguredGoMutationScopeExcludesRoot(full, root, roots)
 }
 
 func hasLocalConfigBackedGoMutationCommand(full repo.Snapshot, scoped repo.Snapshot, root string) bool {
@@ -374,6 +374,27 @@ func hasConfiguredGoMutationScope(snapshot repo.Snapshot, root string, roots []s
 		}
 	}
 	return false
+}
+
+func repoRootConfiguredGoMutationScopeExcludesRoot(snapshot repo.Snapshot, root string, roots []string) bool {
+	cfg, err := config.Load(snapshot)
+	if err != nil || cfg.SourceDir != "." {
+		return false
+	}
+	targets, exclude := cfg.GoMutationScope()
+	if len(targets) == 0 {
+		return false
+	}
+	resolved, err := resolveConfiguredGoMutationScope(snapshot, targets, exclude)
+	if err != nil {
+		return false
+	}
+	for _, filePath := range resolved {
+		if gotargets.ContainsPath(root, filePath) && !isUnderOtherGoRoot(filePath, root, roots) {
+			return false
+		}
+	}
+	return true
 }
 
 func resolveConfiguredGoMutationScope(snapshot repo.Snapshot, targets []string, exclude []string) ([]string, error) {
