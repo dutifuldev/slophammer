@@ -534,6 +534,38 @@ jobs:
 	}
 }
 
+func TestGoMutationRuleRejectsWorkflowWorkingDirDoubleModulePath(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"go/go.mod":  {Path: "go/go.mod"},
+		"go/main.go": {Path: "go/main.go"},
+		"go/slophammer.yml": {
+			Path: "go/slophammer.yml",
+			Content: `go:
+  targets:
+    - .
+`,
+		},
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+defaults:
+  run:
+    working-directory: go
+jobs:
+  test:
+    steps:
+      - run: slophammer-go mutate go --scan
+`,
+		},
+	})
+	roots := goProjectRoots(snapshot)
+	scoped := goProjectSnapshot(snapshot, "go", roots)
+
+	if hasMutate4GoCommandForRoot(snapshot, scoped, "go", roots) {
+		t.Fatal("hasMutate4GoCommandForRoot = true, want false")
+	}
+}
+
 func TestGoMutationRuleAcceptsCdCommandForModuleLocalConfig(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
 		"go/go.mod":  {Path: "go/go.mod"},

@@ -367,7 +367,11 @@ func cleanRuleSlashPath(value string) string {
 func fileHasConfigBackedSlophammerGoCommandAtRoot(file repo.File, subcommand string, configRootPath string) bool {
 	if isWorkflowFilePath(file.Path) {
 		for _, block := range workflowCommandBlocks(file.Content) {
-			if contentHasConfigBackedSlophammerGoCommand(workflowRunContent(block), subcommand, configRootPath) {
+			blockRootPath := configRootPath
+			if workingDirectory, ok := workflowBlockWorkingDirectory(block); ok {
+				blockRootPath = configRootPathFromWorkflowWorkingDirectory(configRootPath, workingDirectory)
+			}
+			if contentHasConfigBackedSlophammerGoCommand(workflowRunContent(block), subcommand, blockRootPath) {
 				return true
 			}
 		}
@@ -379,6 +383,36 @@ func fileHasConfigBackedSlophammerGoCommandAtRoot(file repo.File, subcommand str
 		}
 	}
 	return false
+}
+
+func configRootPathFromWorkflowWorkingDirectory(configRootPath string, workingDirectory string) string {
+	return relativeRuleSlashPath(cleanRuleSlashPath(workingDirectory), cleanRuleSlashPath(configRootPath))
+}
+
+func relativeRuleSlashPath(from string, to string) string {
+	fromParts := cleanRuleSlashPathParts(from)
+	toParts := cleanRuleSlashPathParts(to)
+	common := 0
+	for common < len(fromParts) && common < len(toParts) && fromParts[common] == toParts[common] {
+		common++
+	}
+	parts := make([]string, 0, len(fromParts)-common+len(toParts)-common)
+	for range fromParts[common:] {
+		parts = append(parts, "..")
+	}
+	parts = append(parts, toParts[common:]...)
+	if len(parts) == 0 {
+		return "."
+	}
+	return path.Join(parts...)
+}
+
+func cleanRuleSlashPathParts(value string) []string {
+	cleaned := cleanRuleSlashPath(value)
+	if cleaned == "." || cleaned == "/" {
+		return nil
+	}
+	return strings.Split(strings.Trim(cleaned, "/"), "/")
 }
 
 func hasModuleLocalSlophammerConfig(snapshot repo.Snapshot, root string) bool {
