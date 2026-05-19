@@ -200,6 +200,127 @@ func coverFunctionCoverageFromOutput(modulePath string, output []byte) (map[stri
 	return coverage, true
 }
 
+func addRawFunctionLineCoverage(root string, profilePath string, modulePath string, scopedFiles map[string]bool, coverage map[string]float64, complexity map[string]functionComplexity, errOut io.Writer) bool {
+	if !hasMissingFunctionCoverage(coverage, complexity) {
+		return true
+	}
+	// #nosec G304 -- profilePath is an explicit coverage artifact path validated before use.
+	content, err := os.ReadFile(profilePath)
+	if err != nil {
+		_, _ = fmt.Fprintf(errOut, "coverage profile %s is not readable: %v\n", profilePath, err)
+		return false
+	}
+	scopedBlocks := scopedCoverageBlocks(content, modulePath, scopedFiles)
+	for key, item := range complexity {
+		if _, ok := coverage[key]; ok {
+			continue
+		}
+		blocks := rawCoverageBlocksForFunction(root, key, item, scopedBlocks)
+		if value, ok := coveragePercentFromBlocks(blocks); ok {
+			coverage[key] = value
+		}
+	}
+	return true
+}
+
+func hasMissingFunctionCoverage(coverage map[string]float64, complexity map[string]functionComplexity) bool {
+	for key := range complexity {
+		if _, ok := coverage[key]; !ok {
+			return true
+		}
+	}
+	return false
+}
+
+func rawCoverageBlocksForFunction(root string, key string, item functionComplexity, blocks map[string]coverageProfileBlock) []coverageProfileBlock {
+	filePath, line, ok := splitFunctionLineKey(key)
+	if !ok {
+		return nil
+	}
+	literalRange, ok := functionLiteralRange(root, filePath, line, item.Column)
+	if !ok {
+		return nil
+	}
+	matched := make([]coverageProfileBlock, 0)
+	for _, block := range blocks {
+		if block.filePath != filePath {
+			continue
+		}
+		if literalRange.contains(block.sourceRange()) {
+			matched = append(matched, block)
+		}
+	}
+	return matched
+}
+
+func splitFunctionLineKey(key string) (string, int, bool) {
+	parts := strings.Split(key, ":")
+	if len(parts) < 2 {
+		return "", 0, false
+	}
+	filePath := parts[0]
+	lineText := parts[1]
+	if filePath == "" || lineText == "" {
+		return "", 0, false
+	}
+	line, err := strconv.Atoi(lineText)
+	if err != nil || line <= 0 {
+		return "", 0, false
+	}
+	return filePath, line, true
+}
+
+func functionLiteralRange(root string, filePath string, line int, column int) (sourceRange, bool) {
+	fset := token.NewFileSet()
+	sourcePath := filepath.Join(root, filepath.FromSlash(filePath))
+	file, err := parser.ParseFile(fset, sourcePath, nil, 0)
+	if err != nil {
+		return sourceRange{}, false
+	}
+	var matched sourceRange
+	ast.Inspect(file, func(node ast.Node) bool {
+		if matched.start.line != 0 {
+			return false
+		}
+		literal, ok := node.(*ast.FuncLit)
+		if !ok {
+			return true
+		}
+		start := fset.Position(literal.Type.Func)
+		if start.Line != line {
+			return true
+		}
+		if column > 0 && start.Column != column {
+			return true
+		}
+		end := fset.Position(literal.End())
+		matched = sourceRange{
+			start: sourcePosition{line: start.Line, column: start.Column},
+			end:   sourcePosition{line: end.Line, column: end.Column},
+		}
+		return false
+	})
+	return matched, matched.start.line != 0 && matched.end.line != 0
+}
+
+func coveragePercentFromBlocks(blocks []coverageProfileBlock) (float64, bool) {
+	if len(blocks) == 0 {
+		return 0, false
+	}
+	var coveredStatements int64
+	var totalStatements int64
+	for _, block := range blocks {
+		totalStatements += block.statements
+		if block.count > 0 {
+			coveredStatements += block.statements
+		}
+	}
+	if totalStatements == 0 {
+		return 0, true
+	}
+	return 100 * float64(coveredStatements) / float64(totalStatements), true
+}
+
 func coverTotalCoverageFromOutput(output []byte) (float64, bool) {
 	for _, line := range strings.Split(string(output), "\n") {
 		if value, ok := parseCoverageTotalLine(line); ok {
@@ -259,10 +380,21 @@ func coverageBlockTotal(profilePath string, blocks map[string]coverageProfileBlo
 }
 
 type coverageProfileBlock struct {
-	key        string
-	filePath   string
-	statements int64
-	count      int64
+	key         string
+	filePath    string
+	startLine   int
+	startColumn int
+	endLine     int
+	endColumn   int
+	statements  int64
+	count       int64
+}
+
+func (block coverageProfileBlock) sourceRange() sourceRange {
+	return sourceRange{
+		start: sourcePosition{line: block.startLine, column: block.startColumn},
+		end:   sourcePosition{line: block.endLine, column: block.endColumn},
+	}
 }
 
 func parseCoverageProfileBlock(line string, modulePath string) (coverageProfileBlock, bool) {
@@ -270,23 +402,58 @@ func parseCoverageProfileBlock(line string, modulePath string) (coverageProfileB
 	if len(fields) < 3 {
 		return coverageProfileBlock{}, false
 	}
-	filePath, ok := coverFilePath(fields[0], modulePath)
+	metadata, ok := parseCoverageProfileBlockMetadata(fields[0], modulePath)
 	if !ok {
 		return coverageProfileBlock{}, false
 	}
-	key, ok := coverProfileBlockKey(fields[0], modulePath)
+	statements, count, ok := parseCoverageProfileBlockCounts(fields)
 	if !ok {
 		return coverageProfileBlock{}, false
 	}
+	return coverageProfileBlock{
+		key:         metadata.key,
+		filePath:    metadata.filePath,
+		startLine:   metadata.rangeValue.start.line,
+		startColumn: metadata.rangeValue.start.column,
+		endLine:     metadata.rangeValue.end.line,
+		endColumn:   metadata.rangeValue.end.column,
+		statements:  statements,
+		count:       count,
+	}, true
+}
+
+type coverageProfileBlockMetadata struct {
+	key        string
+	filePath   string
+	rangeValue sourceRange
+}
+
+func parseCoverageProfileBlockMetadata(location string, modulePath string) (coverageProfileBlockMetadata, bool) {
+	filePath, ok := coverFilePath(location, modulePath)
+	if !ok {
+		return coverageProfileBlockMetadata{}, false
+	}
+	key, ok := coverProfileBlockKey(location, modulePath)
+	if !ok {
+		return coverageProfileBlockMetadata{}, false
+	}
+	rangeValue, ok := coverProfileBlockRange(location, modulePath)
+	if !ok {
+		return coverageProfileBlockMetadata{}, false
+	}
+	return coverageProfileBlockMetadata{key: key, filePath: filePath, rangeValue: rangeValue}, true
+}
+
+func parseCoverageProfileBlockCounts(fields []string) (int64, int64, bool) {
 	statements, err := strconv.ParseInt(fields[len(fields)-2], 10, 64)
 	if err != nil {
-		return coverageProfileBlock{}, false
+		return 0, 0, false
 	}
 	count, err := strconv.ParseInt(fields[len(fields)-1], 10, 64)
 	if err != nil {
-		return coverageProfileBlock{}, false
+		return 0, 0, false
 	}
-	return coverageProfileBlock{key: key, filePath: filePath, statements: statements, count: count}, true
+	return statements, count, true
 }
 
 func coverProfileBlockKey(location string, modulePath string) (string, bool) {
@@ -298,6 +465,79 @@ func coverProfileBlockKey(location string, modulePath string) (string, bool) {
 		return "", false
 	}
 	return strings.ReplaceAll(key, "\\", "/"), true
+}
+
+func coverProfileBlockRange(location string, modulePath string) (sourceRange, bool) {
+	position, ok := coverProfileBlockPosition(location, modulePath)
+	if !ok {
+		return sourceRange{}, false
+	}
+	return parseCoverageBlockRange(position)
+}
+
+func coverProfileBlockPosition(location string, modulePath string) (string, bool) {
+	key, ok := coverProfileBlockKey(location, modulePath)
+	if !ok {
+		return "", false
+	}
+	_, position, ok := strings.Cut(key, ":")
+	if !ok || position == "" {
+		return "", false
+	}
+	return position, true
+}
+
+func parseCoverageBlockRange(position string) (sourceRange, bool) {
+	startPosition, endPosition, ok := strings.Cut(position, ",")
+	if !ok {
+		return sourceRange{}, false
+	}
+	start, ok := parseCoveragePosition(startPosition)
+	if !ok {
+		return sourceRange{}, false
+	}
+	end, ok := parseCoveragePosition(endPosition)
+	if !ok {
+		return sourceRange{}, false
+	}
+	return sourceRange{start: start, end: end}, true
+}
+
+type sourceRange struct {
+	start sourcePosition
+	end   sourcePosition
+}
+
+func (item sourceRange) contains(other sourceRange) bool {
+	return !sourcePositionLess(other.start, item.start) && !sourcePositionLess(item.end, other.end)
+}
+
+type sourcePosition struct {
+	line   int
+	column int
+}
+
+func sourcePositionLess(left sourcePosition, right sourcePosition) bool {
+	if left.line != right.line {
+		return left.line < right.line
+	}
+	return left.column < right.column
+}
+
+func parseCoveragePosition(position string) (sourcePosition, bool) {
+	lineText, columnText, ok := strings.Cut(position, ".")
+	if !ok || lineText == "" || columnText == "" {
+		return sourcePosition{}, false
+	}
+	line, err := strconv.Atoi(lineText)
+	if err != nil || line <= 0 {
+		return sourcePosition{}, false
+	}
+	column, err := strconv.Atoi(columnText)
+	if err != nil || column <= 0 {
+		return sourcePosition{}, false
+	}
+	return sourcePosition{line: line, column: column}, true
 }
 
 func profileFileIsInScope(filePath string, allowed map[string]bool) bool {

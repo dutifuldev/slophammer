@@ -408,7 +408,7 @@ func TestCheckCRAPInModulesUsesConfiguredGoTargets(t *testing.T) {
 	if code != ExitOK {
 		t.Fatalf("code = %d, want %d; stderr=%q", code, ExitOK, errOut.String())
 	}
-	if len(runner.calls) != 6 {
+	if len(runner.calls) != 7 {
 		t.Fatalf("calls = %#v", runner.calls)
 	}
 	call := runner.calls[3]
@@ -741,6 +741,12 @@ func (r *recordingRunner) Run(_ context.Context, dir string, _ string, args ...s
 	switch {
 	case command == "list -m":
 		return toolchecks.CommandResult{Stdout: []byte("example.test/backend\n")}, nil
+	case strings.HasPrefix(command, "list -f "):
+		root, _ := filepath.Abs(dir)
+		return toolchecks.CommandResult{Stdout: []byte(
+			filepath.Join(root, "cmd/server") + "|main.go\n" +
+				filepath.Join(root, "internal/service") + "|service.go\n",
+		)}, nil
 	case strings.HasPrefix(command, "list ./"):
 		return toolchecks.CommandResult{Stdout: []byte("example.test/backend/cmd/server\nexample.test/backend/internal/service\n")}, nil
 	case strings.HasPrefix(command, "test "):
