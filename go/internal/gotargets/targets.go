@@ -44,6 +44,26 @@ func Resolve(snapshot repo.Snapshot, options Options) ([]string, error) {
 	return resolved, nil
 }
 
+func ResolveWithSingleModuleFallback(snapshot repo.Snapshot, options Options, moduleRoots []string, rootModule string) ([]string, error) {
+	resolved, err := Resolve(snapshot, options)
+	if err == nil {
+		return resolved, nil
+	}
+	targets := cleanList(options.Targets)
+	if len(targets) == 0 {
+		return nil, err
+	}
+	fallback, fallbackErr := resolveSingleModuleFallback(snapshot, targets, cleanList(options.Exclude), moduleRoots, rootModule)
+	if fallbackErr == nil {
+		return fallback, nil
+	}
+	return nil, err
+}
+
+func ContainsPath(root string, filePath string) bool {
+	return isUnderTarget(cleanPath(filePath), cleanPath(root))
+}
+
 func resolveTarget(snapshot repo.Snapshot, target string, excludes []string, files map[string]struct{}) {
 	if isGoFileTarget(target) {
 		if _, ok := snapshot.Files[target]; ok && isProductionGoFileForTarget(target, target, excludes) {
@@ -57,6 +77,27 @@ func resolveTarget(snapshot repo.Snapshot, target string, excludes []string, fil
 			files[filePath] = struct{}{}
 		}
 	}
+}
+
+func resolveSingleModuleFallback(snapshot repo.Snapshot, targets []string, excludes []string, moduleRoots []string, rootModule string) ([]string, error) {
+	if len(moduleRoots) != 1 || moduleRoots[0] == rootModule {
+		return nil, ErrNoFiles
+	}
+	moduleTargets := prefixPatterns(moduleRoots[0], targets)
+	moduleExcludes := append([]string(nil), excludes...)
+	moduleExcludes = append(moduleExcludes, prefixPatterns(moduleRoots[0], excludes)...)
+	return Resolve(snapshot, Options{
+		Targets: moduleTargets,
+		Exclude: moduleExcludes,
+	})
+}
+
+func prefixPatterns(root string, patterns []string) []string {
+	prefixed := make([]string, 0, len(patterns))
+	for _, pattern := range patterns {
+		prefixed = append(prefixed, path.Join(root, pattern))
+	}
+	return prefixed
 }
 
 func isGoFileTarget(target string) bool {

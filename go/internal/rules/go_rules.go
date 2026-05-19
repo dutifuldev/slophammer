@@ -220,20 +220,23 @@ func hasMutate4GoCommandForRoot(full repo.Snapshot, scoped repo.Snapshot, root s
 	if hasDirectMutate4GoCommand(scoped) || hasSlophammerGoMutationTargetCommand(scoped) {
 		return true
 	}
-	hasLocalConfig := hasModuleLocalSlophammerConfig(full, root)
-	if hasLocalConfig &&
-		hasConfiguredGoMutationScopeInSnapshot(scoped) &&
-		(hasConfigBackedSlophammerGoMutationCommand(scoped, true) ||
-			hasConfigBackedSlophammerGoMutationCommandAtRoot(full, root) ||
-			hasConfigBackedSlophammerGoMutationCommandInWorkingDir(full, root)) {
+	if hasModuleLocalSlophammerConfig(full, root) && hasLocalConfigBackedGoMutationCommand(full, scoped, root) {
 		return true
 	}
-
-	if hasConfiguredGoMutationScope(full, root, roots) {
-		return hasConfigBackedSlophammerGoMutationCommand(scoped, false) ||
-			hasConfigBackedSlophammerGoMutationCommand(full, false)
+	if !hasConfiguredGoMutationScope(full, root, roots) {
+		return false
 	}
-	return false
+	return hasConfigBackedSlophammerGoMutationCommand(scoped, false) ||
+		hasConfigBackedSlophammerGoMutationCommand(full, false)
+}
+
+func hasLocalConfigBackedGoMutationCommand(full repo.Snapshot, scoped repo.Snapshot, root string) bool {
+	if !hasConfiguredGoMutationScopeInSnapshot(scoped) {
+		return false
+	}
+	return hasConfigBackedSlophammerGoMutationCommand(scoped, true) ||
+		hasConfigBackedSlophammerGoMutationCommandAtRoot(full, root) ||
+		hasConfigBackedSlophammerGoMutationCommandInWorkingDir(full, root)
 }
 
 func hasSlophammerGoMutationTargetCommand(snapshot repo.Snapshot) bool {
@@ -366,7 +369,7 @@ func hasConfiguredGoMutationScope(snapshot repo.Snapshot, root string, roots []s
 		return false
 	}
 	for _, filePath := range resolved {
-		if isUnderGoRoot(filePath, root) && !isUnderOtherGoRoot(filePath, root, roots) {
+		if gotargets.ContainsPath(root, filePath) && !isUnderOtherGoRoot(filePath, root, roots) {
 			return true
 		}
 	}
@@ -374,41 +377,10 @@ func hasConfiguredGoMutationScope(snapshot repo.Snapshot, root string, roots []s
 }
 
 func resolveConfiguredGoMutationScope(snapshot repo.Snapshot, targets []string, exclude []string) ([]string, error) {
-	resolved, err := gotargets.Resolve(snapshot, gotargets.Options{Targets: targets, Exclude: exclude})
-	if err == nil {
-		return resolved, nil
-	}
-	fallback, fallbackErr := resolveSingleModuleConfiguredGoMutationScope(snapshot, targets, exclude)
-	if fallbackErr == nil {
-		return fallback, nil
-	}
-	return nil, err
-}
-
-func resolveSingleModuleConfiguredGoMutationScope(snapshot repo.Snapshot, targets []string, exclude []string) ([]string, error) {
-	moduleRoots := sortedRootSet(goModuleRootSet(snapshot))
-	if len(moduleRoots) != 1 || moduleRoots[0] == "" {
-		return nil, gotargets.ErrNoFiles
-	}
-	moduleTargets := make([]string, 0, len(targets))
-	for _, target := range targets {
-		moduleTargets = append(moduleTargets, path.Join(moduleRoots[0], target))
-	}
-	moduleExclude := append([]string(nil), exclude...)
-	for _, pattern := range exclude {
-		moduleExclude = append(moduleExclude, path.Join(moduleRoots[0], pattern))
-	}
-	return gotargets.Resolve(snapshot, gotargets.Options{
-		Targets: moduleTargets,
-		Exclude: moduleExclude,
-	})
-}
-
-func isUnderGoRoot(filePath string, root string) bool {
-	if root == "" {
-		return true
-	}
-	return filePath == root || strings.HasPrefix(filePath, root+"/")
+	return gotargets.ResolveWithSingleModuleFallback(snapshot, gotargets.Options{
+		Targets: targets,
+		Exclude: exclude,
+	}, sortedRootSet(goModuleRootSet(snapshot)), "")
 }
 
 func hasDirectMutate4GoCommand(snapshot repo.Snapshot) bool {

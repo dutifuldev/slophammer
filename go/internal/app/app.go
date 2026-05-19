@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"path"
 	"strings"
 	"text/tabwriter"
 
@@ -270,39 +269,16 @@ func executeGoChecks(ctx context.Context, snapshot repo.Snapshot, root string, c
 
 func resolveGoMutationTargets(snapshot repo.Snapshot, options toolchecks.MutationOptions) (toolchecks.MutationOptions, error) {
 	targets := mutationTargetPatterns(options)
-	resolved, err := gotargets.Resolve(snapshot, gotargets.Options{
+	resolved, err := gotargets.ResolveWithSingleModuleFallback(snapshot, gotargets.Options{
 		Targets: targets,
 		Exclude: options.Exclude,
-	})
+	}, goModuleRoots(snapshot), ".")
 	if err != nil {
-		if fallback, fallbackErr := resolveSingleModuleMutationTargets(snapshot, targets, options.Exclude); fallbackErr == nil {
-			resolved = fallback
-		} else {
-			return toolchecks.MutationOptions{}, err
-		}
+		return toolchecks.MutationOptions{}, err
 	}
 	options.Target = ""
 	options.Targets = resolved
 	return options, nil
-}
-
-func resolveSingleModuleMutationTargets(snapshot repo.Snapshot, targets []string, exclude []string) ([]string, error) {
-	moduleRoots := goModuleRoots(snapshot)
-	if len(moduleRoots) != 1 || moduleRoots[0] == "." {
-		return nil, gotargets.ErrNoFiles
-	}
-	moduleTargets := make([]string, 0, len(targets))
-	for _, target := range targets {
-		moduleTargets = append(moduleTargets, path.Join(moduleRoots[0], target))
-	}
-	moduleExclude := append([]string(nil), exclude...)
-	for _, pattern := range exclude {
-		moduleExclude = append(moduleExclude, path.Join(moduleRoots[0], pattern))
-	}
-	return gotargets.Resolve(snapshot, gotargets.Options{
-		Targets: moduleTargets,
-		Exclude: moduleExclude,
-	})
 }
 
 func mutationTargetPatterns(options toolchecks.MutationOptions) []string {

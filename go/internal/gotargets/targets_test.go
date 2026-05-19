@@ -73,6 +73,46 @@ func TestResolveSortsAndDeduplicatesTargets(t *testing.T) {
 	})
 }
 
+func TestResolveWithSingleModuleFallbackUsesDirectMatch(t *testing.T) {
+	snapshot := targetSnapshot(map[string]string{
+		"cmd/main.go": "package main\n",
+	})
+
+	got, err := ResolveWithSingleModuleFallback(snapshot, Options{
+		Targets: []string{"cmd"},
+	}, []string{"go"}, ".")
+
+	assertResolved(t, got, err, []string{"cmd/main.go"})
+}
+
+func TestResolveWithSingleModuleFallbackPrefixesTargetsAndExcludes(t *testing.T) {
+	snapshot := targetSnapshot(map[string]string{
+		"go/internal/example.go":         "package internal\n",
+		"go/internal/generated/model.go": "package generated\n",
+	})
+
+	got, err := ResolveWithSingleModuleFallback(snapshot, Options{
+		Targets: []string{"internal"},
+		Exclude: []string{"internal/generated/**"},
+	}, []string{"go"}, ".")
+
+	assertResolved(t, got, err, []string{"go/internal/example.go"})
+}
+
+func TestResolveWithSingleModuleFallbackKeepsOriginalErrorWithoutSingleModule(t *testing.T) {
+	snapshot := targetSnapshot(map[string]string{
+		"go/internal/example.go": "package internal\n",
+	})
+
+	_, err := ResolveWithSingleModuleFallback(snapshot, Options{
+		Targets: []string{"internal"},
+	}, []string{"."}, ".")
+
+	if !errors.Is(err, ErrNoFiles) {
+		t.Fatalf("err = %v, want ErrNoFiles", err)
+	}
+}
+
 func TestResolveRejectsMissingTargets(t *testing.T) {
 	_, err := Resolve(targetSnapshot(nil), Options{})
 

@@ -1,6 +1,10 @@
-# Go Target Resolution
+---
+title: Go Target Resolution
+author: Bob <dutifulbob@gmail.com>
+date: 2026-05-19
+---
 
-Date: 2026-05-19
+# Go Target Resolution
 
 ## Problem
 
