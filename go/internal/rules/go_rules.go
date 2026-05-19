@@ -33,7 +33,7 @@ func newGoLintRule(definition Definition) Rule {
 }
 
 func newGoCoverageRule(definition Definition) Rule {
-	return goStaticRule{definition: definition, satisfied: hasGoCoverageGate}
+	return goCoverageRule{definition: definition}
 }
 
 func newGoComplexityRule(definition Definition) Rule {
@@ -71,6 +71,25 @@ func (r goStaticRule) Check(_ context.Context, snapshot repo.Snapshot) []Finding
 
 type goMutationRule struct {
 	definition Definition
+}
+
+type goCoverageRule struct {
+	definition Definition
+}
+
+func (r goCoverageRule) Metadata() Metadata {
+	return r.definition.Metadata()
+}
+
+func (r goCoverageRule) Check(_ context.Context, snapshot repo.Snapshot) []Finding {
+	return goStaticRule{definition: r.definition, satisfied: hasGoCoverageGate}.Check(context.Background(), snapshot)
+}
+
+func (r goCoverageRule) CheckWithConfig(ctx context.Context, snapshot repo.Snapshot, cfg config.Config) []Finding {
+	if cfg.Go.CoverageThreshold > 0 && hasConfigBackedSlophammerGoCheckExecuteCommand(snapshot) {
+		return nil
+	}
+	return r.Check(ctx, snapshot)
 }
 
 func (r goMutationRule) Metadata() Metadata {
@@ -114,8 +133,16 @@ func hasGoLintConfigAndCommand(snapshot repo.Snapshot) bool {
 }
 
 func hasGoCoverageGate(snapshot repo.Snapshot) bool {
+	return hasCommandFileMatching(snapshot, fileHasGoCoverageGate)
+}
+
+func hasConfigBackedSlophammerGoCheckExecuteCommand(snapshot repo.Snapshot) bool {
+	return hasCommandFileMatching(snapshot, fileHasConfigBackedSlophammerGoCheckExecuteCommand)
+}
+
+func hasCommandFileMatching(snapshot repo.Snapshot, match func(repo.File) bool) bool {
 	for _, file := range commandFiles(snapshot) {
-		if fileHasGoCoverageGate(file) {
+		if match(file) {
 			return true
 		}
 	}

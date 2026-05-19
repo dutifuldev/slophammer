@@ -22,6 +22,7 @@ import (
 const (
 	DefaultMaximumDRYCandidates = 0
 	DefaultMaximumCRAPScore     = 8
+	DefaultMinimumCoverage      = 85
 )
 
 type Runner interface {
@@ -78,6 +79,18 @@ type CRAPOptions struct {
 }
 
 func (options CRAPOptions) RootPath() string {
+	return options.Root
+}
+
+type CoverageOptions struct {
+	Root         string
+	Threshold    float64
+	ThresholdSet bool
+	Targets      []string
+	Exclude      []string
+}
+
+func (options CoverageOptions) RootPath() string {
 	return options.Root
 }
 
@@ -250,6 +263,37 @@ func targetedCRAPInputs(ctx context.Context, root string, targets []string, errO
 	return targetedCRAPConfig{modulePath: modulePath, coverPackages: coverPackages, testPackages: testPackages}, true
 }
 
+func CheckCoverage(ctx context.Context, options CoverageOptions, out io.Writer, errOut io.Writer, runner Runner) int {
+	root := defaultRoot(options.Root)
+	threshold := coverageThreshold(options)
+	if _, ok := goListModulePath(ctx, root, errOut, runner); !ok {
+		return 2
+	}
+	coverPackages, ok := goListPackages(ctx, root, coveragePackagePatterns(options), errOut, runner)
+	if !ok {
+		return 2
+	}
+	testPackages, ok := goListPackages(ctx, root, []string{"./..."}, errOut, runner)
+	if !ok {
+		return 2
+	}
+	profilePath, cleanup, ok := runTargetedCoverage(ctx, root, coverPackages, testPackages, out, errOut, runner)
+	defer cleanup()
+	if !ok {
+		return 2
+	}
+	total, ok := coverTotalCoverage(ctx, root, profilePath, errOut, runner)
+	if !ok {
+		return 2
+	}
+	if total < threshold {
+		_, _ = fmt.Fprintf(errOut, "coverage %.1f%% is below required %.1f%%\n", total, threshold)
+		return 1
+	}
+	_, _ = fmt.Fprintf(out, "coverage %.1f%% meets required %.1f%%\n", total, threshold)
+	return 0
+}
+
 func runTargetedCoverage(
 	ctx context.Context,
 	root string,
@@ -403,6 +447,34 @@ func coverFunctionCoverage(ctx context.Context, root string, modulePath string, 
 	return coverage, true
 }
 
+func coverTotalCoverage(ctx context.Context, root string, profilePath string, errOut io.Writer, runner Runner) (float64, bool) {
+	result, err := runner.Run(ctx, root, "go", "tool", "cover", "-func="+profilePath)
+	writeBytes(errOut, result.Stderr)
+	if err != nil {
+		_, _ = fmt.Fprintf(errOut, "go tool cover failed: %v\n", err)
+		return 0, false
+	}
+	for _, line := range strings.Split(string(result.Stdout), "\n") {
+		if value, ok := parseCoverageTotalLine(line); ok {
+			return value, true
+		}
+	}
+	_, _ = fmt.Fprintln(errOut, "go tool cover output did not include total coverage")
+	return 0, false
+}
+
+func parseCoverageTotalLine(line string) (float64, bool) {
+	fields := strings.Fields(line)
+	if len(fields) < 3 || fields[0] != "total:" || !strings.HasSuffix(fields[len(fields)-1], "%") {
+		return 0, false
+	}
+	value, err := strconv.ParseFloat(strings.TrimSuffix(fields[len(fields)-1], "%"), 64)
+	if err != nil {
+		return 0, false
+	}
+	return value, true
+}
+
 func targetedCRAPViolations(complexity map[string]functionComplexity, coverage map[string]float64, maximumScore float64) []CRAPViolation {
 	violations := make([]CRAPViolation, 0)
 	for key, item := range complexity {
@@ -455,20 +527,44 @@ func fileLineKey(location string) (string, bool) {
 }
 
 func crapTargets(options CRAPOptions) []string {
-	targets := make([]string, 0, len(options.Targets))
-	for _, target := range options.Targets {
-		if strings.TrimSpace(target) != "" {
-			targets = append(targets, target)
-		}
-	}
-	return targets
+	return nonEmptyStrings(options.Targets)
 }
 
 func crapScoreLimit(options CRAPOptions) float64 {
-	if options.MaximumSet || options.MaximumScore != 0 {
-		return options.MaximumScore
+	return configuredFloat(options.MaximumScore, options.MaximumSet, DefaultMaximumCRAPScore)
+}
+
+func coverageTargets(options CoverageOptions) []string {
+	return nonEmptyStrings(options.Targets)
+}
+
+func coveragePackagePatterns(options CoverageOptions) []string {
+	targets := coverageTargets(options)
+	if len(targets) == 0 {
+		return []string{"./..."}
 	}
-	return DefaultMaximumCRAPScore
+	return packageDirs(targets)
+}
+
+func coverageThreshold(options CoverageOptions) float64 {
+	return configuredFloat(options.Threshold, options.ThresholdSet, DefaultMinimumCoverage)
+}
+
+func configuredFloat(value float64, configured bool, fallback float64) float64 {
+	if configured || value != 0 {
+		return value
+	}
+	return fallback
+}
+
+func nonEmptyStrings(values []string) []string {
+	kept := make([]string, 0, len(values))
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			kept = append(kept, value)
+		}
+	}
+	return kept
 }
 
 func CheckMutation(ctx context.Context, options MutationOptions, out io.Writer, errOut io.Writer, runner Runner) int {

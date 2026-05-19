@@ -130,6 +130,10 @@ func CheckGoCRAP(ctx context.Context, options toolchecks.CRAPOptions, out io.Wri
 	return runConfiguredGoTool(ctx, options, out, errOut, applyCRAPConfig, checkCRAPInModules)
 }
 
+func CheckGoCoverage(ctx context.Context, options toolchecks.CoverageOptions, out io.Writer, errOut io.Writer) int {
+	return runConfiguredGoTool(ctx, options, out, errOut, applyCoverageConfig, checkCoverageInModules)
+}
+
 func CheckGoMutation(ctx context.Context, options toolchecks.MutationOptions, out io.Writer, errOut io.Writer) int {
 	return runConfiguredGoTool(ctx, options, out, errOut, applyMutationConfig, checkMutationInModules)
 }
@@ -187,8 +191,9 @@ func applyDryConfig(options *toolchecks.DryOptions, cfg config.Config) {
 		options.MaximumCandidates = cfg.Go.DRYMaxCandidates
 		options.MaximumSet = true
 	}
-	options.Paths = append([]string(nil), cfg.Go.DRYPaths...)
-	options.Exclude = append([]string(nil), cfg.Go.DRYExclude...)
+	paths, exclude := cfg.GoDRYScope()
+	options.Paths = append([]string(nil), paths...)
+	options.Exclude = append([]string(nil), exclude...)
 	if cfg.Go.DRY.Structural.EnabledSet {
 		options.StructuralEnabled = cfg.Go.DRY.Structural.Enabled
 		options.StructuralSet = true
@@ -204,12 +209,45 @@ func applyDryConfig(options *toolchecks.DryOptions, cfg config.Config) {
 }
 
 func applyCRAPConfig(options *toolchecks.CRAPOptions, cfg config.Config) {
-	if !options.MaximumSet && cfg.Go.CRAPMaxScore > 0 {
-		options.MaximumScore = cfg.Go.CRAPMaxScore
-		options.MaximumSet = true
+	applyConfiguredGoMetric(crapGoMetric(options, cfg), cfg)
+}
+
+func applyCoverageConfig(options *toolchecks.CoverageOptions, cfg config.Config) {
+	applyConfiguredGoMetric(coverageGoMetric(options, cfg), cfg)
+}
+
+type goMetricConfig struct {
+	value      *float64
+	valueSet   *bool
+	configured float64
+	targetsOut *[]string
+	excludeOut *[]string
+}
+
+func crapGoMetric(options *toolchecks.CRAPOptions, cfg config.Config) goMetricConfig {
+	return goMetricConfig{&options.MaximumScore, &options.MaximumSet, cfg.Go.CRAPMaxScore, &options.Targets, &options.Exclude}
+}
+
+func coverageGoMetric(options *toolchecks.CoverageOptions, cfg config.Config) goMetricConfig {
+	return goMetricConfig{&options.Threshold, &options.ThresholdSet, cfg.Go.CoverageThreshold, &options.Targets, &options.Exclude}
+}
+
+func applyConfiguredGoMetric(metric goMetricConfig, cfg config.Config) {
+	applyConfiguredGoFloat(metric.value, metric.valueSet, metric.configured)
+	applyGoScope(metric.targetsOut, metric.excludeOut, cfg)
+}
+
+func applyConfiguredGoFloat(value *float64, valueSet *bool, configured float64) {
+	if !*valueSet && configured > 0 {
+		*value = configured
+		*valueSet = true
 	}
-	options.Targets = append([]string(nil), cfg.Go.Targets...)
-	options.Exclude = append([]string(nil), cfg.Go.Exclude...)
+}
+
+func applyGoScope(targetsOut *[]string, excludeOut *[]string, cfg config.Config) {
+	targets, exclude := cfg.GoScope()
+	*targetsOut = append([]string(nil), targets...)
+	*excludeOut = append([]string(nil), exclude...)
 }
 
 func applyMutationConfig(options *toolchecks.MutationOptions, cfg config.Config) {
@@ -224,12 +262,13 @@ func applyMutationConfig(options *toolchecks.MutationOptions, cfg config.Config)
 func executeGoChecks(ctx context.Context, snapshot repo.Snapshot, root string, cfg config.Config, runner toolchecks.Runner) []rules.Finding {
 	var findings []rules.Finding
 	if cfg.Go.DRYMaxCandidatesSet {
+		paths, exclude := cfg.GoDRYScope()
 		options := toolchecks.DryOptions{
 			Root:                commandRoot(root),
 			MaximumCandidates:   cfg.Go.DRYMaxCandidates,
 			MaximumSet:          true,
-			Paths:               append([]string(nil), cfg.Go.DRYPaths...),
-			Exclude:             append([]string(nil), cfg.Go.DRYExclude...),
+			Paths:               append([]string(nil), paths...),
+			Exclude:             append([]string(nil), exclude...),
 			StructuralEnabled:   cfg.Go.DRY.Structural.Enabled,
 			StructuralSet:       cfg.Go.DRY.Structural.EnabledSet,
 			StructuralThreshold: cfg.Go.DRY.Structural.Threshold,
@@ -243,13 +282,27 @@ func executeGoChecks(ctx context.Context, snapshot repo.Snapshot, root string, c
 			return checkDryInModules(ctx, snapshot, options, out, errOut, runner)
 		})
 	}
+	if cfg.Go.CoverageThreshold > 0 {
+		targets, exclude := cfg.GoScope()
+		options := toolchecks.CoverageOptions{
+			Root:         commandRoot(root),
+			Threshold:    cfg.Go.CoverageThreshold,
+			ThresholdSet: true,
+			Targets:      append([]string(nil), targets...),
+			Exclude:      append([]string(nil), exclude...),
+		}
+		findings = appendToolFinding(findings, rules.GoCoverageRequiredRuleID, cfg, "Go coverage is below the configured threshold", func(out, errOut io.Writer) int {
+			return checkCoverageInModules(ctx, snapshot, options, out, errOut, runner)
+		})
+	}
 	if cfg.Go.CRAPMaxScore > 0 {
+		targets, exclude := cfg.GoScope()
 		options := toolchecks.CRAPOptions{
 			Root:         commandRoot(root),
 			MaximumScore: cfg.Go.CRAPMaxScore,
 			MaximumSet:   true,
-			Targets:      append([]string(nil), cfg.Go.Targets...),
-			Exclude:      append([]string(nil), cfg.Go.Exclude...),
+			Targets:      append([]string(nil), targets...),
+			Exclude:      append([]string(nil), exclude...),
 		}
 		findings = appendToolFinding(findings, rules.GoCRAPRequiredRuleID, cfg, "crap4go found functions above the configured score", func(out, errOut io.Writer) int {
 			return checkCRAPInModules(ctx, snapshot, options, out, errOut, runner)

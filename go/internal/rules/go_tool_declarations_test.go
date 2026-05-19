@@ -71,6 +71,7 @@ func TestGoToolRulesAcceptSlophammerGoCommands(t *testing.T) {
 		"slophammer.yml": {
 			Path: "slophammer.yml",
 			Content: `go:
+  coverage_threshold: 85
   crap_max_score: 8
   targets:
     - .
@@ -166,7 +167,6 @@ jobs:
       - run: go test ./...
       - run: go vet ./...
       - run: golangci-lint run
-      - run: ./scripts/check-go-coverage.sh
       - run: go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.5 check .. --execute
 `,
 		},

@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/dutifuldev/slophammer/go/internal/config"
 	"github.com/dutifuldev/slophammer/go/internal/repo"
 )
 
@@ -46,6 +47,39 @@ awk -v total="$total" -v minimum="$minimum_coverage" 'BEGIN { exit !(total + 0 >
 	})
 
 	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+	if !report.OK {
+		t.Fatalf("report.OK = false, findings = %#v", report.Findings)
+	}
+}
+
+func TestGoCoverageRuleAcceptsConfigBackedSlophammerGoCheckExecute(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		"slophammer.yml": {
+			Path: "slophammer.yml",
+			Content: `go:
+  coverage_threshold: 85
+`,
+		},
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+defaults:
+  run:
+    working-directory: go
+jobs:
+  test:
+    steps:
+      - run: go test ./...
+      - run: go vet ./...
+      - run: golangci-lint run
+      - run: go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.7 check .. --execute
+`,
+		},
+	})
+	cfg := config.Config{Go: config.GoConfig{CoverageThreshold: 85}}
+
+	report := RunWithConfig(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules(), cfg)
 
 	if !report.OK {
 		t.Fatalf("report.OK = false, findings = %#v", report.Findings)

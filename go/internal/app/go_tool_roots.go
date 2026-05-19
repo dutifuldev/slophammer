@@ -21,6 +21,10 @@ func checkCRAPInModules(ctx context.Context, snapshot repo.Snapshot, options too
 	return checkGoToolInModules(ctx, snapshot, options, out, errOut, runner, crapOptionsForModule, toolchecks.CheckCRAP)
 }
 
+func checkCoverageInModules(ctx context.Context, snapshot repo.Snapshot, options toolchecks.CoverageOptions, out io.Writer, errOut io.Writer, runner toolchecks.Runner) int {
+	return checkGoToolInModules(ctx, snapshot, options, out, errOut, runner, coverageOptionsForModule, toolchecks.CheckCoverage)
+}
+
 func checkGoToolInModules[T any](
 	ctx context.Context,
 	snapshot repo.Snapshot,
@@ -91,11 +95,19 @@ func crapOptionsForModule(options toolchecks.CRAPOptions, snapshot repo.Snapshot
 	return optionsForModuleGoFiles(options, snapshot, moduleRoot, options.Root, options.Targets, options.Exclude, setCRAPModuleFiles)
 }
 
+func coverageOptionsForModule(options toolchecks.CoverageOptions, snapshot repo.Snapshot, moduleRoot string) (toolchecks.CoverageOptions, bool) {
+	return optionsForModuleGoFiles(options, snapshot, moduleRoot, options.Root, options.Targets, options.Exclude, setCoverageModuleFiles)
+}
+
 func setDryModuleFiles(moduleOptions *toolchecks.DryOptions, root string, files []string) {
 	moduleOptions.Root, moduleOptions.Paths = root, files
 }
 
 func setCRAPModuleFiles(moduleOptions *toolchecks.CRAPOptions, root string, files []string) {
+	moduleOptions.Root, moduleOptions.Targets = root, files
+}
+
+func setCoverageModuleFiles(moduleOptions *toolchecks.CoverageOptions, root string, files []string) {
 	moduleOptions.Root, moduleOptions.Targets = root, files
 }
 

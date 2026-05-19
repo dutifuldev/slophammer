@@ -188,6 +188,22 @@ func (cfg Config) GoMutationScope() ([]string, []string) {
 	return scopedConfigPaths(cfg.SourceDir, targets), scopedConfigExcludePaths(cfg.SourceDir, exclude)
 }
 
+func (cfg Config) GoDRYScope() ([]string, []string) {
+	paths := cfg.Go.DRYPaths
+	exclude := cfg.Go.DRYExclude
+	if len(paths) == 0 {
+		paths = cfg.Go.Targets
+	}
+	if len(exclude) == 0 {
+		exclude = cfg.Go.Exclude
+	}
+	return scopedConfigPaths(cfg.SourceDir, paths), scopedConfigExcludePaths(cfg.SourceDir, exclude)
+}
+
+func (cfg Config) GoScope() ([]string, []string) {
+	return scopedConfigPaths(cfg.SourceDir, cfg.Go.Targets), scopedConfigExcludePaths(cfg.SourceDir, cfg.Go.Exclude)
+}
+
 func (cfg Config) RuleSeverity(ruleID string, fallback string) string {
 	rule, ok := cfg.Rules[ruleID]
 	if !ok || rule.Severity == "" {

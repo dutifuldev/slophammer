@@ -150,6 +150,18 @@ func TestParseGoCRAPArgs(t *testing.T) {
 	}
 }
 
+func TestParseGoCoverageArgs(t *testing.T) {
+	var errOut bytes.Buffer
+	options, ok := parseGoCoverageArgs([]string{"/repo", "--threshold", "85.5"}, &errOut)
+
+	if !ok {
+		t.Fatalf("ok = false; stderr=%q", errOut.String())
+	}
+	if options.Root != "/repo" || options.Threshold != 85.5 || !options.ThresholdSet {
+		t.Fatalf("options = %#v", options)
+	}
+}
+
 func TestParseGoMutationArgs(t *testing.T) {
 	var errOut bytes.Buffer
 	options, ok := parseGoMutationArgs([]string{"/repo", "--target", "main.go", "--scan"}, &errOut)
@@ -199,6 +211,14 @@ func TestParseGoToolArgsRejectInvalidNumbers(t *testing.T) {
 				return ok
 			},
 			want: "--max-candidates must be a non-negative integer",
+		},
+		{
+			name: "coverage",
+			run: func(errOut io.Writer) bool {
+				_, ok := parseGoCoverageArgs([]string{"--threshold", "x"}, errOut)
+				return ok
+			},
+			want: "--threshold must be a non-negative number",
 		},
 		{
 			name: "crap",

@@ -222,6 +222,52 @@ func TestCheckCRAPWithTargetsUsesCrossPackageCoverage(t *testing.T) {
 	}
 }
 
+func TestCheckCoverageEnforcesConfiguredThreshold(t *testing.T) {
+	runner := &scriptedRunner{coverageTotal: "84.9%"}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckCoverage(context.Background(), CoverageOptions{
+		Root:         "/repo",
+		Threshold:    85,
+		ThresholdSet: true,
+		Targets:      []string{"internal/service/service.go"},
+	}, &out, &errOut, runner)
+
+	if code != 1 {
+		t.Fatalf("code = %d, want 1", code)
+	}
+	if len(runner.calls) != 5 {
+		t.Fatalf("calls = %#v, want 5 calls", runner.calls)
+	}
+	if got := strings.Join(runner.calls[1].args, " "); got != "list ./internal/service" {
+		t.Fatalf("go list target packages args = %q", got)
+	}
+	if !strings.Contains(errOut.String(), "coverage 84.9% is below required 85.0%") {
+		t.Fatalf("stderr = %q", errOut.String())
+	}
+}
+
+func TestCheckCoveragePassesWhenTotalMeetsThreshold(t *testing.T) {
+	runner := &scriptedRunner{coverageTotal: "85.0%"}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckCoverage(context.Background(), CoverageOptions{
+		Root:         "/repo",
+		Threshold:    85,
+		ThresholdSet: true,
+		Targets:      []string{"internal/service/service.go"},
+	}, &out, &errOut, runner)
+
+	if code != 0 {
+		t.Fatalf("code = %d, want 0; stderr = %q", code, errOut.String())
+	}
+	if !strings.Contains(out.String(), "coverage 85.0% meets required 85.0%") {
+		t.Fatalf("stdout = %q", out.String())
+	}
+}
+
 func TestCheckCRAPHonorsExplicitZeroLimit(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer
@@ -317,7 +363,8 @@ func (runner *fakeRunner) Run(_ context.Context, dir string, name string, args .
 }
 
 type scriptedRunner struct {
-	calls []fakeCall
+	calls         []fakeCall
+	coverageTotal string
 }
 
 func (runner *scriptedRunner) Run(_ context.Context, dir string, name string, args ...string) (CommandResult, error) {
@@ -334,11 +381,13 @@ func (runner *scriptedRunner) Run(_ context.Context, dir string, name string, ar
 		return CommandResult{}, nil
 	case strings.Contains(command, "gocyclo"):
 		return CommandResult{Stdout: []byte("8 service Run internal/service/service.go:12:1\n")}, nil
-	case command == "tool cover -func=":
-		return CommandResult{Stdout: []byte("example.test/backend/internal/service/service.go:12:\tRun\t50.0%\n")}, nil
 	default:
 		if strings.HasPrefix(command, "tool cover -func=") {
-			return CommandResult{Stdout: []byte("example.test/backend/internal/service/service.go:12:\tRun\t50.0%\n")}, nil
+			total := runner.coverageTotal
+			if total == "" {
+				total = "50.0%"
+			}
+			return CommandResult{Stdout: []byte("example.test/backend/internal/service/service.go:12:\tRun\t50.0%\ntotal:\t(statements)\t" + total + "\n")}, nil
 		}
 		return CommandResult{}, errors.New("unexpected command: " + command)
 	}

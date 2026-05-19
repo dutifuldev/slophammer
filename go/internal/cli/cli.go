@@ -130,9 +130,10 @@ type goCommandRunner func(context.Context, []string, io.Writer, io.Writer) int
 
 func goSubcommand(name string) (goCommandRunner, bool) {
 	commands := map[string]goCommandRunner{
-		"dry":    runGoDry,
-		"crap":   runGoCRAP,
-		"mutate": runGoMutation,
+		"dry":      runGoDry,
+		"coverage": runGoCoverage,
+		"crap":     runGoCRAP,
+		"mutate":   runGoMutation,
 	}
 	run, ok := commands[name]
 	return run, ok
@@ -144,6 +145,10 @@ func runGoDry(ctx context.Context, args []string, out io.Writer, errOut io.Write
 
 func runGoCRAP(ctx context.Context, args []string, out io.Writer, errOut io.Writer) int {
 	return runParsed(ctx, args, out, errOut, parseGoCRAPArgs, app.CheckGoCRAP)
+}
+
+func runGoCoverage(ctx context.Context, args []string, out io.Writer, errOut io.Writer) int {
+	return runParsed(ctx, args, out, errOut, parseGoCoverageArgs, app.CheckGoCoverage)
 }
 
 func runGoMutation(ctx context.Context, args []string, out io.Writer, errOut io.Writer) int {
@@ -260,18 +265,36 @@ func parseGoCRAPArgs(args []string, errOut io.Writer) (toolchecks.CRAPOptions, b
 	return parseGoToolArgs(args, errOut, toolchecks.CRAPOptions{MaximumScore: toolchecks.DefaultMaximumCRAPScore}, parseGoCRAPArg)
 }
 
+func parseGoCoverageArgs(args []string, errOut io.Writer) (toolchecks.CoverageOptions, bool) {
+	return parseGoToolArgs(args, errOut, toolchecks.CoverageOptions{Threshold: toolchecks.DefaultMinimumCoverage}, parseGoCoverageArg)
+}
+
+func parseGoCoverageArg(options *toolchecks.CoverageOptions, args []string, index int, errOut io.Writer) (int, bool) {
+	return parseGoFloatToolArg(args, index, "--threshold", "go coverage", &options.Root, &options.Threshold, &options.ThresholdSet, errOut)
+}
+
 func parseGoCRAPArg(options *toolchecks.CRAPOptions, args []string, index int, errOut io.Writer) (int, bool) {
-	if args[index] == "--max-score" {
-		value, ok := parseNonNegativeFloatFlag(args, index, "--max-score", errOut)
-		if !ok {
-			return 0, false
-		}
-		options.MaximumScore = value
-		options.MaximumSet = true
-		return 1, true
+	return parseGoFloatToolArg(args, index, "--max-score", "go crap", &options.Root, &options.MaximumScore, &options.MaximumSet, errOut)
+}
+
+func parseGoFloatToolArg(
+	args []string,
+	index int,
+	flag string,
+	commandName string,
+	root *string,
+	value *float64,
+	valueSet *bool,
+	errOut io.Writer,
+) (int, bool) {
+	if args[index] == flag {
+		parsed, ok := parseNonNegativeFloatFlag(args, index, flag, errOut)
+		*value = parsed
+		*valueSet = true
+		return 1, ok
 	}
-	root, ok := parseSinglePathOption(options.Root, args[index], "go crap", errOut)
-	options.Root = root
+	parsedRoot, ok := parseSinglePathOption(*root, args[index], commandName, errOut)
+	*root = parsedRoot
 	return 0, ok
 }
 
@@ -382,6 +405,7 @@ func printUsage(out io.Writer) {
 	_, _ = fmt.Fprintln(out, "  slophammer-go explain <rule-id>")
 	_, _ = fmt.Fprintln(out, "  slophammer-go rules [--format text|json]")
 	_, _ = fmt.Fprintln(out, "  slophammer-go dry [path] [--max-candidates n] [--show-report] [--format json|text]")
+	_, _ = fmt.Fprintln(out, "  slophammer-go coverage [path] [--threshold n]")
 	_, _ = fmt.Fprintln(out, "  slophammer-go crap [path] [--max-score n]")
 	_, _ = fmt.Fprintln(out, "  slophammer-go mutate [path] [--target file] [--scan]")
 }
@@ -389,6 +413,7 @@ func printUsage(out io.Writer) {
 func printGoUsage(out io.Writer) {
 	_, _ = fmt.Fprintln(out, "usage:")
 	_, _ = fmt.Fprintln(out, "  slophammer-go dry [path] [--max-candidates n] [--show-report] [--format json|text]")
+	_, _ = fmt.Fprintln(out, "  slophammer-go coverage [path] [--threshold n]")
 	_, _ = fmt.Fprintln(out, "  slophammer-go crap [path] [--max-score n]")
 	_, _ = fmt.Fprintln(out, "  slophammer-go mutate [path] [--target file] [--scan]")
 }
