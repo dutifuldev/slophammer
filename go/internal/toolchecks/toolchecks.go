@@ -216,7 +216,9 @@ func checkTargetedCRAP(
 		_, _ = fmt.Fprintf(errOut, "coverage profile setup failed: %v\n", err)
 		return 2
 	}
-	defer os.RemoveAll(profileDir)
+	defer func() {
+		_ = os.RemoveAll(profileDir)
+	}()
 	profilePath := filepath.Join(profileDir, "coverage.out")
 	args := []string{
 		"test",

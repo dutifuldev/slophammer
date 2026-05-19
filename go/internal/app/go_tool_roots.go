@@ -63,42 +63,6 @@ func checkCRAPInModules(
 	return exitCode
 }
 
-func checkInModules[T any](
-	ctx context.Context,
-	snapshot repo.Snapshot,
-	options T,
-	out io.Writer,
-	errOut io.Writer,
-	runner toolchecks.Runner,
-	setRoot func(*T, string),
-	check func(context.Context, T, io.Writer, io.Writer, toolchecks.Runner) int,
-) int {
-	exitCode := ExitOK
-	for _, root := range goToolRoots(optionRoot(options), snapshot) {
-		moduleOptions := options
-		setRoot(&moduleOptions, root)
-		code := check(ctx, moduleOptions, out, errOut, runner)
-		if code == ExitError {
-			return ExitError
-		}
-		if code == ExitFindings {
-			exitCode = ExitFindings
-		}
-	}
-	return exitCode
-}
-
-func optionRoot(options any) string {
-	switch typed := options.(type) {
-	case toolchecks.DryOptions:
-		return typed.Root
-	case toolchecks.CRAPOptions:
-		return typed.Root
-	default:
-		return ""
-	}
-}
-
 func checkMutationInModules(
 	ctx context.Context,
 	snapshot repo.Snapshot,

@@ -177,14 +177,26 @@ func TestApplyCommandConfigUsesConfiguredDefaults(t *testing.T) {
 	if crap.MaximumScore != 8 || !crap.MaximumSet {
 		t.Fatalf("crap = %#v", crap)
 	}
-	if !reflect.DeepEqual(crap.Targets, []string{"go"}) || !reflect.DeepEqual(crap.Exclude, []string{"go/generated/**"}) {
-		t.Fatalf("crap targets = %#v excludes = %#v", crap.Targets, crap.Exclude)
-	}
 
 	mutation := toolchecks.MutationOptions{}
 	applyMutationConfig(&mutation, cfg)
 	if !reflect.DeepEqual(mutation.Targets, []string{"go"}) || !reflect.DeepEqual(mutation.Exclude, []string{"go/generated/**"}) {
 		t.Fatalf("mutation = %#v", mutation)
+	}
+}
+
+func TestApplyCRAPConfigUsesConfiguredScope(t *testing.T) {
+	cfg := config.Config{Go: config.GoConfig{
+		CRAPMaxScore: 8,
+		Targets:      []string{"go"},
+		Exclude:      []string{"go/generated/**"},
+	}}
+
+	crap := toolchecks.CRAPOptions{}
+	applyCRAPConfig(&crap, cfg)
+
+	if !reflect.DeepEqual(crap.Targets, []string{"go"}) || !reflect.DeepEqual(crap.Exclude, []string{"go/generated/**"}) {
+		t.Fatalf("crap targets = %#v excludes = %#v", crap.Targets, crap.Exclude)
 	}
 }
 
