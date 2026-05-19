@@ -245,14 +245,17 @@ function validateIgnoredGoConfig(value: unknown): void {
   const root = asRecord(value);
   assertKnownKeys(root, "go", [
     "coverage_threshold",
+    "targets",
+    "exclude",
     "dry_max_candidates",
     "dry_paths",
     "dry_exclude",
     "dry",
     "crap_max_score",
-    "mutation_targets",
+    "mutation",
     "dependency_boundaries"
   ]);
+  assertKnownKeys(asRecord(root["mutation"]), "go.mutation", ["targets", "exclude"]);
   const dry = asRecord(root["dry"]);
   assertKnownKeys(dry, "go.dry", [
     "max_findings",

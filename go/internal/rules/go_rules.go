@@ -2,8 +2,11 @@ package rules
 
 import (
 	"context"
+	"path"
+	"strings"
 
 	"github.com/dutifuldev/slophammer/go/internal/config"
+	"github.com/dutifuldev/slophammer/go/internal/gotargets"
 	"github.com/dutifuldev/slophammer/go/internal/gotools"
 	"github.com/dutifuldev/slophammer/go/internal/repo"
 )
@@ -46,7 +49,7 @@ func newGoCRAPRule(definition Definition) Rule {
 }
 
 func newGoMutationRule(definition Definition) Rule {
-	return goStaticRule{definition: definition, satisfied: hasMutate4GoCommand}
+	return goMutationRule{definition: definition}
 }
 
 func (r goStaticRule) Metadata() Metadata {
@@ -60,6 +63,28 @@ func (r goStaticRule) Check(_ context.Context, snapshot repo.Snapshot) []Finding
 	}
 	for _, root := range roots {
 		if !r.satisfied(goProjectSnapshot(snapshot, root, roots)) {
+			return []Finding{finding(r.definition)}
+		}
+	}
+	return nil
+}
+
+type goMutationRule struct {
+	definition Definition
+}
+
+func (r goMutationRule) Metadata() Metadata {
+	return r.definition.Metadata()
+}
+
+func (r goMutationRule) Check(_ context.Context, snapshot repo.Snapshot) []Finding {
+	roots := goProjectRoots(snapshot)
+	if len(roots) == 0 {
+		return nil
+	}
+	for _, root := range roots {
+		scoped := goProjectSnapshot(snapshot, root, roots)
+		if !hasMutate4GoCommandForRoot(snapshot, scoped, root, roots) {
 			return []Finding{finding(r.definition)}
 		}
 	}
@@ -179,7 +204,7 @@ func hasMutate4GoCommand(snapshot repo.Snapshot) bool {
 	if hasDirectMutate4GoCommand(snapshot) {
 		return true
 	}
-	hasConfiguredTargets := hasConfiguredMutationTargets(snapshot)
+	hasConfiguredTargets := hasConfiguredGoMutationScope(snapshot, "", []string{""})
 	for _, file := range commandFiles(snapshot) {
 		for _, content := range commandSections(file) {
 			if contentHasSlophammerGoCommand(content, "mutate", "--target") ||
@@ -191,14 +216,296 @@ func hasMutate4GoCommand(snapshot repo.Snapshot) bool {
 	return false
 }
 
+func hasMutate4GoCommandForRoot(full repo.Snapshot, scoped repo.Snapshot, root string, roots []string) bool {
+	if hasDirectMutate4GoCommand(scoped) || hasSlophammerGoMutationTargetCommand(scoped) {
+		return true
+	}
+	if hasModuleLocalSlophammerConfig(full, root) && hasConfiguredGoMutationScopeInSnapshot(scoped) {
+		return hasLocalConfigBackedGoMutationCommand(full, scoped, root)
+	}
+	if hasConfiguredGoMutationScope(full, root, roots) {
+		return hasConfigBackedSlophammerGoMutationCommand(scoped) ||
+			hasRepoRootConfigBackedSlophammerGoMutationCommand(full)
+	}
+	return repoRootConfiguredGoMutationScopeExcludesRoot(full, root, roots)
+}
+
+func hasLocalConfigBackedGoMutationCommand(full repo.Snapshot, scoped repo.Snapshot, root string) bool {
+	if !hasConfiguredGoMutationScopeInSnapshot(scoped) {
+		return false
+	}
+	return hasModuleLocalConfigBackedSlophammerGoMutationCommand(full, root) ||
+		hasConfigBackedSlophammerGoMutationCommandAtRoot(full, root) ||
+		hasConfigBackedSlophammerGoMutationCommandInWorkingDir(full, root) ||
+		hasConfigBackedSlophammerGoMutationCommandInWorkflowWorkingDir(full, root)
+}
+
+func hasSlophammerGoMutationTargetCommand(snapshot repo.Snapshot) bool {
+	for _, file := range commandFiles(snapshot) {
+		for _, content := range commandSections(file) {
+			if contentHasSlophammerGoCommand(content, "mutate", "--target") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func hasConfigBackedSlophammerGoMutationCommand(snapshot repo.Snapshot) bool {
+	for _, file := range commandFiles(snapshot) {
+		if fileHasConfigBackedSlophammerGoCommand(file, "mutate") {
+			return true
+		}
+	}
+	return false
+}
+
+func hasRepoRootConfigBackedSlophammerGoMutationCommand(snapshot repo.Snapshot) bool {
+	moduleRoots := sortedRootSet(goModuleRootSet(snapshot))
+	for _, file := range commandFiles(snapshot) {
+		if commandFileIsUnderNestedGoModule(file.Path, moduleRoots) {
+			continue
+		}
+		if fileHasConfigBackedSlophammerGoCommand(file, "mutate") {
+			return true
+		}
+	}
+	return false
+}
+
+func commandFileIsUnderNestedGoModule(filePath string, moduleRoots []string) bool {
+	for _, root := range moduleRoots {
+		if root != "" && strings.HasPrefix(filePath, root+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+func hasConfigBackedSlophammerGoMutationCommandAtRoot(snapshot repo.Snapshot, root string) bool {
+	if root == "" {
+		root = "."
+	}
+	for _, file := range commandFiles(snapshot) {
+		if fileHasConfigBackedSlophammerGoCommandAtRoot(file, "mutate", root) {
+			return true
+		}
+	}
+	return false
+}
+
+func hasConfigBackedSlophammerGoMutationCommandInWorkingDir(snapshot repo.Snapshot, root string) bool {
+	if root == "" {
+		root = "."
+	}
+	for _, file := range commandFiles(snapshot) {
+		for _, content := range commandSections(file) {
+			if contentHasConfigBackedSlophammerGoCommandInWorkingDir(content, "mutate", root) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func contentHasConfigBackedSlophammerGoCommandInWorkingDir(content string, subcommand string, workingDir string) bool {
+	workingDir = cleanRuleSlashPath(workingDir)
+	return contentHasCommandLine(content, func(tokens []string) bool {
+		for i := 0; i < len(tokens); i++ {
+			argsStart, ok := slophammerGoCommandArgsStart(tokens, i, subcommand)
+			if !ok {
+				continue
+			}
+			priorDir, ok := priorCDWorkingDirectory(tokens[:i])
+			if !ok || cleanRuleSlashPath(priorDir) != workingDir {
+				continue
+			}
+			if token, ok := firstSlophammerGoPathArgument(tokens[argsStart:]); ok {
+				return pathIsConfigRootArgument(token, ".")
+			}
+			return true
+		}
+		return false
+	})
+}
+
+func hasModuleLocalConfigBackedSlophammerGoMutationCommand(snapshot repo.Snapshot, root string) bool {
+	if root == "" {
+		return hasConfigBackedSlophammerGoMutationCommand(snapshot)
+	}
+	prefix := root + "/"
+	for _, file := range commandFiles(snapshot) {
+		if isWorkflowFilePath(file.Path) || !strings.HasPrefix(file.Path, prefix) {
+			continue
+		}
+		if fileHasConfigBackedSlophammerGoCommand(file, "mutate") {
+			return true
+		}
+	}
+	return false
+}
+
+func hasConfigBackedSlophammerGoMutationCommandInWorkflowWorkingDir(snapshot repo.Snapshot, root string) bool {
+	if root == "" {
+		root = "."
+	}
+	root = cleanRuleSlashPath(root)
+	for _, file := range commandFiles(snapshot) {
+		if !isWorkflowFilePath(file.Path) {
+			continue
+		}
+		for _, block := range workflowCommandBlocks(file.Content) {
+			workingDir, ok := workflowBlockWorkingDirectory(block)
+			if !ok || cleanRuleSlashPath(workingDir) != root {
+				continue
+			}
+			if contentHasConfigBackedSlophammerGoCommand(workflowRunContent(block), "mutate", ".") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func workflowBlockWorkingDirectory(block string) (string, bool) {
+	workingDirectory := ""
+	for _, line := range strings.Split(block, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "working-directory:") {
+			continue
+		}
+		workingDirectory = strings.TrimSpace(strings.TrimPrefix(trimmed, "working-directory:"))
+	}
+	return workingDirectory, workingDirectory != ""
+}
+
+func cleanRuleSlashPath(value string) string {
+	return path.Clean(strings.ReplaceAll(cleanCommandToken(value), "\\", "/"))
+}
+
+func fileHasConfigBackedSlophammerGoCommandAtRoot(file repo.File, subcommand string, configRootPath string) bool {
+	if isWorkflowFilePath(file.Path) {
+		for _, block := range workflowCommandBlocks(file.Content) {
+			blockRootPath := configRootPath
+			if workingDirectory, ok := workflowBlockWorkingDirectory(block); ok {
+				blockRootPath = configRootPathFromWorkflowWorkingDirectory(configRootPath, workingDirectory)
+			}
+			if contentHasConfigBackedSlophammerGoCommand(workflowRunContent(block), subcommand, blockRootPath) {
+				return true
+			}
+		}
+		return false
+	}
+	for _, content := range commandSections(file) {
+		if contentHasConfigBackedSlophammerGoCommand(content, subcommand, configRootPath) {
+			return true
+		}
+	}
+	return false
+}
+
+func configRootPathFromWorkflowWorkingDirectory(configRootPath string, workingDirectory string) string {
+	return relativeRuleSlashPath(cleanRuleSlashPath(workingDirectory), cleanRuleSlashPath(configRootPath))
+}
+
+func relativeRuleSlashPath(from string, to string) string {
+	fromParts := cleanRuleSlashPathParts(from)
+	toParts := cleanRuleSlashPathParts(to)
+	common := 0
+	for common < len(fromParts) && common < len(toParts) && fromParts[common] == toParts[common] {
+		common++
+	}
+	parts := make([]string, 0, len(fromParts)-common+len(toParts)-common)
+	for range fromParts[common:] {
+		parts = append(parts, "..")
+	}
+	parts = append(parts, toParts[common:]...)
+	if len(parts) == 0 {
+		return "."
+	}
+	return path.Join(parts...)
+}
+
+func cleanRuleSlashPathParts(value string) []string {
+	cleaned := cleanRuleSlashPath(value)
+	if cleaned == "." || cleaned == "/" {
+		return nil
+	}
+	return strings.Split(strings.Trim(cleaned, "/"), "/")
+}
+
+func hasModuleLocalSlophammerConfig(snapshot repo.Snapshot, root string) bool {
+	if root == "" {
+		return snapshot.HasFileFold(config.DefaultFileName) || snapshot.HasFileFold(config.AltFileName)
+	}
+	return snapshot.HasFileFold(root+"/"+config.DefaultFileName) || snapshot.HasFileFold(root+"/"+config.AltFileName)
+}
+
+func hasConfiguredGoMutationScopeInSnapshot(snapshot repo.Snapshot) bool {
+	cfg, err := config.Load(snapshot)
+	if err != nil {
+		return false
+	}
+	targets, exclude := cfg.GoMutationScope()
+	if len(targets) == 0 {
+		return false
+	}
+	_, err = resolveConfiguredGoMutationScope(snapshot, targets, exclude)
+	return err == nil
+}
+
 func hasConfiguredCRAPThreshold(snapshot repo.Snapshot) bool {
 	cfg, err := config.Load(snapshot)
 	return err == nil && cfg.Go.CRAPMaxScore > 0
 }
 
-func hasConfiguredMutationTargets(snapshot repo.Snapshot) bool {
+func hasConfiguredGoMutationScope(snapshot repo.Snapshot, root string, roots []string) bool {
 	cfg, err := config.Load(snapshot)
-	return err == nil && len(cfg.Go.MutationTargets) > 0
+	if err != nil {
+		return false
+	}
+	targets, exclude := cfg.GoMutationScope()
+	if len(targets) == 0 {
+		return false
+	}
+	resolved, err := resolveConfiguredGoMutationScope(snapshot, targets, exclude)
+	if err != nil {
+		return false
+	}
+	for _, filePath := range resolved {
+		if gotargets.ContainsPath(root, filePath) && !isUnderOtherGoRoot(filePath, root, roots) {
+			return true
+		}
+	}
+	return false
+}
+
+func repoRootConfiguredGoMutationScopeExcludesRoot(snapshot repo.Snapshot, root string, roots []string) bool {
+	cfg, err := config.Load(snapshot)
+	if err != nil || cfg.SourceDir != "." {
+		return false
+	}
+	targets, exclude := cfg.GoMutationScope()
+	if len(targets) == 0 {
+		return false
+	}
+	resolved, err := resolveConfiguredGoMutationScope(snapshot, targets, exclude)
+	if err != nil {
+		return false
+	}
+	for _, filePath := range resolved {
+		if gotargets.ContainsPath(root, filePath) && !isUnderOtherGoRoot(filePath, root, roots) {
+			return false
+		}
+	}
+	return true
+}
+
+func resolveConfiguredGoMutationScope(snapshot repo.Snapshot, targets []string, exclude []string) ([]string, error) {
+	return gotargets.ResolveWithSingleModuleFallback(snapshot, gotargets.Options{
+		Targets: targets,
+		Exclude: exclude,
+	}, sortedRootSet(goModuleRootSet(snapshot)), "")
 }
 
 func hasDirectMutate4GoCommand(snapshot repo.Snapshot) bool {

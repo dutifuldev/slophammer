@@ -72,8 +72,8 @@ func TestGoToolRulesAcceptSlophammerGoCommands(t *testing.T) {
 			Path: "slophammer.yml",
 			Content: `go:
   crap_max_score: 8
-  mutation_targets:
-    - go/internal/rules/rules.go
+  targets:
+    - .
 `,
 		},
 		".github/workflows/ci.yml": {
@@ -105,11 +105,12 @@ jobs:
 
 func TestGoMutationRuleRequiresTargetForSlophammerCommand(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"main.go": {Path: "main.go"},
 		"slophammer.yml": {
 			Path: "slophammer.yml",
 			Content: `go:
-  mutation_targets:
-    - go/internal/rules/rules.go
+  targets:
+    - .
 `,
 		},
 		".github/workflows/ci.yml": {
@@ -131,14 +132,45 @@ jobs:
 	}
 }
 
+func TestGoMutationRuleRejectsRepoRootConfigPathFromNestedWorkingDirectory(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"go/go.mod":  {Path: "go/go.mod"},
+		"go/main.go": {Path: "go/main.go"},
+		"slophammer.yml": {
+			Path: "slophammer.yml",
+			Content: `go:
+  targets:
+    - go
+`,
+		},
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+defaults:
+  run:
+    working-directory: go
+jobs:
+  test:
+    steps:
+      - run: slophammer-go mutate . --scan
+`,
+		},
+	})
+
+	if hasMutate4GoCommand(snapshot) {
+		t.Fatal("hasMutate4GoCommand = true, want false when . is relative to workflow working directory")
+	}
+}
+
 func TestGoToolRulesAcceptConfigBackedSlophammerCommands(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"go/main.go": {Path: "go/main.go"},
 		"slophammer.yml": {
 			Path: "slophammer.yml",
 			Content: `go:
   crap_max_score: 8
-  mutation_targets:
-    - go/internal/rules/rules.go
+  targets:
+    - .
 `,
 		},
 		".github/workflows/ci.yml": {
@@ -164,14 +196,435 @@ jobs:
 	}
 }
 
-func TestGoToolRulesRejectConfigBackedNonRootParentPath(t *testing.T) {
+func TestGoMutationRuleResolvesRepoRootTargetsForNestedModule(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		"slophammer.yml": {
+			Path: "slophammer.yml",
+			Content: `go:
+  targets:
+    - go
+`,
+		},
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+defaults:
+  run:
+    working-directory: go
+jobs:
+  test:
+    steps:
+      - run: go test ./...
+      - run: go vet ./...
+      - run: golangci-lint run
+      - run: ./scripts/check-go-coverage.sh
+      - run: ./scripts/check-dry.sh
+      - run: ./scripts/check-crap.sh
+      - run: go run ./cmd/slophammer go mutate .. --scan
+`,
+		},
+	})
+
+	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+	if !report.OK {
+		t.Fatalf("report.OK = false, findings = %#v", report.Findings)
+	}
+}
+
+func TestGoMutationRuleAcceptsRootConfigCommandForMultipleModules(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"a/go.mod":  {Path: "a/go.mod"},
+		"a/main.go": {Path: "a/main.go"},
+		"b/go.mod":  {Path: "b/go.mod"},
+		"b/main.go": {Path: "b/main.go"},
+		"slophammer.yml": {
+			Path: "slophammer.yml",
+			Content: `go:
+  targets:
+    - .
+`,
+		},
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+jobs:
+  test:
+    steps:
+      - run: slophammer-go mutate . --scan
+`,
+		},
+	})
+	roots := goProjectRoots(snapshot)
+
+	for _, root := range roots {
+		scoped := goProjectSnapshot(snapshot, root, roots)
+		if !hasMutate4GoCommandForRoot(snapshot, scoped, root, roots) {
+			t.Fatalf("hasMutate4GoCommandForRoot(%q) = false, want true", root)
+		}
+	}
+}
+
+func TestGoMutationRuleSkipsModulesOutsideConfiguredTargets(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"a/go.mod":  {Path: "a/go.mod"},
+		"a/main.go": {Path: "a/main.go"},
+		"b/go.mod":  {Path: "b/go.mod"},
+		"b/main.go": {Path: "b/main.go"},
+		"slophammer.yml": {
+			Path: "slophammer.yml",
+			Content: `go:
+  targets:
+    - a
+`,
+		},
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+jobs:
+  test:
+    steps:
+      - run: slophammer-go mutate . --scan
+`,
+		},
+	})
+	roots := goProjectRoots(snapshot)
+
+	for _, root := range roots {
+		scoped := goProjectSnapshot(snapshot, root, roots)
+		if !hasMutate4GoCommandForRoot(snapshot, scoped, root, roots) {
+			t.Fatalf("hasMutate4GoCommandForRoot(%q) = false, want true", root)
+		}
+	}
+}
+
+func TestGoMutationRuleRejectsUnrelatedModuleScriptForRootConfig(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"a/go.mod":  {Path: "a/go.mod"},
+		"a/main.go": {Path: "a/main.go"},
+		"b/go.mod":  {Path: "b/go.mod"},
+		"b/main.go": {Path: "b/main.go"},
+		"slophammer.yml": {
+			Path: "slophammer.yml",
+			Content: `go:
+  targets:
+    - a
+`,
+		},
+		"b/scripts/check-mutation.sh": {
+			Path:    "b/scripts/check-mutation.sh",
+			Content: "slophammer-go mutate --scan\n",
+		},
+	})
+	roots := goProjectRoots(snapshot)
+	scoped := goProjectSnapshot(snapshot, "a", roots)
+
+	if hasMutate4GoCommandForRoot(snapshot, scoped, "a", roots) {
+		t.Fatal("hasMutate4GoCommandForRoot(a) = true, want false")
+	}
+}
+
+func TestGoMutationRuleDoesNotAcceptUnrelatedModuleLocalConfig(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"a/go.mod":  {Path: "a/go.mod"},
+		"a/main.go": {Path: "a/main.go"},
+		"a/slophammer.yml": {
+			Path: "a/slophammer.yml",
+			Content: `go:
+  targets:
+    - .
+`,
+		},
+		"b/go.mod":  {Path: "b/go.mod"},
+		"b/main.go": {Path: "b/main.go"},
+		"b/slophammer.yml": {
+			Path: "b/slophammer.yml",
+			Content: `go:
+  targets:
+    - .
+`,
+		},
+		"scripts/check-mutation.sh": {
+			Path:    "scripts/check-mutation.sh",
+			Content: "cd a && slophammer-go mutate --scan\n",
+		},
+	})
+	roots := goProjectRoots(snapshot)
+
+	aScoped := goProjectSnapshot(snapshot, "a", roots)
+	if !hasMutate4GoCommandForRoot(snapshot, aScoped, "a", roots) {
+		t.Fatal("hasMutate4GoCommandForRoot(a) = false, want true")
+	}
+	bScoped := goProjectSnapshot(snapshot, "b", roots)
+	if hasMutate4GoCommandForRoot(snapshot, bScoped, "b", roots) {
+		t.Fatal("hasMutate4GoCommandForRoot(b) = true, want false")
+	}
+}
+
+func TestGoMutationRuleDoesNotUseRootScopeToBypassLocalConfig(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"slophammer.yml": {
+			Path: "slophammer.yml",
+			Content: `go:
+  targets:
+    - b
+`,
+		},
+		"a/go.mod":  {Path: "a/go.mod"},
+		"a/main.go": {Path: "a/main.go"},
+		"a/slophammer.yml": {
+			Path: "a/slophammer.yml",
+			Content: `go:
+  targets:
+    - .
+`,
+		},
+		"b/go.mod":  {Path: "b/go.mod"},
+		"b/main.go": {Path: "b/main.go"},
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+jobs:
+  test:
+    steps:
+      - run: slophammer-go mutate . --scan
+`,
+		},
+	})
+	roots := goProjectRoots(snapshot)
+	scoped := goProjectSnapshot(snapshot, "a", roots)
+
+	if hasMutate4GoCommandForRoot(snapshot, scoped, "a", roots) {
+		t.Fatal("hasMutate4GoCommandForRoot(a) = true, want false")
+	}
+}
+
+func TestGoMutationRuleRejectsRepoRootCommandForLocalConfigWithoutModuleRoot(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"go/go.mod":  {Path: "go/go.mod"},
+		"go/main.go": {Path: "go/main.go"},
+		"go/slophammer.yml": {
+			Path: "go/slophammer.yml",
+			Content: `go:
+  targets:
+    - .
+`,
+		},
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+jobs:
+  test:
+    steps:
+      - run: go test ./go/... && slophammer-go mutate --scan
+`,
+		},
+	})
+	roots := goProjectRoots(snapshot)
+	scoped := goProjectSnapshot(snapshot, "go", roots)
+
+	if hasMutate4GoCommandForRoot(snapshot, scoped, "go", roots) {
+		t.Fatal("hasMutate4GoCommandForRoot(go) = true, want false")
+	}
+}
+
+func TestGoMutationRuleUsesSingleModuleFallbackForRootConfig(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"go/go.mod":              {Path: "go/go.mod"},
+		"go/internal/example.go": {Path: "go/internal/example.go"},
+		"slophammer.yml": {
+			Path: "slophammer.yml",
+			Content: `go:
+  targets:
+    - internal
+`,
+		},
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+jobs:
+  test:
+    steps:
+      - run: slophammer-go mutate . --scan
+`,
+		},
+	})
+	roots := goProjectRoots(snapshot)
+	scoped := goProjectSnapshot(snapshot, "go", roots)
+
+	if !hasMutate4GoCommandForRoot(snapshot, scoped, "go", roots) {
+		t.Fatal("hasMutate4GoCommandForRoot = false, want true")
+	}
+}
+
+func TestGoMutationRuleAllowsRootCoverageWithUnrelatedLocalConfig(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"go/go.mod":  {Path: "go/go.mod"},
+		"go/main.go": {Path: "go/main.go"},
+		"go/slophammer.yml": {
+			Path: "go/slophammer.yml",
+			Content: `rules:
+  repo.readme-required:
+    severity: warn
+`,
+		},
+		"slophammer.yml": {
+			Path: "slophammer.yml",
+			Content: `go:
+  targets:
+    - .
+`,
+		},
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+jobs:
+  test:
+    steps:
+      - run: slophammer-go mutate . --scan
+`,
+		},
+	})
+	roots := goProjectRoots(snapshot)
+	scoped := goProjectSnapshot(snapshot, "go", roots)
+
+	if !hasMutate4GoCommandForRoot(snapshot, scoped, "go", roots) {
+		t.Fatal("hasMutate4GoCommandForRoot = false, want true")
+	}
+}
+
+func TestGoMutationRuleResolvesModuleLocalConfigTargets(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
 		"slophammer.yml": {
 			Path: "slophammer.yml",
 			Content: `go:
   crap_max_score: 8
-  mutation_targets:
-    - go/internal/rules/rules.go
+`,
+		},
+		"go/go.mod":              {Path: "go/go.mod"},
+		"go/internal/example.go": {Path: "go/internal/example.go"},
+		"go/slophammer.yml": {
+			Path: "go/slophammer.yml",
+			Content: `go:
+  targets:
+    - internal
+`,
+		},
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+defaults:
+  run:
+    working-directory: go
+jobs:
+  test:
+    steps:
+      - run: slophammer-go mutate --scan
+`,
+		},
+	})
+	roots := goProjectRoots(snapshot)
+	scoped := goProjectSnapshot(snapshot, "go", roots)
+
+	if !hasMutate4GoCommandForRoot(snapshot, scoped, "go", roots) {
+		t.Fatal("hasMutate4GoCommandForRoot = false, want true")
+	}
+}
+
+func TestGoMutationRuleAcceptsRepoRootCommandForModuleLocalConfig(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"go/go.mod":  {Path: "go/go.mod"},
+		"go/main.go": {Path: "go/main.go"},
+		"go/slophammer.yml": {
+			Path: "go/slophammer.yml",
+			Content: `go:
+  targets:
+    - .
+`,
+		},
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+jobs:
+  test:
+    steps:
+      - run: slophammer-go mutate go --scan
+`,
+		},
+	})
+	roots := goProjectRoots(snapshot)
+	scoped := goProjectSnapshot(snapshot, "go", roots)
+
+	if !hasMutate4GoCommandForRoot(snapshot, scoped, "go", roots) {
+		t.Fatal("hasMutate4GoCommandForRoot = false, want true")
+	}
+}
+
+func TestGoMutationRuleRejectsWorkflowWorkingDirDoubleModulePath(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"go/go.mod":  {Path: "go/go.mod"},
+		"go/main.go": {Path: "go/main.go"},
+		"go/slophammer.yml": {
+			Path: "go/slophammer.yml",
+			Content: `go:
+  targets:
+    - .
+`,
+		},
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+defaults:
+  run:
+    working-directory: go
+jobs:
+  test:
+    steps:
+      - run: slophammer-go mutate go --scan
+`,
+		},
+	})
+	roots := goProjectRoots(snapshot)
+	scoped := goProjectSnapshot(snapshot, "go", roots)
+
+	if hasMutate4GoCommandForRoot(snapshot, scoped, "go", roots) {
+		t.Fatal("hasMutate4GoCommandForRoot = true, want false")
+	}
+}
+
+func TestGoMutationRuleAcceptsCdCommandForModuleLocalConfig(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"go/go.mod":  {Path: "go/go.mod"},
+		"go/main.go": {Path: "go/main.go"},
+		"go/slophammer.yml": {
+			Path: "go/slophammer.yml",
+			Content: `go:
+  targets:
+    - .
+`,
+		},
+		"scripts/check-mutation.sh": {
+			Path:    "scripts/check-mutation.sh",
+			Content: "cd go && slophammer-go mutate --scan\n",
+		},
+	})
+	roots := goProjectRoots(snapshot)
+	scoped := goProjectSnapshot(snapshot, "go", roots)
+
+	if !hasMutate4GoCommandForRoot(snapshot, scoped, "go", roots) {
+		t.Fatal("hasMutate4GoCommandForRoot = false, want true")
+	}
+}
+
+func TestGoToolRulesRejectConfigBackedNonRootParentPath(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"go/main.go": {Path: "go/main.go"},
+		"slophammer.yml": {
+			Path: "slophammer.yml",
+			Content: `go:
+  crap_max_score: 8
+  targets:
+    - .
 `,
 		},
 		".github/workflows/ci.yml": {
@@ -199,12 +652,13 @@ jobs:
 
 func TestGoToolRulesRequireConfigRootForDeepWorkingDirectory(t *testing.T) {
 	files := map[string]repo.File{
+		"services/api/main.go": {Path: "services/api/main.go"},
 		"slophammer.yml": {
 			Path: "slophammer.yml",
 			Content: `go:
   crap_max_score: 8
-  mutation_targets:
-    - services/api/internal/rules/rules.go
+  targets:
+    - .
 `,
 		},
 	}
@@ -246,14 +700,120 @@ jobs:
 	}
 }
 
+func TestConfigBackedMutationCommandWorkflowWorkingDir(t *testing.T) {
+	tests := []struct {
+		name string
+		root string
+		run  string
+		want bool
+	}{
+		{name: "default module command", root: "go", run: "slophammer-go mutate --scan", want: true},
+		{name: "dot module command", root: "go", run: "slophammer-go mutate . --scan", want: true},
+		{name: "double module path", root: "go", run: "slophammer-go mutate go --scan"},
+		{name: "different module", root: "services/api", run: "slophammer-go mutate --scan"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+				".github/workflows/ci.yml": {
+					Path: ".github/workflows/ci.yml",
+					Content: `name: CI
+defaults:
+  run:
+    working-directory: go
+jobs:
+  test:
+    steps:
+      - run: ` + tt.run + `
+`,
+				},
+			})
+
+			got := hasConfigBackedSlophammerGoMutationCommandInWorkflowWorkingDir(snapshot, tt.root)
+			if got != tt.want {
+				t.Fatalf("hasConfigBackedSlophammerGoMutationCommandInWorkflowWorkingDir = %t, want %t", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRepoRootConfiguredGoMutationScopeExcludesRoot(t *testing.T) {
+	tests := []struct {
+		name  string
+		files map[string]repo.File
+		root  string
+		roots []string
+		want  bool
+	}{
+		{
+			name: "targeted root included",
+			files: map[string]repo.File{
+				"a/go.mod":  {Path: "a/go.mod"},
+				"a/main.go": {Path: "a/main.go"},
+				"slophammer.yml": {Path: "slophammer.yml", Content: `go:
+  targets:
+    - a
+`},
+			},
+			root:  "a",
+			roots: []string{"a", "b"},
+		},
+		{
+			name: "other root excluded",
+			files: map[string]repo.File{
+				"a/go.mod":  {Path: "a/go.mod"},
+				"a/main.go": {Path: "a/main.go"},
+				"b/go.mod":  {Path: "b/go.mod"},
+				"b/main.go": {Path: "b/main.go"},
+				"slophammer.yml": {Path: "slophammer.yml", Content: `go:
+  targets:
+    - a
+`},
+			},
+			root:  "b",
+			roots: []string{"a", "b"},
+			want:  true,
+		},
+		{
+			name: "nested config cannot exclude repo root",
+			files: map[string]repo.File{
+				"go/slophammer.yml": {Path: "go/slophammer.yml", Content: `go:
+  targets:
+    - .
+`},
+				"go/main.go": {Path: "go/main.go"},
+			},
+			root:  "go",
+			roots: []string{"go"},
+		},
+		{
+			name: "empty scope",
+			files: map[string]repo.File{
+				"slophammer.yml": {Path: "slophammer.yml", Content: "go:\n  crap_max_score: 8\n"},
+			},
+			root:  "go",
+			roots: []string{"go"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := repoRootConfiguredGoMutationScopeExcludesRoot(repo.NewSnapshot("/repo", tt.files), tt.root, tt.roots)
+			if got != tt.want {
+				t.Fatalf("repoRootConfiguredGoMutationScopeExcludesRoot = %t, want %t", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestGoToolRulesAcceptConfigBackedRootSlophammerCommands(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"main.go": {Path: "main.go"},
 		"slophammer.yml": {
 			Path: "slophammer.yml",
 			Content: `go:
   crap_max_score: 8
-  mutation_targets:
-    - internal/rules/rules.go
+  targets:
+    - .
 `,
 		},
 		".github/workflows/ci.yml": {
@@ -278,12 +838,13 @@ jobs:
 
 func TestGoToolRulesAcceptConfigBackedRootSlophammerCommandsWithDefaultPath(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"main.go": {Path: "main.go"},
 		"slophammer.yml": {
 			Path: "slophammer.yml",
 			Content: `go:
   crap_max_score: 8
-  mutation_targets:
-    - internal/rules/rules.go
+  targets:
+    - .
 `,
 		},
 		".github/workflows/ci.yml": {

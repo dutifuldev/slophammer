@@ -10,6 +10,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/dutifuldev/slophammer/go/internal/config"
+	"github.com/dutifuldev/slophammer/go/internal/gotargets"
 	"github.com/dutifuldev/slophammer/go/internal/repo"
 	"github.com/dutifuldev/slophammer/go/internal/report"
 	"github.com/dutifuldev/slophammer/go/internal/rules"
@@ -211,10 +212,12 @@ func applyCRAPConfig(options *toolchecks.CRAPOptions, cfg config.Config) {
 }
 
 func applyMutationConfig(options *toolchecks.MutationOptions, cfg config.Config) {
-	if options.Target != "" || len(options.Targets) > 0 || len(cfg.Go.MutationTargets) == 0 {
+	targets, exclude := cfg.GoMutationScope()
+	options.Exclude = exclude
+	if options.Target != "" || len(options.Targets) > 0 {
 		return
 	}
-	options.Targets = append([]string(nil), cfg.Go.MutationTargets...)
+	options.Targets = targets
 }
 
 func executeGoChecks(ctx context.Context, snapshot repo.Snapshot, root string, cfg config.Config, runner toolchecks.Runner) []rules.Finding {
@@ -249,10 +252,12 @@ func executeGoChecks(ctx context.Context, snapshot repo.Snapshot, root string, c
 			return checkCRAPInModules(ctx, snapshot, options, out, errOut, runner)
 		})
 	}
-	if len(cfg.Go.MutationTargets) > 0 {
+	targets, exclude := cfg.GoMutationScope()
+	if len(targets) > 0 {
 		options := toolchecks.MutationOptions{
 			Root:    commandRoot(root),
-			Targets: cfg.Go.MutationTargets,
+			Targets: targets,
+			Exclude: exclude,
 			Scan:    true,
 		}
 		findings = appendToolFinding(findings, rules.GoMutationRequiredRuleID, cfg, "mutate4go failed for at least one configured target", func(out, errOut io.Writer) int {
@@ -260,6 +265,27 @@ func executeGoChecks(ctx context.Context, snapshot repo.Snapshot, root string, c
 		})
 	}
 	return findings
+}
+
+func resolveGoMutationTargets(snapshot repo.Snapshot, options toolchecks.MutationOptions) (toolchecks.MutationOptions, error) {
+	targets := mutationTargetPatterns(options)
+	resolved, err := gotargets.ResolveWithSingleModuleFallback(snapshot, gotargets.Options{
+		Targets: targets,
+		Exclude: options.Exclude,
+	}, goModuleRoots(snapshot), ".")
+	if err != nil {
+		return toolchecks.MutationOptions{}, err
+	}
+	options.Target = ""
+	options.Targets = resolved
+	return options, nil
+}
+
+func mutationTargetPatterns(options toolchecks.MutationOptions) []string {
+	if options.Target != "" {
+		return []string{options.Target}
+	}
+	return append([]string(nil), options.Targets...)
 }
 
 func appendToolFinding(

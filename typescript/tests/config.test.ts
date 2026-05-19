@@ -166,7 +166,17 @@ describe("loadConfig strict keys", () => {
           "typescript:\n  dependency_boundaries:\n    - from: src/app\n      made_up: true\n",
         want: "typescript.dependency_boundaries[0].made_up"
       },
-      { name: "ignored go", content: "go:\n  made_up: true\n", want: "go.made_up" }
+      { name: "ignored go", content: "go:\n  made_up: true\n", want: "go.made_up" },
+      {
+        name: "ignored go mutation",
+        content: "go:\n  mutation:\n    made_up: true\n",
+        want: "go.mutation.made_up"
+      },
+      {
+        name: "removed go mutation targets",
+        content: "go:\n  mutation_targets:\n    - main.go\n",
+        want: "go.mutation_targets"
+      }
     ];
 
     for (const testCase of cases) {
@@ -188,10 +198,19 @@ describe("loadConfig strict keys", () => {
         content: [
           "go:",
           "  coverage_threshold: 85",
+          "  targets:",
+          "    - go",
+          "  exclude:",
+          "    - fixtures/**",
           "  dry:",
           "    structural:",
           "      enabled: true",
           "      threshold: 0.82",
+          "  mutation:",
+          "    targets:",
+          "      - go/internal/rules",
+          "    exclude:",
+          "      - go/internal/rules/generated/**",
           "typescript:",
           "  coverage_threshold: 85",
           "  complexity_max: 8",

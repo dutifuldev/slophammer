@@ -97,8 +97,13 @@ func checkMutationInModules(
 	errOut io.Writer,
 	runner toolchecks.Runner,
 ) int {
+	resolvedOptions, err := resolveGoMutationTargets(snapshot, options)
+	if err != nil {
+		_, _ = io.WriteString(errOut, err.Error()+"\n")
+		return ExitError
+	}
 	exitCode := ExitOK
-	for _, moduleOptions := range mutationOptionsForModules(options, snapshot) {
+	for _, moduleOptions := range mutationOptionsForModules(resolvedOptions, snapshot) {
 		code := toolchecks.CheckMutation(ctx, moduleOptions, out, errOut, runner)
 		if code == ExitError {
 			return ExitError
@@ -225,7 +230,7 @@ func pathMatchesDryPattern(filePath string, pattern string) bool {
 }
 
 func mutationOptionsForModules(options toolchecks.MutationOptions, snapshot repo.Snapshot) []toolchecks.MutationOptions {
-	targets := configuredMutationTargets(options)
+	targets := mutationTargets(options)
 	if len(targets) == 0 {
 		options.Root = firstGoToolRoot(options.Root, snapshot)
 		return []toolchecks.MutationOptions{options}
@@ -302,9 +307,6 @@ func targetModuleRoot(target string, moduleRoots []string) string {
 			return moduleRoot
 		}
 	}
-	if len(moduleRoots) == 1 {
-		return moduleRoots[0]
-	}
 	return "."
 }
 
@@ -319,8 +321,17 @@ func cleanSlashPath(filePath string) string {
 	return path.Clean(strings.ReplaceAll(filePath, "\\", "/"))
 }
 
-func configuredMutationTargets(options toolchecks.MutationOptions) []string {
-	return toolchecks.MutationTargets(options)
+func mutationTargets(options toolchecks.MutationOptions) []string {
+	if options.Target != "" {
+		return []string{options.Target}
+	}
+	targets := make([]string, 0, len(options.Targets))
+	for _, target := range options.Targets {
+		if strings.TrimSpace(target) != "" {
+			targets = append(targets, target)
+		}
+	}
+	return targets
 }
 
 func isSkippedGoModulePath(filePath string) bool {
