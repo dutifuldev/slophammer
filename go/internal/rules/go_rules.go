@@ -234,9 +234,10 @@ func hasLocalConfigBackedGoMutationCommand(full repo.Snapshot, scoped repo.Snaps
 	if !hasConfiguredGoMutationScopeInSnapshot(scoped) {
 		return false
 	}
-	return hasConfigBackedSlophammerGoMutationCommand(scoped, true) ||
+	return hasModuleLocalConfigBackedSlophammerGoMutationCommand(full, root) ||
 		hasConfigBackedSlophammerGoMutationCommandAtRoot(full, root) ||
-		hasConfigBackedSlophammerGoMutationCommandInWorkingDir(full, root)
+		hasConfigBackedSlophammerGoMutationCommandInWorkingDir(full, root) ||
+		hasConfigBackedSlophammerGoMutationCommandInWorkflowWorkingDir(full, root)
 }
 
 func hasSlophammerGoMutationTargetCommand(snapshot repo.Snapshot) bool {
@@ -307,6 +308,56 @@ func contentHasConfigBackedSlophammerGoCommandInWorkingDir(content string, subco
 		}
 		return false
 	})
+}
+
+func hasModuleLocalConfigBackedSlophammerGoMutationCommand(snapshot repo.Snapshot, root string) bool {
+	if root == "" {
+		return hasConfigBackedSlophammerGoMutationCommand(snapshot, true)
+	}
+	prefix := root + "/"
+	for _, file := range commandFiles(snapshot) {
+		if isWorkflowFilePath(file.Path) || !strings.HasPrefix(file.Path, prefix) {
+			continue
+		}
+		if fileHasConfigBackedSlophammerGoCommand(file, "mutate") {
+			return true
+		}
+	}
+	return false
+}
+
+func hasConfigBackedSlophammerGoMutationCommandInWorkflowWorkingDir(snapshot repo.Snapshot, root string) bool {
+	if root == "" {
+		root = "."
+	}
+	root = cleanRuleSlashPath(root)
+	for _, file := range commandFiles(snapshot) {
+		if !isWorkflowFilePath(file.Path) {
+			continue
+		}
+		for _, block := range workflowCommandBlocks(file.Content) {
+			workingDir, ok := workflowBlockWorkingDirectory(block)
+			if !ok || cleanRuleSlashPath(workingDir) != root {
+				continue
+			}
+			if contentHasConfigBackedSlophammerGoCommand(workflowRunContent(block), "mutate", ".") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func workflowBlockWorkingDirectory(block string) (string, bool) {
+	workingDirectory := ""
+	for _, line := range strings.Split(block, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "working-directory:") {
+			continue
+		}
+		workingDirectory = strings.TrimSpace(strings.TrimPrefix(trimmed, "working-directory:"))
+	}
+	return workingDirectory, workingDirectory != ""
 }
 
 func cleanRuleSlashPath(value string) string {
