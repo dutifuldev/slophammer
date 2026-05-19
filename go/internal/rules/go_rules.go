@@ -170,31 +170,47 @@ func hasGoComplexityLint(snapshot repo.Snapshot) bool {
 }
 
 func hasDryCommand(snapshot repo.Snapshot) bool {
-	for _, file := range commandFiles(snapshot) {
-		for _, content := range commandSections(file) {
-			if contentHasGoToolCommand(content, gotools.Dry4Go) ||
-				contentHasSlophammerGoCommand(content, "dry", "") {
-				return true
-			}
+	return hasConfiguredCommandFile(snapshot, hasConfiguredDRYMaximum(snapshot), fileHasDryCommand)
+}
+
+func fileHasDryCommand(file repo.File, hasConfiguredMaximum bool) bool {
+	if hasConfiguredMaximum && fileHasConfigBackedSlophammerGoCheckExecuteCommand(file) {
+		return true
+	}
+	for _, content := range commandSections(file) {
+		if contentHasGoToolCommand(content, gotools.Dry4Go) ||
+			contentHasSlophammerGoCommand(content, "dry", "") {
+			return true
 		}
 	}
 	return false
 }
 
 func hasCRAP4GoGate(snapshot repo.Snapshot) bool {
-	hasConfiguredThreshold := hasConfiguredCRAPThreshold(snapshot)
+	return hasConfiguredCommandFile(snapshot, hasConfiguredCRAPThreshold(snapshot), fileHasCRAP4GoGate)
+}
+
+func hasConfiguredCommandFile(snapshot repo.Snapshot, configured bool, fileHasCommand func(repo.File, bool) bool) bool {
 	for _, file := range commandFiles(snapshot) {
-		for _, content := range commandSections(file) {
-			if contentHasSlophammerGoCommand(content, "crap", "--max-score") ||
-				(hasConfiguredThreshold && fileHasConfigBackedSlophammerGoCommand(file, "crap")) {
-				return true
-			}
-			if !hasCRAPThreshold(content) {
-				continue
-			}
-			if contentHasGoToolCommand(content, gotools.CRAP4Go) {
-				return true
-			}
+		if fileHasCommand(file, configured) {
+			return true
+		}
+	}
+	return false
+}
+
+func fileHasCRAP4GoGate(file repo.File, hasConfiguredThreshold bool) bool {
+	if hasConfiguredThreshold &&
+		(fileHasConfigBackedSlophammerGoCommand(file, "crap") ||
+			fileHasConfigBackedSlophammerGoCheckExecuteCommand(file)) {
+		return true
+	}
+	for _, content := range commandSections(file) {
+		if contentHasSlophammerGoCommand(content, "crap", "--max-score") {
+			return true
+		}
+		if hasCRAPThreshold(content) && contentHasGoToolCommand(content, gotools.CRAP4Go) {
+			return true
 		}
 	}
 	return false
@@ -253,7 +269,8 @@ func hasSlophammerGoMutationTargetCommand(snapshot repo.Snapshot) bool {
 
 func hasConfigBackedSlophammerGoMutationCommand(snapshot repo.Snapshot) bool {
 	for _, file := range commandFiles(snapshot) {
-		if fileHasConfigBackedSlophammerGoCommand(file, "mutate") {
+		if fileHasConfigBackedSlophammerGoCommand(file, "mutate") ||
+			fileHasConfigBackedSlophammerGoCheckExecuteCommand(file) {
 			return true
 		}
 	}
@@ -266,7 +283,8 @@ func hasRepoRootConfigBackedSlophammerGoMutationCommand(snapshot repo.Snapshot) 
 		if commandFileIsUnderNestedGoModule(file.Path, moduleRoots) {
 			continue
 		}
-		if fileHasConfigBackedSlophammerGoCommand(file, "mutate") {
+		if fileHasConfigBackedSlophammerGoCommand(file, "mutate") ||
+			fileHasConfigBackedSlophammerGoCheckExecuteCommand(file) {
 			return true
 		}
 	}
@@ -283,11 +301,21 @@ func commandFileIsUnderNestedGoModule(filePath string, moduleRoots []string) boo
 }
 
 func hasConfigBackedSlophammerGoMutationCommandAtRoot(snapshot repo.Snapshot, root string) bool {
+	return hasCommandFileForRoot(snapshot, root, func(file repo.File, root string) bool {
+		if fileHasConfigBackedSlophammerGoCommandAtRoot(file, "mutate", root) ||
+			fileHasConfigBackedSlophammerGoCheckExecuteCommandAtRoot(file, root) {
+			return true
+		}
+		return false
+	})
+}
+
+func hasCommandFileForRoot(snapshot repo.Snapshot, root string, match func(repo.File, string) bool) bool {
 	if root == "" {
 		root = "."
 	}
 	for _, file := range commandFiles(snapshot) {
-		if fileHasConfigBackedSlophammerGoCommandAtRoot(file, "mutate", root) {
+		if match(file, root) {
 			return true
 		}
 	}
@@ -295,24 +323,44 @@ func hasConfigBackedSlophammerGoMutationCommandAtRoot(snapshot repo.Snapshot, ro
 }
 
 func hasConfigBackedSlophammerGoMutationCommandInWorkingDir(snapshot repo.Snapshot, root string) bool {
-	if root == "" {
-		root = "."
-	}
-	for _, file := range commandFiles(snapshot) {
-		for _, content := range commandSections(file) {
-			if contentHasConfigBackedSlophammerGoCommandInWorkingDir(content, "mutate", root) {
-				return true
-			}
+	return hasCommandFileForRoot(snapshot, root, fileHasConfigBackedSlophammerGoMutationCommandInWorkingDir)
+}
+
+func fileHasConfigBackedSlophammerGoMutationCommandInWorkingDir(file repo.File, root string) bool {
+	for _, content := range commandSections(file) {
+		if contentHasConfigBackedSlophammerGoCommandInWorkingDir(content, "mutate", root) ||
+			contentHasConfigBackedSlophammerGoCheckExecuteCommandInWorkingDir(content, root) {
+			return true
 		}
 	}
 	return false
 }
 
 func contentHasConfigBackedSlophammerGoCommandInWorkingDir(content string, subcommand string, workingDir string) bool {
+	return contentHasConfigBackedSlophammerGoCommandInWorkingDirWith(content, workingDir, func(tokens []string, index int) (int, bool) {
+		return slophammerGoCommandArgsStart(tokens, index, subcommand)
+	})
+}
+
+func contentHasConfigBackedSlophammerGoCheckExecuteCommandInWorkingDir(content string, workingDir string) bool {
+	return contentHasConfigBackedSlophammerGoCommandInWorkingDirWith(content, workingDir, func(tokens []string, index int) (int, bool) {
+		argsStart, ok := slophammerGoCommandArgsStart(tokens, index, "check")
+		if !ok || !lineHasBooleanFlag(tokens[argsStart:], "--execute") {
+			return 0, false
+		}
+		return argsStart, true
+	})
+}
+
+func contentHasConfigBackedSlophammerGoCommandInWorkingDirWith(
+	content string,
+	workingDir string,
+	commandArgsStart func([]string, int) (int, bool),
+) bool {
 	workingDir = cleanRuleSlashPath(workingDir)
 	return contentHasCommandLine(content, func(tokens []string) bool {
 		for i := 0; i < len(tokens); i++ {
-			argsStart, ok := slophammerGoCommandArgsStart(tokens, i, subcommand)
+			argsStart, ok := commandArgsStart(tokens, i)
 			if !ok {
 				continue
 			}
@@ -320,7 +368,8 @@ func contentHasConfigBackedSlophammerGoCommandInWorkingDir(content string, subco
 			if !ok || cleanRuleSlashPath(priorDir) != workingDir {
 				continue
 			}
-			if token, ok := firstSlophammerGoPathArgument(tokens[argsStart:]); ok {
+			args := tokens[argsStart:]
+			if token, ok := firstSlophammerGoPathArgument(args); ok {
 				return pathIsConfigRootArgument(token, ".")
 			}
 			return true
@@ -338,7 +387,8 @@ func hasModuleLocalConfigBackedSlophammerGoMutationCommand(snapshot repo.Snapsho
 		if isWorkflowFilePath(file.Path) || !strings.HasPrefix(file.Path, prefix) {
 			continue
 		}
-		if fileHasConfigBackedSlophammerGoCommand(file, "mutate") {
+		if fileHasConfigBackedSlophammerGoCommand(file, "mutate") ||
+			fileHasConfigBackedSlophammerGoCheckExecuteCommand(file) {
 			return true
 		}
 	}
@@ -346,25 +396,30 @@ func hasModuleLocalConfigBackedSlophammerGoMutationCommand(snapshot repo.Snapsho
 }
 
 func hasConfigBackedSlophammerGoMutationCommandInWorkflowWorkingDir(snapshot repo.Snapshot, root string) bool {
-	if root == "" {
-		root = "."
+	return hasCommandFileForRoot(snapshot, root, fileHasConfigBackedSlophammerGoMutationCommandInWorkflowWorkingDir)
+}
+
+func fileHasConfigBackedSlophammerGoMutationCommandInWorkflowWorkingDir(file repo.File, root string) bool {
+	if !isWorkflowFilePath(file.Path) {
+		return false
 	}
 	root = cleanRuleSlashPath(root)
-	for _, file := range commandFiles(snapshot) {
-		if !isWorkflowFilePath(file.Path) {
+	for _, block := range workflowCommandBlocks(file.Content) {
+		if !workflowBlockUsesWorkingDirectory(block, root) {
 			continue
 		}
-		for _, block := range workflowCommandBlocks(file.Content) {
-			workingDir, ok := workflowBlockWorkingDirectory(block)
-			if !ok || cleanRuleSlashPath(workingDir) != root {
-				continue
-			}
-			if contentHasConfigBackedSlophammerGoCommand(workflowRunContent(block), "mutate", ".") {
-				return true
-			}
+		runContent := workflowRunContent(block)
+		if contentHasConfigBackedSlophammerGoCommand(runContent, "mutate", ".") ||
+			contentHasConfigBackedSlophammerGoCheckExecuteCommand(runContent, ".") {
+			return true
 		}
 	}
 	return false
+}
+
+func workflowBlockUsesWorkingDirectory(block string, root string) bool {
+	workingDir, ok := workflowBlockWorkingDirectory(block)
+	return ok && cleanRuleSlashPath(workingDir) == root
 }
 
 func workflowBlockWorkingDirectory(block string) (string, bool) {
@@ -398,6 +453,27 @@ func fileHasConfigBackedSlophammerGoCommandAtRoot(file repo.File, subcommand str
 	}
 	for _, content := range commandSections(file) {
 		if contentHasConfigBackedSlophammerGoCommand(content, subcommand, configRootPath) {
+			return true
+		}
+	}
+	return false
+}
+
+func fileHasConfigBackedSlophammerGoCheckExecuteCommandAtRoot(file repo.File, configRootPath string) bool {
+	if isWorkflowFilePath(file.Path) {
+		for _, block := range workflowCommandBlocks(file.Content) {
+			blockRootPath := configRootPath
+			if workingDirectory, ok := workflowBlockWorkingDirectory(block); ok {
+				blockRootPath = configRootPathFromWorkflowWorkingDirectory(configRootPath, workingDirectory)
+			}
+			if contentHasConfigBackedSlophammerGoCheckExecuteCommand(workflowRunContent(block), blockRootPath) {
+				return true
+			}
+		}
+		return false
+	}
+	for _, content := range commandSections(file) {
+		if contentHasConfigBackedSlophammerGoCheckExecuteCommand(content, configRootPath) {
 			return true
 		}
 	}
@@ -457,6 +533,11 @@ func hasConfiguredGoMutationScopeInSnapshot(snapshot repo.Snapshot) bool {
 func hasConfiguredCRAPThreshold(snapshot repo.Snapshot) bool {
 	cfg, err := config.Load(snapshot)
 	return err == nil && cfg.Go.CRAPMaxScore > 0
+}
+
+func hasConfiguredDRYMaximum(snapshot repo.Snapshot) bool {
+	cfg, err := config.Load(snapshot)
+	return err == nil && cfg.Go.DRYMaxCandidatesSet
 }
 
 func hasConfiguredGoMutationScope(snapshot repo.Snapshot, root string, roots []string) bool {

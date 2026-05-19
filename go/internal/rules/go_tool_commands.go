@@ -83,12 +83,36 @@ func fileHasConfigBackedSlophammerGoCommand(file repo.File, subcommand string) b
 	return false
 }
 
+func fileHasConfigBackedSlophammerGoCheckExecuteCommand(file repo.File) bool {
+	if isWorkflowFilePath(file.Path) {
+		for _, block := range workflowCommandBlocks(file.Content) {
+			configRootPath := workflowBlockConfigRootPath(block)
+			if contentHasConfigBackedSlophammerGoCheckExecuteCommand(workflowRunContent(block), configRootPath) {
+				return true
+			}
+		}
+		return false
+	}
+	for _, content := range commandSections(file) {
+		if contentHasConfigBackedSlophammerGoCheckExecuteCommand(content, ".") {
+			return true
+		}
+	}
+	return false
+}
+
 func contentHasConfigBackedSlophammerGoCommand(content string, subcommand string, configRootPath string) bool {
 	matcher := configBackedSlophammerGoCommandMatcher{
 		subcommand:     subcommand,
 		configRootPath: configRootPath,
 	}
 	return contentHasCommandLine(content, matcher.match)
+}
+
+func contentHasConfigBackedSlophammerGoCheckExecuteCommand(content string, configRootPath string) bool {
+	return contentHasCommandLine(content, func(tokens []string) bool {
+		return lineHasConfigBackedSlophammerGoCheckExecuteCommand(tokens, configRootPath)
+	})
 }
 
 type configBackedSlophammerGoCommandMatcher struct {
@@ -126,6 +150,23 @@ func lineHasConfigBackedSlophammerGoCommand(tokens []string, subcommand string, 
 			continue
 		}
 		if lineHasConfigRootArgument(tokens[:i], tokens[argsStart:], configRootPath) {
+			return true
+		}
+	}
+	return false
+}
+
+func lineHasConfigBackedSlophammerGoCheckExecuteCommand(tokens []string, configRootPath string) bool {
+	for i := 0; i < len(tokens); i++ {
+		argsStart, ok := slophammerGoCommandArgsStart(tokens, i, "check")
+		if !ok {
+			continue
+		}
+		args := tokens[argsStart:]
+		if !lineHasBooleanFlag(args, "--execute") {
+			continue
+		}
+		if lineHasConfigRootArgument(tokens[:i], args, configRootPath) {
 			return true
 		}
 	}
@@ -213,7 +254,7 @@ func priorCDWorkingDirectory(tokens []string) (string, bool) {
 func slophammerGoFlagNeedsValue(token string) bool {
 	flag, _, _ := strings.Cut(token, "=")
 	switch flag {
-	case "--max-candidates", "--max-score", "--target":
+	case "--format", "--max-candidates", "--max-score", "--target":
 		return true
 	default:
 		return false
@@ -399,6 +440,19 @@ func lineHasRequiredFlag(tokens []string, requiredFlag string) bool {
 		}
 		if cleanCommandToken(token) == requiredFlag {
 			return hasFlagValue(tokens, i)
+		}
+	}
+	return false
+}
+
+func lineHasBooleanFlag(tokens []string, flag string) bool {
+	for _, token := range tokens {
+		cleaned := cleanCommandToken(token)
+		if isShellSeparator(cleaned) {
+			return false
+		}
+		if cleaned == flag {
+			return true
 		}
 	}
 	return false

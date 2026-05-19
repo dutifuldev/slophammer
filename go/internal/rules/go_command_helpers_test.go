@@ -193,3 +193,83 @@ jobs:
 		})
 	}
 }
+
+func TestFileHasConfigBackedSlophammerGoCheckExecuteCommand(t *testing.T) {
+	tests := []struct {
+		name string
+		file repo.File
+		want bool
+	}{
+		{
+			name: "workflow working directory root path",
+			file: repo.File{
+				Path: ".github/workflows/ci.yml",
+				Content: `name: CI
+jobs:
+  test:
+    steps:
+      - name: slophammer
+        working-directory: go
+        run: go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.5 check .. --execute
+`,
+			},
+			want: true,
+		},
+		{
+			name: "workflow wrong config root path",
+			file: repo.File{
+				Path: ".github/workflows/ci.yml",
+				Content: `name: CI
+jobs:
+  test:
+    steps:
+      - name: slophammer
+        working-directory: go
+        run: slophammer-go check ../tmp --execute
+`,
+			},
+			want: false,
+		},
+		{
+			name: "script default root",
+			file: repo.File{
+				Path:    "scripts/check.sh",
+				Content: "slophammer-go check . --execute\n",
+			},
+			want: true,
+		},
+		{
+			name: "script execute before path",
+			file: repo.File{
+				Path:    "scripts/check.sh",
+				Content: "slophammer-go check --execute .\n",
+			},
+			want: true,
+		},
+		{
+			name: "script format flag",
+			file: repo.File{
+				Path:    "scripts/check.sh",
+				Content: "slophammer-go check --format json . --execute\n",
+			},
+			want: true,
+		},
+		{
+			name: "script missing execute",
+			file: repo.File{
+				Path:    "scripts/check.sh",
+				Content: "slophammer-go check .\n",
+			},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := fileHasConfigBackedSlophammerGoCheckExecuteCommand(tt.file)
+			if got != tt.want {
+				t.Fatalf("fileHasConfigBackedSlophammerGoCheckExecuteCommand = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
