@@ -128,12 +128,14 @@ func TestCheckExecuteAddsToolFindings(t *testing.T) {
 	writeFile(t, root, ".github/workflows/ci.yml", "name: CI\n")
 	writeFile(t, root, "left.go", duplicateGoSource("Left"))
 	writeFile(t, root, "right.go", duplicateGoSource("Right"))
+	writeFile(t, root, "internal/example.go", "package internal\n")
 	writeFile(t, root, "slophammer.yml", strings.Join([]string{
 		"go:",
 		"  dry_max_candidates: 0",
 		"  crap_max_score: 8",
-		"  mutation_targets:",
-		"    - internal/example.go",
+		"  mutation:",
+		"    targets:",
+		"      - internal/example.go",
 		"",
 	}, "\n"))
 
@@ -157,7 +159,8 @@ func TestApplyCommandConfigUsesConfiguredDefaults(t *testing.T) {
 		DRYPaths:            []string{"go/cmd", "go/internal"},
 		DRYExclude:          []string{"**/*_test.go"},
 		CRAPMaxScore:        8,
-		MutationTargets:     []string{"a.go", "b.go"},
+		Targets:             []string{"go"},
+		Exclude:             []string{"go/generated/**"},
 	}}
 
 	dry := toolchecks.DryOptions{}
@@ -177,7 +180,7 @@ func TestApplyCommandConfigUsesConfiguredDefaults(t *testing.T) {
 
 	mutation := toolchecks.MutationOptions{}
 	applyMutationConfig(&mutation, cfg)
-	if !reflect.DeepEqual(mutation.Targets, []string{"a.go", "b.go"}) {
+	if !reflect.DeepEqual(mutation.Targets, []string{"go"}) || !reflect.DeepEqual(mutation.Exclude, []string{"go/generated/**"}) {
 		t.Fatalf("mutation = %#v", mutation)
 	}
 }
@@ -188,7 +191,9 @@ func TestApplyCommandConfigKeepsExplicitValues(t *testing.T) {
 		DRYMaxCandidatesSet: true,
 		DRYPaths:            []string{"go/internal"},
 		CRAPMaxScore:        8,
-		MutationTargets:     []string{"configured.go"},
+		Mutation: config.MutationConfig{
+			Targets: []string{"configured.go"},
+		},
 	}}
 
 	dry := toolchecks.DryOptions{MaximumCandidates: 3, MaximumSet: true}
@@ -207,6 +212,71 @@ func TestApplyCommandConfigKeepsExplicitValues(t *testing.T) {
 	applyMutationConfig(&mutation, cfg)
 	if mutation.Target != "explicit.go" || len(mutation.Targets) != 0 {
 		t.Fatalf("mutation = %#v", mutation)
+	}
+}
+
+func TestCheckMutationInModulesRunsResolvedTargetsFromNestedModule(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"go/go.mod":              {Path: "go/go.mod"},
+		"go/internal/example.go": {Path: "go/internal/example.go"},
+	})
+	runner := &recordingRunner{}
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	code := checkMutationInModules(context.Background(), snapshot, toolchecks.MutationOptions{
+		Root:    ".",
+		Targets: []string{"go/internal"},
+		Scan:    true,
+	}, &out, &errOut, runner)
+
+	if code != ExitOK {
+		t.Fatalf("code = %d, want %d; stderr=%q", code, ExitOK, errOut.String())
+	}
+	if len(runner.calls) != 1 {
+		t.Fatalf("calls = %#v", runner.calls)
+	}
+	call := runner.calls[0]
+	if call.dir != "go" {
+		t.Fatalf("dir = %q, want go", call.dir)
+	}
+	if got := strings.Join(call.args, " "); !strings.Contains(got, "internal/example.go --scan") {
+		t.Fatalf("args = %q", got)
+	}
+}
+
+func TestCheckMutationInModulesRebasesExcludesInSingleModuleFallback(t *testing.T) {
+	for _, exclude := range [][]string{
+		{"generated/**"},
+		{"internal/generated/**"},
+	} {
+		t.Run(strings.Join(exclude, ","), func(t *testing.T) {
+			snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+				"go/go.mod":                      {Path: "go/go.mod"},
+				"go/internal/example.go":         {Path: "go/internal/example.go"},
+				"go/internal/generated/model.go": {Path: "go/internal/generated/model.go"},
+			})
+			runner := &recordingRunner{}
+
+			var out bytes.Buffer
+			var errOut bytes.Buffer
+			code := checkMutationInModules(context.Background(), snapshot, toolchecks.MutationOptions{
+				Root:    ".",
+				Targets: []string{"internal"},
+				Exclude: exclude,
+				Scan:    true,
+			}, &out, &errOut, runner)
+
+			if code != ExitOK {
+				t.Fatalf("code = %d, want %d; stderr=%q", code, ExitOK, errOut.String())
+			}
+			if len(runner.calls) != 1 {
+				t.Fatalf("calls = %#v", runner.calls)
+			}
+			if got := strings.Join(runner.calls[0].args, " "); !strings.Contains(got, "internal/example.go --scan") || strings.Contains(got, "generated/model.go") {
+				t.Fatalf("args = %q", got)
+			}
+		})
 	}
 }
 
@@ -399,4 +469,18 @@ func (executeFakeRunner) Run(_ context.Context, _ string, _ string, args ...stri
 	default:
 		return toolchecks.CommandResult{}, errors.New("unexpected command")
 	}
+}
+
+type recordingRunner struct {
+	calls []recordedCall
+}
+
+type recordedCall struct {
+	dir  string
+	args []string
+}
+
+func (r *recordingRunner) Run(_ context.Context, dir string, _ string, args ...string) (toolchecks.CommandResult, error) {
+	r.calls = append(r.calls, recordedCall{dir: dir, args: append([]string(nil), args...)})
+	return toolchecks.CommandResult{}, nil
 }

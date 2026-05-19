@@ -19,6 +19,11 @@ rules:
     severity: warn
 go:
   coverage_threshold: 85
+  targets:
+    - go
+  exclude:
+    - "fixtures/**"
+    - "templates/**"
   dry:
     max_findings: 0
     paths:
@@ -37,8 +42,11 @@ go:
       enabled: true
       min_tokens: 100
   crap_max_score: 8
-  mutation_targets:
-    - go/internal/rules/rules.go
+  mutation:
+    targets:
+      - go/internal/rules
+    exclude:
+      - "go/internal/rules/generated/**"
   dependency_boundaries:
     - from: go/internal/rules
       allow:
@@ -97,9 +105,9 @@ reason and is not used by the current Go implementation to hide findings.
 
 ## Go Config
 
-`go.coverage_threshold`, `go.dry_max_candidates`, `go.dry`,
-`go.crap_max_score`, and `go.mutation_targets` are parsed as typed policy
-fields.
+`go.coverage_threshold`, `go.targets`, `go.exclude`, `go.dry`,
+`go.crap_max_score`, `go.mutation`, and `go.dependency_boundaries` are parsed
+as typed policy fields.
 
 The Go policy values have hard recommended bounds. Slophammer rejects config
 that weakens them:
@@ -109,6 +117,12 @@ that weakens them:
 
 Projects may choose stricter values, such as higher coverage or lower CRAP
 limits, but they cannot configure weaker values through `slophammer.yml`.
+
+`go.targets` and `go.exclude` define the default production Go files in scope
+for Go checks. Targets may be `.go` files or directories. Slophammer expands
+directory targets recursively, excludes test files and fixture directories by
+default, applies configured excludes, sorts the result, and fails commands that
+resolve to zero files.
 
 `go.dry_paths` and `go.dry_exclude` configure production-only DRY enforcement.
 The nested `go.dry` shape is the preferred spelling for new repos:
@@ -128,8 +142,8 @@ The direct Go commands use these values as defaults:
   `--max-candidates` is passed.
 - `slophammer-go crap` uses `go.crap_max_score` unless `--max-score` is
   passed.
-- `slophammer-go mutate` uses `go.mutation_targets` unless `--target` is
-  passed.
+- `slophammer-go mutate` uses `go.mutation.targets` when present, otherwise
+  `go.targets`, unless `--target` is passed.
 
 `slophammer-go check --execute` runs configured Go tool checks and adds failures
 to the normal report. Go tool execution runs from discovered Go module roots,

@@ -129,6 +129,11 @@ For Go projects, start with this policy:
 ```yaml
 go:
   coverage_threshold: 85
+  targets:
+    - go
+  exclude:
+    - "fixtures/**"
+    - "templates/**"
   dry:
     max_findings: 0
     paths:
@@ -147,12 +152,13 @@ go:
       enabled: true
       min_tokens: 100
   crap_max_score: 8
-  mutation_targets:
-    - go/internal/rules/rules.go
+  mutation:
+    targets:
+      - go/internal/rules
 ```
 
-Adjust `go.dry.paths`, `go.dry.exclude`, and `mutation_targets` to match the
-target repository.
+Adjust `go.targets`, `go.exclude`, `go.dry.paths`, `go.dry.exclude`, and
+`go.mutation.targets` to match the target repository.
 
 These are hard quality targets:
 

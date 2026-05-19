@@ -27,6 +27,10 @@ func TestLoadParsesPolicyConfig(t *testing.T) {
     severity: warn
 go:
   coverage_threshold: 85
+  targets:
+    - go
+  exclude:
+    - "go/generated/**"
   dry_max_candidates: 0
   dry_paths:
     - go/cmd
@@ -34,8 +38,11 @@ go:
   dry_exclude:
     - "**/*_test.go"
   crap_max_score: 8
-  mutation_targets:
-    - internal/rules/rules.go
+  mutation:
+    targets:
+      - internal/rules
+    exclude:
+      - "internal/rules/generated/**"
   dependency_boundaries:
     - from: internal/repo
       allow: []
@@ -57,8 +64,19 @@ func assertParsedGoPolicyConfig(t *testing.T, cfg Config) {
 		t.Fatalf("Go config = %#v", cfg.Go)
 	}
 	assertParsedDryPaths(t, cfg)
-	assertParsedMutationTargets(t, cfg)
+	assertParsedTargets(t, cfg)
+	assertParsedMutation(t, cfg)
 	assertParsedDependencyBoundaries(t, cfg)
+}
+
+func assertParsedTargets(t *testing.T, cfg Config) {
+	t.Helper()
+	if !reflect.DeepEqual(cfg.Go.Targets, []string{"go"}) {
+		t.Fatalf("Targets = %#v", cfg.Go.Targets)
+	}
+	if !reflect.DeepEqual(cfg.Go.Exclude, []string{"go/generated/**"}) {
+		t.Fatalf("Exclude = %#v", cfg.Go.Exclude)
+	}
 }
 
 func assertParsedDryPaths(t *testing.T, cfg Config) {
@@ -71,10 +89,13 @@ func assertParsedDryPaths(t *testing.T, cfg Config) {
 	}
 }
 
-func assertParsedMutationTargets(t *testing.T, cfg Config) {
+func assertParsedMutation(t *testing.T, cfg Config) {
 	t.Helper()
-	if len(cfg.Go.MutationTargets) != 1 || cfg.Go.MutationTargets[0] != "internal/rules/rules.go" {
-		t.Fatalf("MutationTargets = %#v", cfg.Go.MutationTargets)
+	if !reflect.DeepEqual(cfg.Go.Mutation.Targets, []string{"internal/rules"}) {
+		t.Fatalf("Mutation.Targets = %#v", cfg.Go.Mutation.Targets)
+	}
+	if !reflect.DeepEqual(cfg.Go.Mutation.Exclude, []string{"internal/rules/generated/**"}) {
+		t.Fatalf("Mutation.Exclude = %#v", cfg.Go.Mutation.Exclude)
 	}
 }
 
@@ -97,8 +118,8 @@ func TestLoadPrefersRootConfig(t *testing.T) {
 			Path: "slophammer.yml",
 			Content: `go:
   dry_max_candidates: 0
-  mutation_targets:
-    - go/internal/rules/rules.go
+  targets:
+    - go/internal/rules
 `,
 		},
 	}))
@@ -108,8 +129,121 @@ func TestLoadPrefersRootConfig(t *testing.T) {
 	if cfg.Go.DRYMaxCandidates != 0 || !cfg.Go.DRYMaxCandidatesSet {
 		t.Fatalf("DRYMaxCandidates = %d, set=%v, want 0 true", cfg.Go.DRYMaxCandidates, cfg.Go.DRYMaxCandidatesSet)
 	}
-	if len(cfg.Go.MutationTargets) != 1 || cfg.Go.MutationTargets[0] != "go/internal/rules/rules.go" {
-		t.Fatalf("MutationTargets = %#v", cfg.Go.MutationTargets)
+	if !reflect.DeepEqual(cfg.Go.Targets, []string{"go/internal/rules"}) {
+		t.Fatalf("Targets = %#v", cfg.Go.Targets)
+	}
+}
+
+func TestGoMutationScopeIsRelativeToConfigFile(t *testing.T) {
+	cfg, err := Load(repo.NewSnapshot("/repo", map[string]repo.File{
+		"go/slophammer.yml": {
+			Path: "go/slophammer.yml",
+			Content: `go:
+  targets:
+    - internal
+  exclude:
+    - "generated/**"
+`,
+		},
+	}))
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	targets, exclude := cfg.GoMutationScope()
+
+	if !reflect.DeepEqual(targets, []string{"go/internal"}) {
+		t.Fatalf("targets = %#v", targets)
+	}
+	if !reflect.DeepEqual(exclude, []string{"go/generated/**"}) {
+		t.Fatalf("exclude = %#v", exclude)
+	}
+}
+
+func TestGoMutationScopeUsesMutationOverride(t *testing.T) {
+	cfg, err := Load(repo.NewSnapshot("/repo", map[string]repo.File{
+		"go/slophammer.yml": {
+			Path: "go/slophammer.yml",
+			Content: `go:
+  targets:
+    - internal
+  mutation:
+    targets:
+      - cmd
+    exclude:
+      - "cmd/generated/**"
+`,
+		},
+	}))
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	targets, exclude := cfg.GoMutationScope()
+
+	if !reflect.DeepEqual(targets, []string{"go/cmd"}) {
+		t.Fatalf("targets = %#v", targets)
+	}
+	if !reflect.DeepEqual(exclude, []string{"go/cmd/generated/**"}) {
+		t.Fatalf("exclude = %#v", exclude)
+	}
+}
+
+func TestGoMutationScopeDoesNotInheritSharedExcludeForMutationTargets(t *testing.T) {
+	cfg, err := Load(repo.NewSnapshot("/repo", map[string]repo.File{
+		"slophammer.yml": {
+			Path: "slophammer.yml",
+			Content: `go:
+  targets:
+    - internal
+  exclude:
+    - "generated/**"
+  mutation:
+    targets:
+      - internal/generated
+`,
+		},
+	}))
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	targets, exclude := cfg.GoMutationScope()
+
+	if !reflect.DeepEqual(targets, []string{"internal/generated"}) {
+		t.Fatalf("targets = %#v", targets)
+	}
+	if len(exclude) != 0 {
+		t.Fatalf("exclude = %#v, want empty", exclude)
+	}
+}
+
+func TestGoMutationScopeUsesMutationExcludeWithSharedTargets(t *testing.T) {
+	cfg, err := Load(repo.NewSnapshot("/repo", map[string]repo.File{
+		"slophammer.yml": {
+			Path: "slophammer.yml",
+			Content: `go:
+  targets:
+    - internal
+  exclude:
+    - "internal/generated/**"
+  mutation:
+    exclude:
+      - "internal/mutation_generated/**"
+`,
+		},
+	}))
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	targets, exclude := cfg.GoMutationScope()
+
+	if !reflect.DeepEqual(targets, []string{"internal"}) {
+		t.Fatalf("targets = %#v", targets)
+	}
+	if !reflect.DeepEqual(exclude, []string{"internal/mutation_generated/**"}) {
+		t.Fatalf("exclude = %#v", exclude)
 	}
 }
 
@@ -259,6 +393,8 @@ func TestLoadRejectsUnknownConfigKeys(t *testing.T) {
 		{name: "root", content: "made_up: true\n", want: "root.made_up"},
 		{name: "rules", content: "rules:\n  repo.readme-required:\n    made_up: true\n", want: "rules.repo.readme-required.made_up"},
 		{name: "go", content: "go:\n  made_up: true\n", want: "go.made_up"},
+		{name: "go mutation", content: "go:\n  mutation:\n    made_up: true\n", want: "go.mutation.made_up"},
+		{name: "removed go mutation targets", content: "go:\n  mutation_targets:\n    - main.go\n", want: "go.mutation_targets"},
 		{name: "go dry", content: "go:\n  dry:\n    made_up: true\n", want: "go.dry.made_up"},
 		{name: "go structural", content: "go:\n  dry:\n    structural:\n      made_up: true\n", want: "go.dry.structural.made_up"},
 		{name: "go boundary", content: "go:\n  dependency_boundaries:\n    - from: internal/app\n      made_up: true\n", want: "go.dependency_boundaries[0].made_up"},

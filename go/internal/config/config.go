@@ -2,6 +2,8 @@ package config
 
 import (
 	"fmt"
+	"path"
+	"strings"
 
 	"github.com/dutifuldev/slophammer/go/internal/repo"
 	"gopkg.in/yaml.v3"
@@ -16,8 +18,9 @@ const (
 )
 
 type Config struct {
-	Rules map[string]RuleConfig `yaml:"rules"`
-	Go    GoConfig              `yaml:"go"`
+	SourceDir string                `yaml:"-"`
+	Rules     map[string]RuleConfig `yaml:"rules"`
+	Go        GoConfig              `yaml:"go"`
 }
 
 type RuleConfig struct {
@@ -30,14 +33,21 @@ type RuleConfig struct {
 
 type GoConfig struct {
 	CoverageThreshold    float64              `yaml:"coverage_threshold"`
+	Targets              []string             `yaml:"targets"`
+	Exclude              []string             `yaml:"exclude"`
 	DRYMaxCandidates     int                  `yaml:"dry_max_candidates"`
 	DRYMaxCandidatesSet  bool                 `yaml:"-"`
 	DRYPaths             []string             `yaml:"dry_paths"`
 	DRYExclude           []string             `yaml:"dry_exclude"`
 	DRY                  DryConfig            `yaml:"dry"`
 	CRAPMaxScore         float64              `yaml:"crap_max_score"`
-	MutationTargets      []string             `yaml:"mutation_targets"`
+	Mutation             MutationConfig       `yaml:"mutation"`
 	DependencyBoundaries []DependencyBoundary `yaml:"dependency_boundaries"`
+}
+
+type MutationConfig struct {
+	Targets []string `yaml:"targets"`
+	Exclude []string `yaml:"exclude"`
 }
 
 type DryConfig struct {
@@ -88,12 +98,14 @@ func (cfg *GoConfig) UnmarshalYAML(value *yaml.Node) error {
 	}
 	type goConfig struct {
 		CoverageThreshold    float64              `yaml:"coverage_threshold"`
+		Targets              []string             `yaml:"targets"`
+		Exclude              []string             `yaml:"exclude"`
 		DRYMaxCandidates     *int                 `yaml:"dry_max_candidates"`
 		DRYPaths             []string             `yaml:"dry_paths"`
 		DRYExclude           []string             `yaml:"dry_exclude"`
 		DRY                  dryConfig            `yaml:"dry"`
 		CRAPMaxScore         float64              `yaml:"crap_max_score"`
-		MutationTargets      []string             `yaml:"mutation_targets"`
+		Mutation             MutationConfig       `yaml:"mutation"`
 		DependencyBoundaries []DependencyBoundary `yaml:"dependency_boundaries"`
 	}
 	var parsed goConfig
@@ -101,6 +113,8 @@ func (cfg *GoConfig) UnmarshalYAML(value *yaml.Node) error {
 		return err
 	}
 	cfg.CoverageThreshold = parsed.CoverageThreshold
+	cfg.Targets = parsed.Targets
+	cfg.Exclude = parsed.Exclude
 	if parsed.DRYMaxCandidates != nil {
 		cfg.DRYMaxCandidates = *parsed.DRYMaxCandidates
 		cfg.DRYMaxCandidatesSet = true
@@ -134,7 +148,7 @@ func (cfg *GoConfig) UnmarshalYAML(value *yaml.Node) error {
 		cfg.DRY.CopiedBlocks.EnabledSet = true
 	}
 	cfg.CRAPMaxScore = parsed.CRAPMaxScore
-	cfg.MutationTargets = parsed.MutationTargets
+	cfg.Mutation = parsed.Mutation
 	cfg.DependencyBoundaries = parsed.DependencyBoundaries
 	return nil
 }
@@ -155,10 +169,23 @@ func Load(snapshot repo.Snapshot) (Config, error) {
 	if err := root.Decode(&cfg); err != nil {
 		return Config{}, fmt.Errorf("%s: %w", file.Path, err)
 	}
+	cfg.SourceDir = configSourceDir(file.Path)
 	if err := validate(cfg); err != nil {
 		return Config{}, fmt.Errorf("%s: %w", file.Path, err)
 	}
 	return cfg, nil
+}
+
+func (cfg Config) GoMutationScope() ([]string, []string) {
+	targets := cfg.Go.Targets
+	exclude := cfg.Go.Exclude
+	if len(cfg.Go.Mutation.Targets) > 0 {
+		targets = cfg.Go.Mutation.Targets
+		exclude = cfg.Go.Mutation.Exclude
+	} else if len(cfg.Go.Mutation.Exclude) > 0 {
+		exclude = cfg.Go.Mutation.Exclude
+	}
+	return scopedConfigPaths(cfg.SourceDir, targets), scopedConfigPaths(cfg.SourceDir, exclude)
 }
 
 func (cfg Config) RuleSeverity(ruleID string, fallback string) string {
@@ -181,6 +208,26 @@ func configFile(snapshot repo.Snapshot) (repo.File, bool) {
 		return file, true
 	}
 	return repo.File{}, false
+}
+
+func configSourceDir(filePath string) string {
+	dir := path.Dir(strings.ReplaceAll(filePath, "\\", "/"))
+	if dir == "." || dir == "/" {
+		return "."
+	}
+	return strings.TrimPrefix(dir, "./")
+}
+
+func scopedConfigPaths(sourceDir string, values []string) []string {
+	scoped := make([]string, 0, len(values))
+	for _, value := range values {
+		if sourceDir == "" || sourceDir == "." {
+			scoped = append(scoped, value)
+			continue
+		}
+		scoped = append(scoped, path.Join(sourceDir, value))
+	}
+	return scoped
 }
 
 func validateKnownKeys(root *yaml.Node) error {
@@ -216,18 +263,22 @@ func validateGoKeys(node *yaml.Node) error {
 		"go",
 		set(
 			"coverage_threshold",
+			"targets",
+			"exclude",
 			"dry_max_candidates",
 			"dry_paths",
 			"dry_exclude",
 			"dry",
 			"crap_max_score",
-			"mutation_targets",
+			"mutation",
 			"dependency_boundaries",
 		),
 		func(key string, value *yaml.Node) error {
 			switch key {
 			case "dry":
 				return validateGoDryKeys(value)
+			case "mutation":
+				return validateMappingKeys(value, "go.mutation", set("targets", "exclude"), nil)
 			case "dependency_boundaries":
 				return validateDependencyBoundaryKeys(value, "go.dependency_boundaries")
 			default:

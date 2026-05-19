@@ -79,6 +79,7 @@ type MutationOptions struct {
 	Root    string
 	Target  string
 	Targets []string
+	Exclude []string
 	Scan    bool
 }
 
@@ -222,10 +223,6 @@ func CountDRYCandidates(report []byte) (int, error) {
 		return len(candidates), nil
 	}
 	return 0, errors.New("missing findings field")
-}
-
-func MutationTargets(options MutationOptions) []string {
-	return mutationTargets(options)
 }
 
 func DryPaths(options DryOptions) []string {

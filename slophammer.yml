@@ -1,5 +1,10 @@
 go:
   coverage_threshold: 85
+  targets:
+    - .
+  exclude:
+    - "fixtures/**"
+    - "templates/**"
   dry:
     max_findings: 0
     paths:
@@ -18,8 +23,6 @@ go:
       enabled: true
       min_tokens: 100
   crap_max_score: 8
-  mutation_targets:
-    - go/internal/rules/rules.go
   dependency_boundaries:
     - from: go/cmd/slophammer
       allow:
@@ -34,6 +37,7 @@ go:
     - from: go/internal/app
       allow:
         - go/internal/config
+        - go/internal/gotargets
         - go/internal/repo
         - go/internal/report
         - go/internal/rules
@@ -42,12 +46,16 @@ go:
     - from: go/internal/config
       allow:
         - go/internal/repo
+    - from: go/internal/gotargets
+      allow:
+        - go/internal/repo
     - from: go/internal/report
       allow:
         - go/internal/rules
     - from: go/internal/rules
       allow:
         - go/internal/config
+        - go/internal/gotargets
         - go/internal/gotools
         - go/internal/repo
     - from: go/internal/scan

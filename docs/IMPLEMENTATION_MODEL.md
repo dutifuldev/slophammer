@@ -429,10 +429,11 @@ Mutation testing is expensive, so the production policy should require a
 declared workflow slot rather than requiring it on every pull request. Valid
 slots are nightly, manual, release, or targeted execution for risky packages.
 
-The first-class `slophammer-go mutate` command runs `mutate4go` directly. If
-`slophammer.yml` sets `go.mutation_targets`, those targets are used unless
-`--target` is passed. Pull requests should use `--scan` against configured
-targets; full mutation testing belongs on slower scheduled or manual paths.
+The first-class `slophammer-go mutate` command runs `mutate4go` directly.
+Configured mutation targets come from `go.mutation.targets` when present,
+otherwise from the shared `go.targets` resolver, unless `--target` is passed.
+Pull requests should use `--scan` against configured targets; full mutation
+testing belongs on slower scheduled or manual paths.
 
 The static `go.mutation-required` rule is a hard requirement: the repo must
 declare `mutate4go` or `slophammer-go mutate` in an inspectable workflow or

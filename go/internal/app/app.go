@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"path"
 	"strings"
 	"text/tabwriter"
 
 	"github.com/dutifuldev/slophammer/go/internal/config"
+	"github.com/dutifuldev/slophammer/go/internal/gotargets"
 	"github.com/dutifuldev/slophammer/go/internal/repo"
 	"github.com/dutifuldev/slophammer/go/internal/report"
 	"github.com/dutifuldev/slophammer/go/internal/rules"
@@ -211,10 +213,12 @@ func applyCRAPConfig(options *toolchecks.CRAPOptions, cfg config.Config) {
 }
 
 func applyMutationConfig(options *toolchecks.MutationOptions, cfg config.Config) {
-	if options.Target != "" || len(options.Targets) > 0 || len(cfg.Go.MutationTargets) == 0 {
+	if options.Target != "" || len(options.Targets) > 0 {
 		return
 	}
-	options.Targets = append([]string(nil), cfg.Go.MutationTargets...)
+	targets, exclude := cfg.GoMutationScope()
+	options.Targets = targets
+	options.Exclude = exclude
 }
 
 func executeGoChecks(ctx context.Context, snapshot repo.Snapshot, root string, cfg config.Config, runner toolchecks.Runner) []rules.Finding {
@@ -249,10 +253,12 @@ func executeGoChecks(ctx context.Context, snapshot repo.Snapshot, root string, c
 			return checkCRAPInModules(ctx, snapshot, options, out, errOut, runner)
 		})
 	}
-	if len(cfg.Go.MutationTargets) > 0 {
+	targets, exclude := cfg.GoMutationScope()
+	if len(targets) > 0 {
 		options := toolchecks.MutationOptions{
 			Root:    commandRoot(root),
-			Targets: cfg.Go.MutationTargets,
+			Targets: targets,
+			Exclude: exclude,
 			Scan:    true,
 		}
 		findings = appendToolFinding(findings, rules.GoMutationRequiredRuleID, cfg, "mutate4go failed for at least one configured target", func(out, errOut io.Writer) int {
@@ -260,6 +266,50 @@ func executeGoChecks(ctx context.Context, snapshot repo.Snapshot, root string, c
 		})
 	}
 	return findings
+}
+
+func resolveGoMutationTargets(snapshot repo.Snapshot, options toolchecks.MutationOptions) (toolchecks.MutationOptions, error) {
+	targets := mutationTargetPatterns(options)
+	resolved, err := gotargets.Resolve(snapshot, gotargets.Options{
+		Targets: targets,
+		Exclude: options.Exclude,
+	})
+	if err != nil {
+		if fallback, fallbackErr := resolveSingleModuleMutationTargets(snapshot, targets, options.Exclude); fallbackErr == nil {
+			resolved = fallback
+		} else {
+			return toolchecks.MutationOptions{}, err
+		}
+	}
+	options.Target = ""
+	options.Targets = resolved
+	return options, nil
+}
+
+func resolveSingleModuleMutationTargets(snapshot repo.Snapshot, targets []string, exclude []string) ([]string, error) {
+	moduleRoots := goModuleRoots(snapshot)
+	if len(moduleRoots) != 1 || moduleRoots[0] == "." {
+		return nil, gotargets.ErrNoFiles
+	}
+	moduleTargets := make([]string, 0, len(targets))
+	for _, target := range targets {
+		moduleTargets = append(moduleTargets, path.Join(moduleRoots[0], target))
+	}
+	moduleExclude := append([]string(nil), exclude...)
+	for _, pattern := range exclude {
+		moduleExclude = append(moduleExclude, path.Join(moduleRoots[0], pattern))
+	}
+	return gotargets.Resolve(snapshot, gotargets.Options{
+		Targets: moduleTargets,
+		Exclude: moduleExclude,
+	})
+}
+
+func mutationTargetPatterns(options toolchecks.MutationOptions) []string {
+	if options.Target != "" {
+		return []string{options.Target}
+	}
+	return append([]string(nil), options.Targets...)
 }
 
 func appendToolFinding(
