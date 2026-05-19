@@ -132,6 +132,36 @@ jobs:
 	}
 }
 
+func TestGoMutationRuleRejectsRepoRootConfigPathFromNestedWorkingDirectory(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"go/go.mod":  {Path: "go/go.mod"},
+		"go/main.go": {Path: "go/main.go"},
+		"slophammer.yml": {
+			Path: "slophammer.yml",
+			Content: `go:
+  targets:
+    - go
+`,
+		},
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+defaults:
+  run:
+    working-directory: go
+jobs:
+  test:
+    steps:
+      - run: slophammer-go mutate . --scan
+`,
+		},
+	})
+
+	if hasMutate4GoCommand(snapshot) {
+		t.Fatal("hasMutate4GoCommand = true, want false when . is relative to workflow working directory")
+	}
+}
+
 func TestGoToolRulesAcceptConfigBackedSlophammerCommands(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
 		"go/main.go": {Path: "go/main.go"},

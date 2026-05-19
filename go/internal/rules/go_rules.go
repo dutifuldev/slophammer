@@ -256,7 +256,7 @@ func hasConfigBackedSlophammerGoMutationCommand(snapshot repo.Snapshot, allowDef
 		if fileHasConfigBackedSlophammerGoCommand(file, "mutate") {
 			return true
 		}
-		if allowDefaultRoot && fileHasConfigBackedSlophammerGoCommandAtRoot(file, "mutate", ".") {
+		if allowDefaultRoot && !isWorkflowFilePath(file.Path) && fileHasConfigBackedSlophammerGoCommandAtRoot(file, "mutate", ".") {
 			return true
 		}
 	}

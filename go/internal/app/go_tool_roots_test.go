@@ -185,9 +185,29 @@ func TestTargetModuleRoot(t *testing.T) {
 	}
 }
 
-func TestTargetModuleRootFallsBackToSingleModule(t *testing.T) {
-	if got := targetModuleRoot("cmd/main.go", []string{"go"}); got != "go" {
-		t.Fatalf("targetModuleRoot = %q, want go", got)
+func TestTargetModuleRootKeepsResolvedRootFilesAtRepoRoot(t *testing.T) {
+	if got := targetModuleRoot("cmd/main.go", []string{"go"}); got != "." {
+		t.Fatalf("targetModuleRoot = %q, want .", got)
+	}
+}
+
+func TestMutationOptionsForModulesKeepsRootFilesOutOfNestedModule(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"go/go.mod": {Path: "go/go.mod"},
+	})
+
+	got := mutationOptionsForModules(toolchecks.MutationOptions{
+		Root:    ".",
+		Targets: []string{"main.go", "go/internal/rules/rules.go"},
+		Scan:    true,
+	}, snapshot)
+	want := []toolchecks.MutationOptions{
+		{Root: ".", Targets: []string{"main.go"}, Scan: true},
+		{Root: "go", Targets: []string{"internal/rules/rules.go"}, Scan: true},
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("mutationOptionsForModules = %#v, want %#v", got, want)
 	}
 }
 

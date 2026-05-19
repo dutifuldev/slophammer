@@ -307,9 +307,6 @@ func targetModuleRoot(target string, moduleRoots []string) string {
 			return moduleRoot
 		}
 	}
-	if len(moduleRoots) == 1 {
-		return moduleRoots[0]
-	}
 	return "."
 }
 
