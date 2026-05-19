@@ -301,20 +301,40 @@ func targetedCRAPCoverage(
 	errOut io.Writer,
 	runner Runner,
 ) (map[string]float64, bool) {
-	profilePath, coverOutput, _, cleanup, ok := targetedCoverageProfile(ctx, root, inputs.modulePath, coverageProfile, profileTargets, inputs.coverPackages, inputs.testPackages, out, errOut, runner)
+	profilePath, coverOutput, scopedFiles, cleanup, ok := targetedCoverageProfile(ctx, root, inputs.modulePath, coverageProfile, profileTargets, inputs.coverPackages, inputs.testPackages, out, errOut, runner)
 	defer cleanup()
 	if !ok {
 		return nil, false
 	}
 	coverage, ok := coverFunctionCoverageFromOutput(inputs.modulePath, coverOutput)
 	if !ok {
-		_, _ = fmt.Fprintf(errOut, "coverage profile %s did not include function coverage for module %s\n", profilePath, inputs.modulePath)
+		coverage = map[string]float64{}
+	}
+	scopedFiles, ok = generatedCRAPCoverageScope(ctx, root, coverageProfile, profileTargets, scopedFiles, errOut, runner)
+	if !ok {
 		return nil, false
 	}
-	if strings.TrimSpace(coverageProfile) != "" && !validateCRAPCoverageComplete(profilePath, complexity, coverage, errOut) {
+	if !addRawFunctionLineCoverage(root, profilePath, inputs.modulePath, scopedFiles, coverage, complexity, errOut) {
+		return nil, false
+	}
+	if !validateTargetedCRAPCoverage(root, profilePath, coverageProfile, scopedFiles, complexity, coverage, errOut) {
 		return nil, false
 	}
 	return coverage, true
+}
+
+func generatedCRAPCoverageScope(ctx context.Context, root string, coverageProfile string, profileTargets []string, scopedFiles map[string]bool, errOut io.Writer, runner Runner) (map[string]bool, bool) {
+	if strings.TrimSpace(coverageProfile) != "" {
+		return scopedFiles, true
+	}
+	return requiredCoverageScopeFiles(ctx, root, profileTargets, errOut, runner)
+}
+
+func validateTargetedCRAPCoverage(root string, profilePath string, coverageProfile string, scopedFiles map[string]bool, complexity map[string]functionComplexity, coverage map[string]float64, errOut io.Writer) bool {
+	if strings.TrimSpace(coverageProfile) != "" {
+		return validateCRAPCoverageComplete(profilePath, complexity, coverage, errOut)
+	}
+	return validateGeneratedCRAPCoverageComplete(root, profilePath, scopedFiles, complexity, coverage, errOut)
 }
 
 func validateCRAPCoverageComplete(profilePath string, complexity map[string]functionComplexity, coverage map[string]float64, errOut io.Writer) bool {
@@ -326,6 +346,44 @@ func validateCRAPCoverageComplete(profilePath string, complexity map[string]func
 		return false
 	}
 	return true
+}
+
+func validateGeneratedCRAPCoverageComplete(root string, profilePath string, scopedFiles map[string]bool, complexity map[string]functionComplexity, coverage map[string]float64, errOut io.Writer) bool {
+	for key, item := range complexity {
+		if _, ok := coverage[key]; ok {
+			continue
+		}
+		if !generatedFunctionCanHaveCoverage(root, key, scopedFiles) {
+			continue
+		}
+		if generatedFunctionIsLiteral(root, key, item) {
+			_, _ = fmt.Fprintf(errOut, "coverage profile %s does not include coverage for analyzed function literal %s.%s at %s\n", profilePath, item.Package, item.Name, key)
+			return false
+		}
+		_, _ = fmt.Fprintf(errOut, "coverage profile %s does not include coverage for analyzed function %s.%s at %s\n", profilePath, item.Package, item.Name, key)
+		return false
+	}
+	return true
+}
+
+func generatedFunctionCanHaveCoverage(root string, key string, scopedFiles map[string]bool) bool {
+	filePath, _, ok := splitFunctionLineKey(key)
+	if !ok {
+		return true
+	}
+	if scopedFiles != nil && !scopedFiles[filePath] {
+		return false
+	}
+	return goFileMayHaveCoverageBlocks(root, filePath)
+}
+
+func generatedFunctionIsLiteral(root string, key string, item functionComplexity) bool {
+	filePath, line, ok := splitFunctionLineKey(key)
+	if !ok {
+		return false
+	}
+	_, ok = functionLiteralRange(root, filePath, line, item.Column)
+	return ok
 }
 
 func checkEmptyCRAPCoverageProfile(ctx context.Context, root string, modulePath string, profileTargets []string, coverageProfile string, errOut io.Writer, runner Runner) bool {
@@ -449,6 +507,7 @@ type functionComplexity struct {
 	Name       string
 	Package    string
 	Complexity float64
+	Column     int
 }
 
 func gocycloComplexity(ctx context.Context, root string, targets []string, errOut io.Writer, runner Runner) (map[string]functionComplexity, bool) {
@@ -469,17 +528,30 @@ func gocycloComplexity(ctx context.Context, root string, targets []string, errOu
 		if err != nil {
 			continue
 		}
-		key, ok := fileLineKey(fields[3])
+		lineKey, column, ok := fileLineKeyAndColumn(fields[3])
 		if !ok {
 			continue
 		}
+		key := complexityLocationKey(root, lineKey, column)
 		complexity[key] = functionComplexity{
 			Name:       fields[2],
 			Package:    fields[1],
 			Complexity: value,
+			Column:     column,
 		}
 	}
 	return complexity, true
+}
+
+func complexityLocationKey(root string, lineKey string, column int) string {
+	filePath, line, ok := splitFunctionLineKey(lineKey)
+	if !ok {
+		return lineKey
+	}
+	if _, ok := functionLiteralRange(root, filePath, line, column); ok {
+		return fmt.Sprintf("%s:%d", lineKey, column)
+	}
+	return lineKey
 }
 
 func targetedCRAPViolations(complexity map[string]functionComplexity, coverage map[string]float64, maximumScore float64) []CRAPViolation {
@@ -532,16 +604,28 @@ func coverFilePath(location string, modulePath string) (string, bool) {
 }
 
 func fileLineKey(location string) (string, bool) {
+	key, _, ok := fileLineKeyAndColumn(location)
+	return key, ok
+}
+
+func fileLineKeyAndColumn(location string) (string, int, bool) {
 	parts := strings.Split(location, ":")
 	if len(parts) < 2 {
-		return "", false
+		return "", 0, false
 	}
 	filePath := strings.ReplaceAll(parts[0], "\\", "/")
 	line := parts[1]
 	if filePath == "" || line == "" {
-		return "", false
+		return "", 0, false
 	}
-	return filePath + ":" + line, true
+	column := 0
+	if len(parts) >= 3 {
+		parsed, err := strconv.Atoi(parts[2])
+		if err == nil && parsed > 0 {
+			column = parsed
+		}
+	}
+	return filePath + ":" + line, column, true
 }
 
 func crapTargets(options CRAPOptions) []string {
