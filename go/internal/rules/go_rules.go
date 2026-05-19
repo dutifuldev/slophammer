@@ -225,7 +225,7 @@ func hasMutate4GoCommandForRoot(full repo.Snapshot, scoped repo.Snapshot, root s
 	}
 	if hasConfiguredGoMutationScope(full, root, roots) {
 		return hasConfigBackedSlophammerGoMutationCommand(scoped, false) ||
-			hasConfigBackedSlophammerGoMutationCommand(full, false)
+			hasRepoRootConfigBackedSlophammerGoMutationCommand(full)
 	}
 	return repoRootConfiguredGoMutationScopeExcludesRoot(full, root, roots)
 }
@@ -257,6 +257,28 @@ func hasConfigBackedSlophammerGoMutationCommand(snapshot repo.Snapshot, allowDef
 			return true
 		}
 		if allowDefaultRoot && !isWorkflowFilePath(file.Path) && fileHasConfigBackedSlophammerGoCommandAtRoot(file, "mutate", ".") {
+			return true
+		}
+	}
+	return false
+}
+
+func hasRepoRootConfigBackedSlophammerGoMutationCommand(snapshot repo.Snapshot) bool {
+	moduleRoots := sortedRootSet(goModuleRootSet(snapshot))
+	for _, file := range commandFiles(snapshot) {
+		if commandFileIsUnderNestedGoModule(file.Path, moduleRoots) {
+			continue
+		}
+		if fileHasConfigBackedSlophammerGoCommand(file, "mutate") {
+			return true
+		}
+	}
+	return false
+}
+
+func commandFileIsUnderNestedGoModule(filePath string, moduleRoots []string) bool {
+	for _, root := range moduleRoots {
+		if root != "" && strings.HasPrefix(filePath, root+"/") {
 			return true
 		}
 	}
