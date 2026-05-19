@@ -13,46 +13,31 @@ import (
 	"github.com/dutifuldev/slophammer/go/internal/toolchecks"
 )
 
-func checkDryInModules(
-	ctx context.Context,
-	snapshot repo.Snapshot,
-	options toolchecks.DryOptions,
-	out io.Writer,
-	errOut io.Writer,
-	runner toolchecks.Runner,
-) int {
-	exitCode := ExitOK
-	for _, moduleRoot := range goModuleRootsOrDefault(snapshot) {
-		moduleOptions, ok := dryOptionsForModule(options, snapshot, moduleRoot)
-		if !ok {
-			continue
-		}
-		code := toolchecks.CheckDry(ctx, moduleOptions, out, errOut, runner)
-		if code == ExitError {
-			return ExitError
-		}
-		if code == ExitFindings {
-			exitCode = ExitFindings
-		}
-	}
-	return exitCode
+func checkDryInModules(ctx context.Context, snapshot repo.Snapshot, options toolchecks.DryOptions, out io.Writer, errOut io.Writer, runner toolchecks.Runner) int {
+	return checkGoToolInModules(ctx, snapshot, options, out, errOut, runner, dryOptionsForModule, toolchecks.CheckDry)
 }
 
-func checkCRAPInModules(
+func checkCRAPInModules(ctx context.Context, snapshot repo.Snapshot, options toolchecks.CRAPOptions, out io.Writer, errOut io.Writer, runner toolchecks.Runner) int {
+	return checkGoToolInModules(ctx, snapshot, options, out, errOut, runner, crapOptionsForModule, toolchecks.CheckCRAP)
+}
+
+func checkGoToolInModules[T any](
 	ctx context.Context,
 	snapshot repo.Snapshot,
-	options toolchecks.CRAPOptions,
+	options T,
 	out io.Writer,
 	errOut io.Writer,
 	runner toolchecks.Runner,
+	optionsForModule func(T, repo.Snapshot, string) (T, bool),
+	check func(context.Context, T, io.Writer, io.Writer, toolchecks.Runner) int,
 ) int {
 	exitCode := ExitOK
 	for _, moduleRoot := range goModuleRootsOrDefault(snapshot) {
-		moduleOptions, ok := crapOptionsForModule(options, snapshot, moduleRoot)
+		moduleOptions, ok := optionsForModule(options, snapshot, moduleRoot)
 		if !ok {
 			continue
 		}
-		code := toolchecks.CheckCRAP(ctx, moduleOptions, out, errOut, runner)
+		code := check(ctx, moduleOptions, out, errOut, runner)
 		if code == ExitError {
 			return ExitError
 		}
@@ -99,31 +84,49 @@ func goToolRoots(root string, snapshot repo.Snapshot) []string {
 }
 
 func dryOptionsForModule(options toolchecks.DryOptions, snapshot repo.Snapshot, moduleRoot string) (toolchecks.DryOptions, bool) {
-	moduleOptions := options
-	moduleOptions.Root = moduleToolRoot(options.Root, moduleRoot)
-	if len(options.Paths) == 0 && len(options.Exclude) == 0 {
-		return moduleOptions, true
-	}
-	paths := goFilePathsForModule(snapshot, moduleRoot, options.Paths, options.Exclude)
-	if len(paths) == 0 {
-		return toolchecks.DryOptions{}, false
-	}
-	moduleOptions.Paths = paths
-	return moduleOptions, true
+	return optionsForModuleGoFiles(options, snapshot, moduleRoot, options.Root, options.Paths, options.Exclude, setDryModuleFiles)
 }
 
 func crapOptionsForModule(options toolchecks.CRAPOptions, snapshot repo.Snapshot, moduleRoot string) (toolchecks.CRAPOptions, bool) {
+	return optionsForModuleGoFiles(options, snapshot, moduleRoot, options.Root, options.Targets, options.Exclude, setCRAPModuleFiles)
+}
+
+func setDryModuleFiles(moduleOptions *toolchecks.DryOptions, root string, files []string) {
+	moduleOptions.Root, moduleOptions.Paths = root, files
+}
+
+func setCRAPModuleFiles(moduleOptions *toolchecks.CRAPOptions, root string, files []string) {
+	moduleOptions.Root, moduleOptions.Targets = root, files
+}
+
+func optionsForModuleGoFiles[T any](
+	options T,
+	snapshot repo.Snapshot,
+	moduleRoot string,
+	root string,
+	includes []string,
+	excludes []string,
+	apply func(*T, string, []string),
+) (T, bool) {
 	moduleOptions := options
-	moduleOptions.Root = moduleToolRoot(options.Root, moduleRoot)
-	if len(options.Targets) == 0 && len(options.Exclude) == 0 {
-		return moduleOptions, true
+	files, ok := scopedGoFilePathsForModule(snapshot, moduleRoot, includes, excludes)
+	if !ok {
+		var zero T
+		return zero, false
 	}
-	targets := goFilePathsForModule(snapshot, moduleRoot, options.Targets, options.Exclude)
-	if len(targets) == 0 {
-		return toolchecks.CRAPOptions{}, false
-	}
-	moduleOptions.Targets = targets
+	apply(&moduleOptions, moduleToolRoot(root, moduleRoot), files)
 	return moduleOptions, true
+}
+
+func scopedGoFilePathsForModule(snapshot repo.Snapshot, moduleRoot string, includes []string, excludes []string) ([]string, bool) {
+	if len(includes) == 0 && len(excludes) == 0 {
+		return nil, true
+	}
+	files := goFilePathsForModule(snapshot, moduleRoot, includes, excludes)
+	if len(files) == 0 {
+		return nil, false
+	}
+	return files, true
 }
 
 func goFilePathsForModule(snapshot repo.Snapshot, moduleRoot string, includes []string, excludes []string) []string {

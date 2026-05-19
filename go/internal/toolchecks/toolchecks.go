@@ -199,26 +199,74 @@ func checkTargetedCRAP(
 	errOut io.Writer,
 	runner Runner,
 ) int {
-	modulePath, ok := goListModulePath(ctx, root, errOut, runner)
+	inputs, ok := targetedCRAPInputs(ctx, root, targets, errOut, runner)
 	if !ok {
 		return 2
+	}
+	profilePath, cleanup, ok := runTargetedCoverage(ctx, root, inputs.coverPackages, inputs.testPackages, out, errOut, runner)
+	defer cleanup()
+	if !ok {
+		return 2
+	}
+	complexity, ok := gocycloComplexity(ctx, root, targets, errOut, runner)
+	if !ok {
+		return 2
+	}
+	coverage, ok := coverFunctionCoverage(ctx, root, inputs.modulePath, profilePath, errOut, runner)
+	if !ok {
+		return 2
+	}
+
+	violations := targetedCRAPViolations(complexity, coverage, maximumScore)
+	for _, violation := range violations {
+		_, _ = fmt.Fprintf(errOut, "CRAP score %.1f exceeds maximum %.1f for %s\n", violation.Score, maximumScore, violation.Name)
+	}
+	if len(violations) > 0 {
+		return 1
+	}
+	_, _ = fmt.Fprintf(out, "CRAP scores meet maximum %.1f\n", maximumScore)
+	return 0
+}
+
+type targetedCRAPConfig struct {
+	modulePath    string
+	coverPackages []string
+	testPackages  []string
+}
+
+func targetedCRAPInputs(ctx context.Context, root string, targets []string, errOut io.Writer, runner Runner) (targetedCRAPConfig, bool) {
+	modulePath, ok := goListModulePath(ctx, root, errOut, runner)
+	if !ok {
+		return targetedCRAPConfig{}, false
 	}
 	coverPackages, ok := goListPackages(ctx, root, packageDirs(targets), errOut, runner)
 	if !ok {
-		return 2
+		return targetedCRAPConfig{}, false
 	}
 	testPackages, ok := goListPackages(ctx, root, []string{"./..."}, errOut, runner)
 	if !ok {
-		return 2
+		return targetedCRAPConfig{}, false
 	}
+	return targetedCRAPConfig{modulePath: modulePath, coverPackages: coverPackages, testPackages: testPackages}, true
+}
+
+func runTargetedCoverage(
+	ctx context.Context,
+	root string,
+	coverPackages []string,
+	testPackages []string,
+	out io.Writer,
+	errOut io.Writer,
+	runner Runner,
+) (string, func(), bool) {
 	profileDir, err := os.MkdirTemp("", "slophammer-crap-*")
 	if err != nil {
 		_, _ = fmt.Fprintf(errOut, "coverage profile setup failed: %v\n", err)
-		return 2
+		return "", func() {}, false
 	}
-	defer func() {
+	cleanup := func() {
 		_ = os.RemoveAll(profileDir)
-	}()
+	}
 	profilePath := filepath.Join(profileDir, "coverage.out")
 	args := []string{
 		"test",
@@ -233,27 +281,10 @@ func checkTargetedCRAP(
 		writeBytes(out, result.Stdout)
 		writeBytes(errOut, result.Stderr)
 		_, _ = fmt.Fprintf(errOut, "coverage test failed: %v\n", err)
-		return 2
+		cleanup()
+		return "", func() {}, false
 	}
-
-	complexity, ok := gocycloComplexity(ctx, root, targets, errOut, runner)
-	if !ok {
-		return 2
-	}
-	coverage, ok := coverFunctionCoverage(ctx, root, modulePath, profilePath, errOut, runner)
-	if !ok {
-		return 2
-	}
-
-	violations := targetedCRAPViolations(complexity, coverage, maximumScore)
-	for _, violation := range violations {
-		_, _ = fmt.Fprintf(errOut, "CRAP score %.1f exceeds maximum %.1f for %s\n", violation.Score, maximumScore, violation.Name)
-	}
-	if len(violations) > 0 {
-		return 1
-	}
-	_, _ = fmt.Fprintf(out, "CRAP scores meet maximum %.1f\n", maximumScore)
-	return 0
+	return profilePath, cleanup, true
 }
 
 func goListModulePath(ctx context.Context, root string, errOut io.Writer, runner Runner) (string, bool) {
