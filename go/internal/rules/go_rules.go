@@ -220,8 +220,8 @@ func hasMutate4GoCommandForRoot(full repo.Snapshot, scoped repo.Snapshot, root s
 	if hasDirectMutate4GoCommand(scoped) || hasSlophammerGoMutationTargetCommand(scoped) {
 		return true
 	}
-	if hasModuleLocalSlophammerConfig(full, root) && hasLocalConfigBackedGoMutationCommand(full, scoped, root) {
-		return true
+	if hasModuleLocalSlophammerConfig(full, root) && hasConfiguredGoMutationScopeInSnapshot(scoped) {
+		return hasLocalConfigBackedGoMutationCommand(full, scoped, root)
 	}
 	if hasConfiguredGoMutationScope(full, root, roots) {
 		return hasConfigBackedSlophammerGoMutationCommand(scoped, false) ||

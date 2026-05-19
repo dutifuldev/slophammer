@@ -191,8 +191,10 @@ func TestApplyCommandConfigKeepsExplicitValues(t *testing.T) {
 		DRYMaxCandidatesSet: true,
 		DRYPaths:            []string{"go/internal"},
 		CRAPMaxScore:        8,
+		Exclude:             []string{"generated/**"},
 		Mutation: config.MutationConfig{
 			Targets: []string{"configured.go"},
+			Exclude: []string{"mutation_generated/**"},
 		},
 	}}
 
@@ -210,8 +212,41 @@ func TestApplyCommandConfigKeepsExplicitValues(t *testing.T) {
 
 	mutation := toolchecks.MutationOptions{Target: "explicit.go"}
 	applyMutationConfig(&mutation, cfg)
-	if mutation.Target != "explicit.go" || len(mutation.Targets) != 0 {
+	if mutation.Target != "explicit.go" || len(mutation.Targets) != 0 || !reflect.DeepEqual(mutation.Exclude, []string{"mutation_generated/**"}) {
 		t.Fatalf("mutation = %#v", mutation)
+	}
+}
+
+func TestExplicitMutationTargetUsesConfiguredExcludes(t *testing.T) {
+	cfg := config.Config{Go: config.GoConfig{
+		Targets: []string{"internal"},
+		Exclude: []string{"internal/generated/**"},
+	}}
+	options := toolchecks.MutationOptions{
+		Root:   ".",
+		Target: "internal",
+		Scan:   true,
+	}
+	applyMutationConfig(&options, cfg)
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"go.mod":                          {Path: "go.mod"},
+		"internal/example.go":             {Path: "internal/example.go"},
+		"internal/generated/generated.go": {Path: "internal/generated/generated.go"},
+	})
+	runner := &recordingRunner{}
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	code := checkMutationInModules(context.Background(), snapshot, options, &out, &errOut, runner)
+
+	if code != ExitOK {
+		t.Fatalf("code = %d, want %d; stderr=%q", code, ExitOK, errOut.String())
+	}
+	if len(runner.calls) != 1 {
+		t.Fatalf("calls = %#v", runner.calls)
+	}
+	if got := strings.Join(runner.calls[0].args, " "); !strings.Contains(got, "internal/example.go --scan") || strings.Contains(got, "generated.go") {
+		t.Fatalf("args = %q", got)
 	}
 }
 

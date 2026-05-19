@@ -212,12 +212,12 @@ func applyCRAPConfig(options *toolchecks.CRAPOptions, cfg config.Config) {
 }
 
 func applyMutationConfig(options *toolchecks.MutationOptions, cfg config.Config) {
+	targets, exclude := cfg.GoMutationScope()
+	options.Exclude = exclude
 	if options.Target != "" || len(options.Targets) > 0 {
 		return
 	}
-	targets, exclude := cfg.GoMutationScope()
 	options.Targets = targets
-	options.Exclude = exclude
 }
 
 func executeGoChecks(ctx context.Context, snapshot repo.Snapshot, root string, cfg config.Config, runner toolchecks.Runner) []rules.Finding {
