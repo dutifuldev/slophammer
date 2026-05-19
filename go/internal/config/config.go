@@ -185,7 +185,7 @@ func (cfg Config) GoMutationScope() ([]string, []string) {
 	} else if len(cfg.Go.Mutation.Exclude) > 0 {
 		exclude = cfg.Go.Mutation.Exclude
 	}
-	return scopedConfigPaths(cfg.SourceDir, targets), scopedConfigPaths(cfg.SourceDir, exclude)
+	return scopedConfigPaths(cfg.SourceDir, targets), scopedConfigExcludePaths(cfg.SourceDir, exclude)
 }
 
 func (cfg Config) RuleSeverity(ruleID string, fallback string) string {
@@ -222,6 +222,18 @@ func scopedConfigPaths(sourceDir string, values []string) []string {
 	scoped := make([]string, 0, len(values))
 	for _, value := range values {
 		if sourceDir == "" || sourceDir == "." {
+			scoped = append(scoped, value)
+			continue
+		}
+		scoped = append(scoped, path.Join(sourceDir, value))
+	}
+	return scoped
+}
+
+func scopedConfigExcludePaths(sourceDir string, values []string) []string {
+	scoped := make([]string, 0, len(values))
+	for _, value := range values {
+		if sourceDir == "" || sourceDir == "." || !strings.Contains(value, "/") {
 			scoped = append(scoped, value)
 			continue
 		}

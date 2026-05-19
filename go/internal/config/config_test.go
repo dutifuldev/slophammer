@@ -160,6 +160,32 @@ func TestGoMutationScopeIsRelativeToConfigFile(t *testing.T) {
 	}
 }
 
+func TestGoMutationScopePreservesBasenameExcludesForConfigFile(t *testing.T) {
+	cfg, err := Load(repo.NewSnapshot("/repo", map[string]repo.File{
+		"go/slophammer.yml": {
+			Path: "go/slophammer.yml",
+			Content: `go:
+  targets:
+    - internal
+  exclude:
+    - "*.pb.go"
+`,
+		},
+	}))
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	targets, exclude := cfg.GoMutationScope()
+
+	if !reflect.DeepEqual(targets, []string{"go/internal"}) {
+		t.Fatalf("targets = %#v", targets)
+	}
+	if !reflect.DeepEqual(exclude, []string{"*.pb.go"}) {
+		t.Fatalf("exclude = %#v", exclude)
+	}
+}
+
 func TestGoMutationScopeUsesMutationOverride(t *testing.T) {
 	cfg, err := Load(repo.NewSnapshot("/repo", map[string]repo.File{
 		"go/slophammer.yml": {
