@@ -27,6 +27,7 @@ func TestLoadParsesPolicyConfig(t *testing.T) {
     severity: warn
 go:
   coverage_threshold: 85
+  coverage_profile: coverage.out
   targets:
     - go
   exclude:
@@ -62,6 +63,9 @@ func assertParsedGoPolicyConfig(t *testing.T, cfg Config) {
 	t.Helper()
 	if cfg.Go.CoverageThreshold != 85 || cfg.Go.DRYMaxCandidates != 0 || !cfg.Go.DRYMaxCandidatesSet || cfg.Go.CRAPMaxScore != 8 {
 		t.Fatalf("Go config = %#v", cfg.Go)
+	}
+	if cfg.Go.CoverageProfile != "coverage.out" {
+		t.Fatalf("CoverageProfile = %q, want coverage.out", cfg.Go.CoverageProfile)
 	}
 	assertParsedDryPaths(t, cfg)
 	assertParsedTargets(t, cfg)
@@ -157,6 +161,42 @@ func TestGoMutationScopeIsRelativeToConfigFile(t *testing.T) {
 	}
 	if !reflect.DeepEqual(exclude, []string{"generated/**", "go/generated/**"}) {
 		t.Fatalf("exclude = %#v", exclude)
+	}
+}
+
+func TestGoCoverageProfileIsRelativeToConfigFile(t *testing.T) {
+	cfg, err := Load(repo.NewSnapshot("/repo", map[string]repo.File{
+		"go/slophammer.yml": {
+			Path: "go/slophammer.yml",
+			Content: `go:
+  coverage_profile: coverage.out
+`,
+		},
+	}))
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	if got := cfg.GoCoverageProfile(); got != "go/coverage.out" {
+		t.Fatalf("GoCoverageProfile = %q, want go/coverage.out", got)
+	}
+}
+
+func TestGoCoverageProfilePreservesAbsoluteWindowsPath(t *testing.T) {
+	cfg, err := Load(repo.NewSnapshot("/repo", map[string]repo.File{
+		"go/slophammer.yml": {
+			Path: "go/slophammer.yml",
+			Content: `go:
+  coverage_profile: 'C:\ci\coverage.out'
+`,
+		},
+	}))
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	if got := cfg.GoCoverageProfile(); got != `C:\ci\coverage.out` {
+		t.Fatalf("GoCoverageProfile = %q, want Windows absolute path", got)
 	}
 }
 

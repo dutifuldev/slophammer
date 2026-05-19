@@ -254,7 +254,7 @@ func priorCDWorkingDirectory(tokens []string) (string, bool) {
 func slophammerGoFlagNeedsValue(token string) bool {
 	flag, _, _ := strings.Cut(token, "=")
 	switch flag {
-	case "--format", "--max-candidates", "--max-score", "--target":
+	case "--coverage-profile", "--format", "--max-candidates", "--max-score", "--profile", "--target":
 		return true
 	default:
 		return false

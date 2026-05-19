@@ -154,6 +154,44 @@ func TestCheckExecuteAddsToolFindings(t *testing.T) {
 	assertFinding(t, report, rules.GoMutationRequiredRuleID)
 }
 
+func TestCheckExecuteReusesConfiguredCoverageProfile(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "coverage.out", "mode: count\n"+
+		"example.test/backend/internal/example.go:2.1,2.2 10 1\n")
+	snapshot := repo.NewSnapshot(root, map[string]repo.File{
+		"internal/example.go": {Path: "internal/example.go"},
+	})
+	cfg := config.Config{Go: config.GoConfig{
+		CoverageThreshold: 85,
+		CoverageProfile:   "coverage.out",
+		Targets:           []string{"internal/example.go"},
+		CRAPMaxScore:      8,
+	}}
+	runner := &coverageProfileExecuteRunner{}
+
+	findings := executeGoChecks(context.Background(), snapshot, CheckOptions{Root: root, Execute: true}, cfg, runner)
+
+	if len(findings) != 0 {
+		t.Fatalf("findings = %#v, want none", findings)
+	}
+	coverCalls := 0
+	for _, call := range runner.calls {
+		got := strings.Join(call.args, " ")
+		if strings.HasPrefix(got, "test ") {
+			t.Fatalf("unexpected go test coverage generation call: %#v", call)
+		}
+		if strings.HasPrefix(got, "tool cover -func=") {
+			coverCalls++
+			if !filepath.IsAbs(strings.TrimPrefix(got, "tool cover -func=")) {
+				t.Fatalf("cover args = %q, want absolute profile path", got)
+			}
+		}
+	}
+	if coverCalls != 2 {
+		t.Fatalf("coverCalls = %d, want 2; calls = %#v", coverCalls, runner.calls)
+	}
+}
+
 func TestApplyCommandConfigUsesConfiguredDefaults(t *testing.T) {
 	cfg := config.Config{Go: config.GoConfig{
 		DRYMaxCandidates:    0,
@@ -161,6 +199,7 @@ func TestApplyCommandConfigUsesConfiguredDefaults(t *testing.T) {
 		DRYPaths:            []string{"go/cmd", "go/internal"},
 		DRYExclude:          []string{"**/*_test.go"},
 		CRAPMaxScore:        8,
+		CoverageProfile:     "coverage.out",
 		Targets:             []string{"go"},
 		Exclude:             []string{"go/generated/**"},
 	}}
@@ -179,6 +218,9 @@ func TestApplyCommandConfigUsesConfiguredDefaults(t *testing.T) {
 	if crap.MaximumScore != 8 || !crap.MaximumSet {
 		t.Fatalf("crap = %#v", crap)
 	}
+	if crap.CoverageProfile != "coverage.out" {
+		t.Fatalf("crap coverage profile = %q", crap.CoverageProfile)
+	}
 
 	mutation := toolchecks.MutationOptions{}
 	applyMutationConfig(&mutation, cfg)
@@ -190,6 +232,7 @@ func TestApplyCommandConfigUsesConfiguredDefaults(t *testing.T) {
 func TestApplyCoverageConfigUsesConfiguredScope(t *testing.T) {
 	cfg := config.Config{Go: config.GoConfig{
 		CoverageThreshold: 85,
+		CoverageProfile:   "coverage.out",
 		Targets:           []string{"go"},
 		Exclude:           []string{"go/generated/**"},
 	}}
@@ -199,6 +242,9 @@ func TestApplyCoverageConfigUsesConfiguredScope(t *testing.T) {
 
 	if coverage.Threshold != 85 || !coverage.ThresholdSet {
 		t.Fatalf("coverage = %#v", coverage)
+	}
+	if coverage.CoverageProfile != "coverage.out" {
+		t.Fatalf("coverage profile = %q", coverage.CoverageProfile)
 	}
 	if !reflect.DeepEqual(coverage.Targets, []string{"go"}) || !reflect.DeepEqual(coverage.Exclude, []string{"go/generated/**"}) {
 		t.Fatalf("coverage targets = %#v excludes = %#v", coverage.Targets, coverage.Exclude)
@@ -365,7 +411,7 @@ func TestCheckCRAPInModulesUsesConfiguredGoTargets(t *testing.T) {
 	if len(runner.calls) != 6 {
 		t.Fatalf("calls = %#v", runner.calls)
 	}
-	call := runner.calls[4]
+	call := runner.calls[3]
 	if call.dir != "backend" {
 		t.Fatalf("dir = %q, want backend", call.dir)
 	}
@@ -655,6 +701,31 @@ func (executeFakeRunner) Run(_ context.Context, _ string, _ string, args ...stri
 	}
 }
 
+type coverageProfileExecuteRunner struct {
+	calls []recordedCall
+}
+
+func (r *coverageProfileExecuteRunner) Run(_ context.Context, dir string, _ string, args ...string) (toolchecks.CommandResult, error) {
+	r.calls = append(r.calls, recordedCall{dir: dir, args: append([]string(nil), args...)})
+	command := strings.Join(args, " ")
+	switch {
+	case command == "list -m":
+		return toolchecks.CommandResult{Stdout: []byte("example.test/backend\n")}, nil
+	case strings.HasPrefix(command, "list -f "):
+		return toolchecks.CommandResult{Stdout: []byte(filepath.Join(dir, "internal") + "|example.go\n")}, nil
+	case strings.HasPrefix(command, "list ./internal"):
+		return toolchecks.CommandResult{Stdout: []byte("example.test/backend/internal\n")}, nil
+	case strings.HasPrefix(command, "tool cover -func="):
+		return toolchecks.CommandResult{Stdout: []byte("example.test/backend/internal/example.go:2:\tRun\t100.0%\ntotal:\t(statements)\t100.0%\n")}, nil
+	case strings.Contains(command, "gocyclo"):
+		return toolchecks.CommandResult{Stdout: []byte("1 internal Run internal/example.go:2:1\n")}, nil
+	case strings.Contains(command, "mutate4go"):
+		return toolchecks.CommandResult{}, nil
+	default:
+		return toolchecks.CommandResult{}, errors.New("unexpected command: " + command)
+	}
+}
+
 type recordingRunner struct {
 	calls []recordedCall
 }
@@ -675,9 +746,9 @@ func (r *recordingRunner) Run(_ context.Context, dir string, _ string, args ...s
 	case strings.HasPrefix(command, "test "):
 		return toolchecks.CommandResult{}, nil
 	case strings.Contains(command, "gocyclo"):
-		return toolchecks.CommandResult{}, nil
+		return toolchecks.CommandResult{Stdout: []byte("1 service Run internal/service/service.go:12:1\n")}, nil
 	case strings.HasPrefix(command, "tool cover -func="):
-		return toolchecks.CommandResult{Stdout: []byte("total:\t(statements)\t85.7%\n")}, nil
+		return toolchecks.CommandResult{Stdout: []byte("example.test/backend/internal/service/service.go:12:\tRun\t85.7%\ntotal:\t(statements)\t85.7%\n")}, nil
 	}
 	return toolchecks.CommandResult{}, nil
 }

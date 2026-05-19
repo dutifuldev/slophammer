@@ -247,6 +247,14 @@ jobs:
 			want: true,
 		},
 		{
+			name: "script coverage profile before path",
+			file: repo.File{
+				Path:    "scripts/check.sh",
+				Content: "slophammer-go check --execute --coverage-profile coverage.out .\n",
+			},
+			want: true,
+		},
+		{
 			name: "script format flag",
 			file: repo.File{
 				Path:    "scripts/check.sh",
