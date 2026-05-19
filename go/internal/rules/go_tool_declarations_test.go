@@ -235,6 +235,39 @@ jobs:
 	}
 }
 
+func TestGoMutationRuleSkipsModulesOutsideConfiguredTargets(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"a/go.mod":  {Path: "a/go.mod"},
+		"a/main.go": {Path: "a/main.go"},
+		"b/go.mod":  {Path: "b/go.mod"},
+		"b/main.go": {Path: "b/main.go"},
+		"slophammer.yml": {
+			Path: "slophammer.yml",
+			Content: `go:
+  targets:
+    - a
+`,
+		},
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+jobs:
+  test:
+    steps:
+      - run: slophammer-go mutate . --scan
+`,
+		},
+	})
+	roots := goProjectRoots(snapshot)
+
+	for _, root := range roots {
+		scoped := goProjectSnapshot(snapshot, root, roots)
+		if !hasMutate4GoCommandForRoot(snapshot, scoped, root, roots) {
+			t.Fatalf("hasMutate4GoCommandForRoot(%q) = false, want true", root)
+		}
+	}
+}
+
 func TestGoMutationRuleUsesSingleModuleFallbackForRootConfig(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
 		"go/go.mod":              {Path: "go/go.mod"},

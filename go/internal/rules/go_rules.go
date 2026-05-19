@@ -223,11 +223,11 @@ func hasMutate4GoCommandForRoot(full repo.Snapshot, scoped repo.Snapshot, root s
 	if hasModuleLocalSlophammerConfig(full, root) && hasLocalConfigBackedGoMutationCommand(full, scoped, root) {
 		return true
 	}
-	if !hasConfiguredGoMutationScope(full, root, roots) {
-		return false
+	if hasConfiguredGoMutationScope(full, root, roots) {
+		return hasConfigBackedSlophammerGoMutationCommand(scoped, false) ||
+			hasConfigBackedSlophammerGoMutationCommand(full, false)
 	}
-	return hasConfigBackedSlophammerGoMutationCommand(scoped, false) ||
-		hasConfigBackedSlophammerGoMutationCommand(full, false)
+	return hasConfiguredGoMutationScopeInSnapshot(full)
 }
 
 func hasLocalConfigBackedGoMutationCommand(full repo.Snapshot, scoped repo.Snapshot, root string) bool {
