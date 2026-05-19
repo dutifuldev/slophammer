@@ -1,0 +1,261 @@
+---
+title: Go Coverage Artifact Contract
+author: Bob <dutifulbob@gmail.com>
+date: 2026-05-19
+---
+
+# Go Coverage Artifact Contract
+
+## Problem
+
+Several Go checks need coverage data.
+
+Today Slophammer can generate that data by running `go test -coverprofile`.
+That is useful as a default, but it becomes expensive when CI has already run
+tests and produced a coverage profile.
+
+A mature CI pipeline often wants this shape:
+
+```bash
+go test -coverprofile=coverage.out ./...
+slophammer-go check . --execute
+```
+
+If `slophammer-go check . --execute` runs another full coverage pass, and CRAP
+also needs coverage data, the same repository may pay for multiple expensive
+test executions in one workflow.
+
+The long-term boundary should be simple:
+
+- CI owns test execution.
+- Slophammer owns policy enforcement.
+- Coverage data can be passed from CI to Slophammer as a validated artifact.
+
+## Goal
+
+Slophammer should support a Go coverage artifact contract.
+
+The desired command shape is:
+
+```bash
+go test -coverprofile=coverage.out ./...
+slophammer-go check . --execute --coverage-profile coverage.out
+```
+
+The same profile should be usable by direct commands:
+
+```bash
+slophammer-go coverage . --profile coverage.out --threshold 85
+slophammer-go crap . --coverage-profile coverage.out --max-score 8
+```
+
+Configuration may provide the same value:
+
+```yaml
+go:
+  coverage_threshold: 85
+  coverage_profile: coverage.out
+```
+
+If a profile is supplied, Slophammer should validate and reuse it. If no profile
+is supplied, Slophammer should keep the current behavior and generate a temporary
+coverage profile itself.
+
+## Contract
+
+A Go coverage profile is an input artifact produced by:
+
+```bash
+go test -coverprofile=coverage.out ./...
+```
+
+Slophammer may consume that artifact when all of these are true:
+
+1. The profile path exists.
+2. `go tool cover -func=<profile>` can parse the profile.
+3. The profile contains at least one file under the configured Go target scope.
+4. The profile does not only cover excluded paths.
+5. The profile belongs to the Go module or repository root being checked.
+
+If any condition fails, Slophammer must return a clear error. It must not
+silently fall back to a generated profile when the user explicitly supplied a
+profile, because that would hide a broken CI artifact handoff.
+
+## Resolution Model
+
+Slophammer should resolve coverage data through one shared pipeline:
+
+```text
+ResolveCoverageProfile
+  if explicit profile path is provided:
+    validate supplied profile
+    return supplied profile
+  else if config has go.coverage_profile:
+    validate configured profile
+    return configured profile
+  else:
+    run go test with a temporary coverage profile
+    return temporary profile
+```
+
+Coverage enforcement and CRAP should both consume the resolved profile.
+
+Coverage enforcement uses the total coverage line from:
+
+```bash
+go tool cover -func=<profile>
+```
+
+CRAP uses the per-function coverage lines from the same command output.
+
+Future coverage-based checks should use the same resolved artifact instead of
+adding separate test execution paths.
+
+## CLI Semantics
+
+`slophammer-go check` should accept:
+
+```bash
+slophammer-go check <path> --execute --coverage-profile <profile>
+```
+
+`--coverage-profile` applies to every executable Go check that needs coverage
+data.
+
+`slophammer-go coverage` should accept:
+
+```bash
+slophammer-go coverage [path] --profile <profile> --threshold <n>
+```
+
+`slophammer-go crap` should accept:
+
+```bash
+slophammer-go crap [path] --coverage-profile <profile> --max-score <n>
+```
+
+The flag names intentionally distinguish the command-specific coverage command
+from the shared `check --execute` artifact:
+
+- `coverage --profile` means "check this coverage profile."
+- `check --execute --coverage-profile` means "make this profile available to
+  all executable Go checks that need coverage."
+- `crap --coverage-profile` means "compute CRAP using this coverage profile."
+
+## Configuration Semantics
+
+The repository config may declare:
+
+```yaml
+go:
+  targets:
+    - internal
+    - cmd
+  exclude:
+    - "**/*_test.go"
+    - "**/testdata/**"
+  coverage_threshold: 85
+  coverage_profile: coverage.out
+  crap_max_score: 8
+```
+
+Resolution precedence:
+
+1. CLI-supplied profile path.
+2. `go.coverage_profile`.
+3. Generated temporary profile.
+
+The profile path is resolved relative to the configuration file's directory when
+it comes from config. CLI paths are resolved relative to the command root or
+current working directory, matching the rest of the Go command behavior.
+
+## Validation
+
+The supplied profile must be checked before any policy result is emitted.
+
+Required validation:
+
+- Missing file fails.
+- Empty file fails.
+- Invalid `go tool cover -func` output fails.
+- A profile with no entries matching `go.targets` fails.
+- A profile with only entries matching `go.exclude` fails.
+- A profile whose entries cannot be mapped to the current module/root fails.
+
+Recommended validation:
+
+- Print how many profile entries matched configured targets.
+- Print the profile path used.
+- Include the first unmatched profile path in errors for easier diagnosis.
+
+Optional later validation:
+
+- In git-aware CI, fail when the profile is older than changed Go source files.
+- Add a strict mode that requires every configured target package to appear in
+  the profile.
+- Add a machine-readable profile validation report.
+
+## Static Rule Behavior
+
+The static `go.coverage-required` rule should accept a config-backed
+Slophammer executable check when all of these are true:
+
+- `go.coverage_threshold` is configured.
+- A command runs `slophammer-go check <path> --execute`.
+- Either Slophammer will generate coverage itself or a configured/supplied
+  profile is available to the executable check.
+
+The static rule should still reject a workflow that only uploads or renders
+coverage without enforcing a threshold.
+
+## Failure Behavior
+
+If a user supplies a profile and the profile is bad, Slophammer must fail with a
+profile error, not regenerate coverage.
+
+Example:
+
+```text
+coverage profile coverage.out does not include files under configured Go targets: internal, cmd
+```
+
+If Slophammer generates the profile itself and generation fails, the error should
+remain a test execution error:
+
+```text
+coverage test failed: exit status 1
+```
+
+This distinction matters because CI artifact handoff failures and test failures
+need different fixes.
+
+## Non-Goals
+
+This does not remove Slophammer's ability to run `go test` itself.
+
+This does not require every repository to store coverage profiles in the same
+path.
+
+This does not require race-enabled coverage. A repository may choose separate
+race and coverage jobs.
+
+This does not replace mutation testing. Mutation testing remains a separate
+semantic test-quality check.
+
+## Acceptance Criteria
+
+- `slophammer-go check . --execute --coverage-profile coverage.out` reuses the
+  supplied profile.
+- `slophammer-go coverage . --profile coverage.out` enforces the configured or
+  supplied threshold without running `go test`.
+- `slophammer-go crap . --coverage-profile coverage.out` computes CRAP from the
+  supplied profile without running `go test`.
+- Coverage and CRAP share one resolved profile in `check --execute`.
+- Missing, empty, invalid, unrelated, or out-of-scope profiles fail clearly.
+- If no profile is supplied or configured, existing generated-profile behavior
+  still works.
+- The implementation is project-agnostic and reads scope only from Slophammer
+  config and Go module metadata.
+- No repository needs a separate wrapper script solely to avoid duplicate
+  coverage execution.
+
