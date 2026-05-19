@@ -204,11 +204,12 @@ func applyDryConfig(options *toolchecks.DryOptions, cfg config.Config) {
 }
 
 func applyCRAPConfig(options *toolchecks.CRAPOptions, cfg config.Config) {
-	if options.MaximumSet || cfg.Go.CRAPMaxScore <= 0 {
-		return
+	if !options.MaximumSet && cfg.Go.CRAPMaxScore > 0 {
+		options.MaximumScore = cfg.Go.CRAPMaxScore
+		options.MaximumSet = true
 	}
-	options.MaximumScore = cfg.Go.CRAPMaxScore
-	options.MaximumSet = true
+	options.Targets = append([]string(nil), cfg.Go.Targets...)
+	options.Exclude = append([]string(nil), cfg.Go.Exclude...)
 }
 
 func applyMutationConfig(options *toolchecks.MutationOptions, cfg config.Config) {
@@ -247,6 +248,8 @@ func executeGoChecks(ctx context.Context, snapshot repo.Snapshot, root string, c
 			Root:         commandRoot(root),
 			MaximumScore: cfg.Go.CRAPMaxScore,
 			MaximumSet:   true,
+			Targets:      append([]string(nil), cfg.Go.Targets...),
+			Exclude:      append([]string(nil), cfg.Go.Exclude...),
 		}
 		findings = appendToolFinding(findings, rules.GoCRAPRequiredRuleID, cfg, "crap4go found functions above the configured score", func(out, errOut io.Writer) int {
 			return checkCRAPInModules(ctx, snapshot, options, out, errOut, runner)

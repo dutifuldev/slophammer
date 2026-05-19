@@ -119,7 +119,7 @@ func TestDryOptionsForModuleKeepsDotIncludePath(t *testing.T) {
 	}
 }
 
-func TestDryIncludeRoot(t *testing.T) {
+func TestGoIncludeRoot(t *testing.T) {
 	tests := []struct {
 		name       string
 		moduleRoot string
@@ -137,9 +137,9 @@ func TestDryIncludeRoot(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, ok := dryIncludeRoot(tt.moduleRoot, tt.include)
+			got, ok := goIncludeRoot(tt.moduleRoot, tt.include)
 			if ok != tt.wantOK || got != tt.want {
-				t.Fatalf("dryIncludeRoot = %q, %v; want %q, %v", got, ok, tt.want, tt.wantOK)
+				t.Fatalf("goIncludeRoot = %q, %v; want %q, %v", got, ok, tt.want, tt.wantOK)
 			}
 		})
 	}

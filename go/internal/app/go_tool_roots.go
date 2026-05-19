@@ -46,7 +46,21 @@ func checkCRAPInModules(
 	errOut io.Writer,
 	runner toolchecks.Runner,
 ) int {
-	return checkInModules(ctx, snapshot, options, out, errOut, runner, setCRAPRoot, toolchecks.CheckCRAP)
+	exitCode := ExitOK
+	for _, moduleRoot := range goModuleRootsOrDefault(snapshot) {
+		moduleOptions, ok := crapOptionsForModule(options, snapshot, moduleRoot)
+		if !ok {
+			continue
+		}
+		code := toolchecks.CheckCRAP(ctx, moduleOptions, out, errOut, runner)
+		if code == ExitError {
+			return ExitError
+		}
+		if code == ExitFindings {
+			exitCode = ExitFindings
+		}
+	}
+	return exitCode
 }
 
 func checkInModules[T any](
@@ -83,10 +97,6 @@ func optionRoot(options any) string {
 	default:
 		return ""
 	}
-}
-
-func setCRAPRoot(options *toolchecks.CRAPOptions, root string) {
-	options.Root = root
 }
 
 func checkMutationInModules(
@@ -130,7 +140,7 @@ func dryOptionsForModule(options toolchecks.DryOptions, snapshot repo.Snapshot, 
 	if len(options.Paths) == 0 && len(options.Exclude) == 0 {
 		return moduleOptions, true
 	}
-	paths := dryFilePathsForModule(snapshot, moduleRoot, options.Paths, options.Exclude)
+	paths := goFilePathsForModule(snapshot, moduleRoot, options.Paths, options.Exclude)
 	if len(paths) == 0 {
 		return toolchecks.DryOptions{}, false
 	}
@@ -138,15 +148,29 @@ func dryOptionsForModule(options toolchecks.DryOptions, snapshot repo.Snapshot, 
 	return moduleOptions, true
 }
 
-func dryFilePathsForModule(snapshot repo.Snapshot, moduleRoot string, includes []string, excludes []string) []string {
-	roots := dryIncludeRoots(moduleRoot, includes)
+func crapOptionsForModule(options toolchecks.CRAPOptions, snapshot repo.Snapshot, moduleRoot string) (toolchecks.CRAPOptions, bool) {
+	moduleOptions := options
+	moduleOptions.Root = moduleToolRoot(options.Root, moduleRoot)
+	if len(options.Targets) == 0 && len(options.Exclude) == 0 {
+		return moduleOptions, true
+	}
+	targets := goFilePathsForModule(snapshot, moduleRoot, options.Targets, options.Exclude)
+	if len(targets) == 0 {
+		return toolchecks.CRAPOptions{}, false
+	}
+	moduleOptions.Targets = targets
+	return moduleOptions, true
+}
+
+func goFilePathsForModule(snapshot repo.Snapshot, moduleRoot string, includes []string, excludes []string) []string {
+	roots := goIncludeRoots(moduleRoot, includes)
 	moduleRoots := goModuleRoots(snapshot)
 	files := make([]string, 0)
 	for filePath := range snapshot.Files {
 		if !strings.HasSuffix(filePath, ".go") ||
 			isUnderOtherModuleRoot(filePath, moduleRoot, moduleRoots) ||
-			!isUnderDryRoot(filePath, roots) ||
-			isDryExcluded(filePath, moduleRoot, excludes) {
+			!isUnderGoRoot(filePath, roots) ||
+			isGoFileExcluded(filePath, moduleRoot, excludes) {
 			continue
 		}
 		files = append(files, trimModuleRoot(filePath, moduleRoot))
@@ -155,13 +179,13 @@ func dryFilePathsForModule(snapshot repo.Snapshot, moduleRoot string, includes [
 	return files
 }
 
-func dryIncludeRoots(moduleRoot string, includes []string) []string {
+func goIncludeRoots(moduleRoot string, includes []string) []string {
 	if len(includes) == 0 {
 		return []string{moduleRoot}
 	}
 	roots := make([]string, 0, len(includes))
 	for _, include := range includes {
-		root, ok := dryIncludeRoot(moduleRoot, include)
+		root, ok := goIncludeRoot(moduleRoot, include)
 		if ok {
 			roots = append(roots, root)
 		}
@@ -169,7 +193,7 @@ func dryIncludeRoots(moduleRoot string, includes []string) []string {
 	return roots
 }
 
-func dryIncludeRoot(moduleRoot string, include string) (string, bool) {
+func goIncludeRoot(moduleRoot string, include string) (string, bool) {
 	if strings.TrimSpace(include) == "" {
 		return "", false
 	}
@@ -186,7 +210,7 @@ func dryIncludeRoot(moduleRoot string, include string) (string, bool) {
 	}
 }
 
-func isUnderDryRoot(filePath string, roots []string) bool {
+func isUnderGoRoot(filePath string, roots []string) bool {
 	for _, root := range roots {
 		if root == "." || filePath == root || strings.HasPrefix(filePath, root+"/") {
 			return true
@@ -210,21 +234,21 @@ func isUnderOtherModuleRoot(filePath string, moduleRoot string, moduleRoots []st
 	return false
 }
 
-func isDryExcluded(filePath string, moduleRoot string, excludes []string) bool {
+func isGoFileExcluded(filePath string, moduleRoot string, excludes []string) bool {
 	modulePath := trimModuleRoot(filePath, moduleRoot)
 	for _, exclude := range excludes {
 		exclude = cleanSlashPath(exclude)
 		if exclude == "" {
 			continue
 		}
-		if pathMatchesDryPattern(filePath, exclude) || pathMatchesDryPattern(modulePath, exclude) {
+		if pathMatchesGoPattern(filePath, exclude) || pathMatchesGoPattern(modulePath, exclude) {
 			return true
 		}
 	}
 	return false
 }
 
-func pathMatchesDryPattern(filePath string, pattern string) bool {
+func pathMatchesGoPattern(filePath string, pattern string) bool {
 	matched, _ := doublestar.Match(pattern, filePath)
 	return matched
 }

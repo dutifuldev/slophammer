@@ -7,7 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
+	"path"
+	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -69,6 +73,8 @@ type CRAPOptions struct {
 	Root         string
 	MaximumScore float64
 	MaximumSet   bool
+	Targets      []string
+	Exclude      []string
 }
 
 func (options CRAPOptions) RootPath() string {
@@ -157,8 +163,12 @@ func dryCandidateLimit(options DryOptions) int {
 func CheckCRAP(ctx context.Context, options CRAPOptions, out io.Writer, errOut io.Writer, runner Runner) int {
 	root := defaultRoot(options.Root)
 	maximumScore := crapScoreLimit(options)
+	targets := crapTargets(options)
+	if len(targets) > 0 {
+		return checkTargetedCRAP(ctx, root, targets, maximumScore, out, errOut, runner)
+	}
 
-	result, err := runner.Run(ctx, root, "go", gotools.CRAP4Go.GoRunArgs(gotools.Latest)...)
+	result, err := runner.Run(ctx, root, "go", gotools.CRAP4Go.GoRunArgs(gotools.Latest, crapTargets(options)...)...)
 	writeBytes(out, result.Stdout)
 	writeBytes(errOut, result.Stderr)
 	if err != nil {
@@ -178,6 +188,247 @@ func CheckCRAP(ctx context.Context, options CRAPOptions, out io.Writer, errOut i
 		return 1
 	}
 	return 0
+}
+
+func checkTargetedCRAP(
+	ctx context.Context,
+	root string,
+	targets []string,
+	maximumScore float64,
+	out io.Writer,
+	errOut io.Writer,
+	runner Runner,
+) int {
+	modulePath, ok := goListModulePath(ctx, root, errOut, runner)
+	if !ok {
+		return 2
+	}
+	coverPackages, ok := goListPackages(ctx, root, packageDirs(targets), errOut, runner)
+	if !ok {
+		return 2
+	}
+	testPackages, ok := goListPackages(ctx, root, []string{"./..."}, errOut, runner)
+	if !ok {
+		return 2
+	}
+	profileDir, err := os.MkdirTemp("", "slophammer-crap-*")
+	if err != nil {
+		_, _ = fmt.Fprintf(errOut, "coverage profile setup failed: %v\n", err)
+		return 2
+	}
+	defer os.RemoveAll(profileDir)
+	profilePath := filepath.Join(profileDir, "coverage.out")
+	args := []string{
+		"test",
+		"-count=1",
+		"-covermode=count",
+		"-coverpkg=" + strings.Join(coverPackages, ","),
+		"-coverprofile=" + profilePath,
+	}
+	args = append(args, testPackages...)
+	result, err := runner.Run(ctx, root, "go", args...)
+	if err != nil {
+		writeBytes(out, result.Stdout)
+		writeBytes(errOut, result.Stderr)
+		_, _ = fmt.Fprintf(errOut, "coverage test failed: %v\n", err)
+		return 2
+	}
+
+	complexity, ok := gocycloComplexity(ctx, root, targets, errOut, runner)
+	if !ok {
+		return 2
+	}
+	coverage, ok := coverFunctionCoverage(ctx, root, modulePath, profilePath, errOut, runner)
+	if !ok {
+		return 2
+	}
+
+	violations := targetedCRAPViolations(complexity, coverage, maximumScore)
+	for _, violation := range violations {
+		_, _ = fmt.Fprintf(errOut, "CRAP score %.1f exceeds maximum %.1f for %s\n", violation.Score, maximumScore, violation.Name)
+	}
+	if len(violations) > 0 {
+		return 1
+	}
+	_, _ = fmt.Fprintf(out, "CRAP scores meet maximum %.1f\n", maximumScore)
+	return 0
+}
+
+func goListModulePath(ctx context.Context, root string, errOut io.Writer, runner Runner) (string, bool) {
+	result, err := runner.Run(ctx, root, "go", "list", "-m")
+	writeBytes(errOut, result.Stderr)
+	if err != nil {
+		_, _ = fmt.Fprintf(errOut, "go list -m failed: %v\n", err)
+		return "", false
+	}
+	modulePath := strings.TrimSpace(string(result.Stdout))
+	if modulePath == "" {
+		_, _ = fmt.Fprintln(errOut, "go list -m returned an empty module path")
+		return "", false
+	}
+	return modulePath, true
+}
+
+func goListPackages(ctx context.Context, root string, patterns []string, errOut io.Writer, runner Runner) ([]string, bool) {
+	args := append([]string{"list"}, patterns...)
+	result, err := runner.Run(ctx, root, "go", args...)
+	writeBytes(errOut, result.Stderr)
+	if err != nil {
+		_, _ = fmt.Fprintf(errOut, "go list failed: %v\n", err)
+		return nil, false
+	}
+	packages := strings.Fields(string(result.Stdout))
+	if len(packages) == 0 {
+		_, _ = fmt.Fprintf(errOut, "go list returned no packages for %s\n", strings.Join(patterns, " "))
+		return nil, false
+	}
+	return packages, true
+}
+
+func packageDirs(targets []string) []string {
+	seen := map[string]bool{}
+	dirs := make([]string, 0, len(targets))
+	for _, target := range targets {
+		dir := path.Dir(strings.ReplaceAll(target, "\\", "/"))
+		if dir == "." {
+			dir = "."
+		}
+		pattern := "./" + strings.TrimPrefix(dir, "./")
+		if pattern == "./." {
+			pattern = "."
+		}
+		if !seen[pattern] {
+			seen[pattern] = true
+			dirs = append(dirs, pattern)
+		}
+	}
+	sort.Strings(dirs)
+	return dirs
+}
+
+type functionComplexity struct {
+	Name       string
+	Package    string
+	Complexity float64
+}
+
+func gocycloComplexity(ctx context.Context, root string, targets []string, errOut io.Writer, runner Runner) (map[string]functionComplexity, bool) {
+	args := gotools.Gocyclo.GoRunArgs(gotools.Latest, append([]string{"-over", "0"}, targets...)...)
+	result, err := runner.Run(ctx, root, "go", args...)
+	writeBytes(errOut, result.Stderr)
+	if err != nil {
+		_, _ = fmt.Fprintf(errOut, "gocyclo failed: %v\n", err)
+		return nil, false
+	}
+	complexity := map[string]functionComplexity{}
+	for _, line := range strings.Split(string(result.Stdout), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 4 {
+			continue
+		}
+		value, err := strconv.ParseFloat(fields[0], 64)
+		if err != nil {
+			continue
+		}
+		key, ok := fileLineKey(fields[3])
+		if !ok {
+			continue
+		}
+		complexity[key] = functionComplexity{
+			Name:       fields[2],
+			Package:    fields[1],
+			Complexity: value,
+		}
+	}
+	return complexity, true
+}
+
+func coverFunctionCoverage(ctx context.Context, root string, modulePath string, profilePath string, errOut io.Writer, runner Runner) (map[string]float64, bool) {
+	result, err := runner.Run(ctx, root, "go", "tool", "cover", "-func="+profilePath)
+	writeBytes(errOut, result.Stderr)
+	if err != nil {
+		_, _ = fmt.Fprintf(errOut, "go tool cover failed: %v\n", err)
+		return nil, false
+	}
+	coverage := map[string]float64{}
+	for _, line := range strings.Split(string(result.Stdout), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 3 || !strings.HasSuffix(fields[len(fields)-1], "%") {
+			continue
+		}
+		key, ok := coverFileLineKey(fields[0], modulePath)
+		if !ok {
+			continue
+		}
+		valueText := strings.TrimSuffix(fields[len(fields)-1], "%")
+		value, err := strconv.ParseFloat(valueText, 64)
+		if err != nil {
+			continue
+		}
+		coverage[key] = value
+	}
+	return coverage, true
+}
+
+func targetedCRAPViolations(complexity map[string]functionComplexity, coverage map[string]float64, maximumScore float64) []CRAPViolation {
+	violations := make([]CRAPViolation, 0)
+	for key, item := range complexity {
+		covered, ok := coverage[key]
+		if !ok {
+			continue
+		}
+		uncovered := 1 - covered/100
+		score := item.Complexity*item.Complexity*uncovered*uncovered*uncovered + item.Complexity
+		rounded := roundTenths(score)
+		if rounded > maximumScore {
+			violations = append(violations, CRAPViolation{
+				Name:  item.Package + "." + item.Name,
+				Score: rounded,
+			})
+		}
+	}
+	sort.Slice(violations, func(i, j int) bool {
+		if violations[i].Score == violations[j].Score {
+			return violations[i].Name < violations[j].Name
+		}
+		return violations[i].Score > violations[j].Score
+	})
+	return violations
+}
+
+func roundTenths(value float64) float64 {
+	rounded, _ := strconv.ParseFloat(fmt.Sprintf("%.1f", value), 64)
+	return rounded
+}
+
+func coverFileLineKey(location string, modulePath string) (string, bool) {
+	if !strings.HasPrefix(location, modulePath+"/") {
+		return "", false
+	}
+	return fileLineKey(strings.TrimPrefix(location, modulePath+"/"))
+}
+
+func fileLineKey(location string) (string, bool) {
+	parts := strings.Split(location, ":")
+	if len(parts) < 2 {
+		return "", false
+	}
+	filePath := strings.ReplaceAll(parts[0], "\\", "/")
+	line := parts[1]
+	if filePath == "" || line == "" {
+		return "", false
+	}
+	return filePath + ":" + line, true
+}
+
+func crapTargets(options CRAPOptions) []string {
+	targets := make([]string, 0, len(options.Targets))
+	for _, target := range options.Targets {
+		if strings.TrimSpace(target) != "" {
+			targets = append(targets, target)
+		}
+	}
+	return targets
 }
 
 func crapScoreLimit(options CRAPOptions) float64 {

@@ -175,7 +175,11 @@ func TestCheckCRAPRunsCRAP4GoAndReportsViolations(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 
-	code := CheckCRAP(context.Background(), CRAPOptions{Root: "/repo", MaximumScore: 30, MaximumSet: true}, &out, &errOut, runner)
+	code := CheckCRAP(context.Background(), CRAPOptions{
+		Root:         "/repo",
+		MaximumScore: 30,
+		MaximumSet:   true,
+	}, &out, &errOut, runner)
 
 	if code != 1 {
 		t.Fatalf("code = %d, want 1", code)
@@ -185,6 +189,35 @@ func TestCheckCRAPRunsCRAP4GoAndReportsViolations(t *testing.T) {
 		t.Fatalf("call = %#v, want dir=/repo name=go args=%#v", runnerCall, wantArgs)
 	}
 	if !strings.Contains(errOut.String(), "CRAP score 30.1 exceeds maximum 30.0 for pkg.Func") {
+		t.Fatalf("stderr = %q", errOut.String())
+	}
+}
+
+func TestCheckCRAPWithTargetsUsesCrossPackageCoverage(t *testing.T) {
+	runner := &scriptedRunner{}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckCRAP(context.Background(), CRAPOptions{
+		Root:         "/repo",
+		MaximumScore: 8,
+		MaximumSet:   true,
+		Targets:      []string{"internal/service/service.go"},
+	}, &out, &errOut, runner)
+
+	if code != 1 {
+		t.Fatalf("code = %d, want 1", code)
+	}
+	if len(runner.calls) != 6 {
+		t.Fatalf("calls = %#v, want 6 calls", runner.calls)
+	}
+	if got := strings.Join(runner.calls[1].args, " "); got != "list ./internal/service" {
+		t.Fatalf("go list target packages args = %q", got)
+	}
+	if got := strings.Join(runner.calls[4].args, " "); !strings.Contains(got, "gocyclo") || !strings.Contains(got, "internal/service/service.go") {
+		t.Fatalf("gocyclo args = %q", got)
+	}
+	if !strings.Contains(errOut.String(), "CRAP score 16.0 exceeds maximum 8.0 for service.Run") {
 		t.Fatalf("stderr = %q", errOut.String())
 	}
 }
@@ -281,6 +314,34 @@ func (runner *fakeRunner) Run(_ context.Context, dir string, name string, args .
 	runner.call = fakeCall{dir: dir, name: name, args: args}
 	runner.calls = append(runner.calls, runner.call)
 	return CommandResult{Stdout: runner.output, Stderr: runner.stderr}, runner.err
+}
+
+type scriptedRunner struct {
+	calls []fakeCall
+}
+
+func (runner *scriptedRunner) Run(_ context.Context, dir string, name string, args ...string) (CommandResult, error) {
+	runner.calls = append(runner.calls, fakeCall{dir: dir, name: name, args: append([]string(nil), args...)})
+	command := strings.Join(args, " ")
+	switch {
+	case command == "list -m":
+		return CommandResult{Stdout: []byte("example.test/backend\n")}, nil
+	case command == "list ./internal/service":
+		return CommandResult{Stdout: []byte("example.test/backend/internal/service\n")}, nil
+	case command == "list ./...":
+		return CommandResult{Stdout: []byte("example.test/backend/internal/service\nexample.test/backend/test/integration\n")}, nil
+	case strings.HasPrefix(command, "test "):
+		return CommandResult{}, nil
+	case strings.Contains(command, "gocyclo"):
+		return CommandResult{Stdout: []byte("8 service Run internal/service/service.go:12:1\n")}, nil
+	case command == "tool cover -func=":
+		return CommandResult{Stdout: []byte("example.test/backend/internal/service/service.go:12:\tRun\t50.0%\n")}, nil
+	default:
+		if strings.HasPrefix(command, "tool cover -func=") {
+			return CommandResult{Stdout: []byte("example.test/backend/internal/service/service.go:12:\tRun\t50.0%\n")}, nil
+		}
+		return CommandResult{}, errors.New("unexpected command: " + command)
+	}
 }
 
 type fakeCall struct {

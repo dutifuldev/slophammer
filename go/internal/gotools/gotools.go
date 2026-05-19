@@ -25,5 +25,6 @@ const Latest = "latest"
 var (
 	Dry4Go    = Tool{Binary: "dry4go", Package: "github.com/unclebob/dry4go/cmd/dry4go"}
 	CRAP4Go   = Tool{Binary: "crap4go", Package: "github.com/unclebob/crap4go/cmd/crap4go"}
+	Gocyclo   = Tool{Binary: "gocyclo", Package: "github.com/fzipp/gocyclo/cmd/gocyclo"}
 	Mutate4Go = Tool{Binary: "mutate4go", Package: "github.com/unclebob/mutate4go/cmd/mutate4go"}
 )

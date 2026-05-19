@@ -177,6 +177,9 @@ func TestApplyCommandConfigUsesConfiguredDefaults(t *testing.T) {
 	if crap.MaximumScore != 8 || !crap.MaximumSet {
 		t.Fatalf("crap = %#v", crap)
 	}
+	if !reflect.DeepEqual(crap.Targets, []string{"go"}) || !reflect.DeepEqual(crap.Exclude, []string{"go/generated/**"}) {
+		t.Fatalf("crap targets = %#v excludes = %#v", crap.Targets, crap.Exclude)
+	}
 
 	mutation := toolchecks.MutationOptions{}
 	applyMutationConfig(&mutation, cfg)
@@ -208,6 +211,9 @@ func TestApplyCommandConfigKeepsExplicitValues(t *testing.T) {
 	applyCRAPConfig(&crap, cfg)
 	if crap.MaximumScore != 4 {
 		t.Fatalf("crap = %#v", crap)
+	}
+	if !reflect.DeepEqual(crap.Exclude, []string{"generated/**"}) {
+		t.Fatalf("crap excludes = %#v", crap.Exclude)
 	}
 
 	mutation := toolchecks.MutationOptions{Target: "explicit.go"}
@@ -276,6 +282,49 @@ func TestCheckMutationInModulesRunsResolvedTargetsFromNestedModule(t *testing.T)
 		t.Fatalf("dir = %q, want go", call.dir)
 	}
 	if got := strings.Join(call.args, " "); !strings.Contains(got, "internal/example.go --scan") {
+		t.Fatalf("args = %q", got)
+	}
+}
+
+func TestCheckCRAPInModulesUsesConfiguredGoTargets(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"backend/go.mod":                           {Path: "backend/go.mod"},
+		"backend/cmd/server/main.go":               {Path: "backend/cmd/server/main.go"},
+		"backend/internal/service/service.go":      {Path: "backend/internal/service/service.go"},
+		"backend/internal/testutil/testutil.go":    {Path: "backend/internal/testutil/testutil.go"},
+		"backend/internal/service/service_test.go": {Path: "backend/internal/service/service_test.go"},
+		"engine/go.mod":                            {Path: "engine/go.mod"},
+		"engine/main.go":                           {Path: "engine/main.go"},
+	})
+	runner := &recordingRunner{}
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	code := checkCRAPInModules(context.Background(), snapshot, toolchecks.CRAPOptions{
+		Root:         ".",
+		MaximumScore: 8,
+		MaximumSet:   true,
+		Targets:      []string{"backend/cmd", "backend/internal"},
+		Exclude:      []string{"**/*_test.go", "backend/internal/testutil/**"},
+	}, &out, &errOut, runner)
+
+	if code != ExitOK {
+		t.Fatalf("code = %d, want %d; stderr=%q", code, ExitOK, errOut.String())
+	}
+	if len(runner.calls) != 6 {
+		t.Fatalf("calls = %#v", runner.calls)
+	}
+	call := runner.calls[4]
+	if call.dir != "backend" {
+		t.Fatalf("dir = %q, want backend", call.dir)
+	}
+	got := strings.Join(call.args, " ")
+	if !strings.Contains(got, "gocyclo") ||
+		!strings.Contains(got, "cmd/server/main.go") ||
+		!strings.Contains(got, "internal/service/service.go") {
+		t.Fatalf("args = %q", got)
+	}
+	if strings.Contains(got, "testutil") || strings.Contains(got, "service_test.go") || strings.Contains(got, "engine") {
 		t.Fatalf("args = %q", got)
 	}
 }
@@ -517,5 +566,18 @@ type recordedCall struct {
 
 func (r *recordingRunner) Run(_ context.Context, dir string, _ string, args ...string) (toolchecks.CommandResult, error) {
 	r.calls = append(r.calls, recordedCall{dir: dir, args: append([]string(nil), args...)})
+	command := strings.Join(args, " ")
+	switch {
+	case command == "list -m":
+		return toolchecks.CommandResult{Stdout: []byte("example.test/backend\n")}, nil
+	case strings.HasPrefix(command, "list ./"):
+		return toolchecks.CommandResult{Stdout: []byte("example.test/backend/cmd/server\nexample.test/backend/internal/service\n")}, nil
+	case strings.HasPrefix(command, "test "):
+		return toolchecks.CommandResult{}, nil
+	case strings.Contains(command, "gocyclo"):
+		return toolchecks.CommandResult{}, nil
+	case strings.HasPrefix(command, "tool cover -func="):
+		return toolchecks.CommandResult{}, nil
+	}
 	return toolchecks.CommandResult{}, nil
 }
