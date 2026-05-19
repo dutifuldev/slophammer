@@ -421,13 +421,20 @@ func isToolBinaryToken(token string, binaryName string) bool {
 }
 
 func isSlophammerCommandToken(token string) bool {
-	base := path.Base(token)
+	base := path.Base(stripGoModuleVersion(token))
 	switch base {
 	case "slophammer", "slophammer.exe", "slophammer-go", "slophammer-go.exe":
 		return true
 	default:
 		return false
 	}
+}
+
+func stripGoModuleVersion(token string) string {
+	if before, _, ok := strings.Cut(token, "@"); ok {
+		return before
+	}
+	return token
 }
 
 func cleanCommandToken(token string) string {

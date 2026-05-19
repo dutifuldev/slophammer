@@ -103,6 +103,45 @@ jobs:
 	}
 }
 
+func TestGoToolRulesAcceptReleasedSlophammerGoCommands(t *testing.T) {
+	files := cleanGoGuardrailFiles(map[string]repo.File{
+		"slophammer.yml": {
+			Path: "slophammer.yml",
+			Content: `go:
+  crap_max_score: 8
+  targets:
+    - .
+  dry:
+    max_findings: 0
+`,
+		},
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+defaults:
+  run:
+    working-directory: go
+jobs:
+  test:
+    steps:
+      - run: go test ./...
+      - run: go vet ./...
+      - run: golangci-lint run
+      - run: ./scripts/check-go-coverage.sh
+      - run: go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.1 dry .. --max-candidates 0
+      - run: go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.1 crap ..
+      - run: go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.1 mutate .. --scan
+`,
+		},
+	})
+
+	report := Run(context.Background(), repo.NewSnapshot("/repo", files), DefaultRules())
+
+	if !report.OK {
+		t.Fatalf("report.OK = false, findings = %#v", report.Findings)
+	}
+}
+
 func TestGoMutationRuleRequiresTargetForSlophammerCommand(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
 		"main.go": {Path: "main.go"},
