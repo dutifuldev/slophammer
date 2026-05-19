@@ -260,7 +260,7 @@ func TestCheckCRAPWithSuppliedCoverageProfileRejectsMissingAnalyzedFunctionCover
 	root := t.TempDir()
 	writeFile(t, root, "coverage.out", "mode: count\n"+
 		"example.test/backend/internal/service/service.go:12.1,12.2 1 1\n"+
-		"example.test/backend/internal/other/other.go:7.1,7.2 1 1\n")
+		"example.test/backend/internal/other/other.go:8.1,8.2 1 1\n")
 	runner := &scriptedRunner{
 		coverOutput:         "example.test/backend/internal/service/service.go:12:\tRun\t90.0%\ntotal:\t(statements)\t90.0%\n",
 		complexityOutput:    "8 service Run internal/service/service.go:12:1\n9 other Risk internal/other/other.go:7:1\n",
@@ -282,6 +282,188 @@ func TestCheckCRAPWithSuppliedCoverageProfileRejectsMissingAnalyzedFunctionCover
 	}
 	if !strings.Contains(errOut.String(), "does not include coverage for analyzed function other.Risk") {
 		t.Fatalf("stderr = %q", errOut.String())
+	}
+}
+
+func TestCheckCRAPWithSuppliedCoverageProfileUsesRawCoverageForFunctionLiterals(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "internal/service/service.go", "package service\n\nvar closeDB = func(db DB) error { return db.Close() }\n\ntype DB interface { Close() error }\n")
+	writeFile(t, root, "coverage.out", "mode: count\n"+
+		"example.test/backend/internal/service/service.go:3.33,3.54 1 1\n")
+	runner := &scriptedRunner{
+		coverOutput:         "total:\t(statements)\t0.0%\n",
+		complexityOutput:    "1 service closeDB internal/service/service.go:3:15\n",
+		complexityOutputSet: true,
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckCRAP(context.Background(), CRAPOptions{
+		Root:            root,
+		MaximumScore:    1,
+		MaximumSet:      true,
+		CoverageProfile: "coverage.out",
+		Targets:         []string{"internal/service/service.go"},
+	}, &out, &errOut, runner)
+
+	if code != 0 {
+		t.Fatalf("code = %d, want 0; stderr = %q", code, errOut.String())
+	}
+	if !strings.Contains(out.String(), "CRAP scores meet maximum 1.0") {
+		t.Fatalf("stdout = %q", out.String())
+	}
+}
+
+func TestCheckCRAPWithSuppliedCoverageProfileUsesFullRawCoverageForMultilineFunctionLiterals(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "internal/service/service.go", "package service\n\nvar score = func(ok bool) int {\n\tif ok {\n\t\treturn 1\n\t}\n\treturn 0\n}\n")
+	writeFile(t, root, "coverage.out", "mode: count\n"+
+		"example.test/backend/internal/service/service.go:3.32,4.8 1 1\n"+
+		"example.test/backend/internal/service/service.go:4.8,6.3 1 1\n"+
+		"example.test/backend/internal/service/service.go:7.2,7.10 1 0\n")
+	runner := &scriptedRunner{
+		coverOutput:         "total:\t(statements)\t0.0%\n",
+		complexityOutput:    "2 service score internal/service/service.go:3:13\n",
+		complexityOutputSet: true,
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckCRAP(context.Background(), CRAPOptions{
+		Root:            root,
+		MaximumScore:    2,
+		MaximumSet:      true,
+		CoverageProfile: "coverage.out",
+		Targets:         []string{"internal/service/service.go"},
+	}, &out, &errOut, runner)
+
+	if code != 1 {
+		t.Fatalf("code = %d, want 1; stdout = %q stderr = %q", code, out.String(), errOut.String())
+	}
+	if !strings.Contains(errOut.String(), "CRAP score 2.1 exceeds maximum 2.0 for service.score") {
+		t.Fatalf("stderr = %q", errOut.String())
+	}
+}
+
+func TestCheckCRAPWithSuppliedCoverageProfileKeepsSameLineFunctionLiteralsSeparate(t *testing.T) {
+	root := t.TempDir()
+	sourceLine := "var first = func(ok bool) int { if ok { return 1 }; return 0 }; var second = func(ok bool) int { if ok { return 2 }; return 0 }"
+	firstColumn := oneBasedColumn(t, sourceLine, "func(ok bool) int { if ok { return 1 }")
+	secondColumn := oneBasedColumn(t, sourceLine, "func(ok bool) int { if ok { return 2 }")
+	writeFile(t, root, "internal/service/service.go", "package service\n\n"+sourceLine+"\n")
+	writeFile(t, root, "coverage.out", fmt.Sprintf("mode: count\n"+
+		"example.test/backend/internal/service/service.go:3.%d,3.%d 10 0\n"+
+		"example.test/backend/internal/service/service.go:3.%d,3.%d 10 1\n",
+		firstColumn,
+		oneBasedColumn(t, sourceLine, "}; var second")+1,
+		secondColumn,
+		len(sourceLine)+1))
+	runner := &scriptedRunner{
+		coverOutput:         "total:\t(statements)\t0.0%\n",
+		complexityOutput:    fmt.Sprintf("3 service first internal/service/service.go:3:%d\n3 service second internal/service/service.go:3:%d\n", firstColumn, secondColumn),
+		complexityOutputSet: true,
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckCRAP(context.Background(), CRAPOptions{
+		Root:            root,
+		MaximumScore:    5,
+		MaximumSet:      true,
+		CoverageProfile: "coverage.out",
+		Targets:         []string{"internal/service/service.go"},
+	}, &out, &errOut, runner)
+
+	if code != 1 {
+		t.Fatalf("code = %d, want 1; stdout = %q stderr = %q", code, out.String(), errOut.String())
+	}
+	if !strings.Contains(errOut.String(), "CRAP score 12.0 exceeds maximum 5.0 for service.first") {
+		t.Fatalf("stderr = %q", errOut.String())
+	}
+}
+
+func TestCheckCRAPWithSuppliedCoverageProfileAcceptsZeroStatementFunctionLiteral(t *testing.T) {
+	root := t.TempDir()
+	sourceLine := "var hook = func() {}"
+	hookColumn := oneBasedColumn(t, sourceLine, "func()")
+	writeFile(t, root, "internal/service/service.go", "package service\n\n"+sourceLine+"\n")
+	writeFile(t, root, "coverage.out", fmt.Sprintf("mode: count\n"+
+		"example.test/backend/internal/service/service.go:3.%d,3.%d 0 1\n",
+		hookColumn,
+		len(sourceLine)+1))
+	runner := &scriptedRunner{
+		coverOutput:         "total:\t(statements)\t0.0%\n",
+		complexityOutput:    fmt.Sprintf("1 service hook internal/service/service.go:3:%d\n", hookColumn),
+		complexityOutputSet: true,
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckCRAP(context.Background(), CRAPOptions{
+		Root:            root,
+		MaximumScore:    2,
+		MaximumSet:      true,
+		CoverageProfile: "coverage.out",
+		Targets:         []string{"internal/service/service.go"},
+	}, &out, &errOut, runner)
+
+	if code != 0 {
+		t.Fatalf("code = %d, want 0; stdout = %q stderr = %q", code, out.String(), errOut.String())
+	}
+	if !strings.Contains(out.String(), "CRAP scores meet maximum 2.0") {
+		t.Fatalf("stdout = %q", out.String())
+	}
+}
+
+func TestCheckCRAPWithGeneratedCoverageUsesFullRawCoverageForMultilineFunctionLiterals(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "internal/service/service.go", "package service\n\nvar score = func(ok bool) int {\n\tif ok {\n\t\treturn 1\n\t}\n\treturn 0\n}\n")
+	runner := &generatedLiteralCoverageRunner{}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckCRAP(context.Background(), CRAPOptions{
+		Root:         root,
+		MaximumScore: 2,
+		MaximumSet:   true,
+		Targets:      []string{"internal/service/service.go"},
+	}, &out, &errOut, runner)
+
+	if code != 1 {
+		t.Fatalf("code = %d, want 1; stdout = %q stderr = %q", code, out.String(), errOut.String())
+	}
+	if !strings.Contains(errOut.String(), "CRAP score 2.1 exceeds maximum 2.0 for service.score") {
+		t.Fatalf("stderr = %q", errOut.String())
+	}
+}
+
+func TestParseCoveragePositionRejectsInvalidPositions(t *testing.T) {
+	for _, position := range []string{
+		"",
+		"12",
+		".4",
+		"12.",
+		"nope.4",
+		"0.4",
+		"12.nope",
+		"12.0",
+	} {
+		t.Run(position, func(t *testing.T) {
+			if _, ok := parseCoveragePosition(position); ok {
+				t.Fatalf("parseCoveragePosition(%q) succeeded", position)
+			}
+		})
+	}
+}
+
+func TestParseCoveragePositionAcceptsLineAndColumn(t *testing.T) {
+	got, ok := parseCoveragePosition("12.4")
+	if !ok {
+		t.Fatal("parseCoveragePosition returned false")
+	}
+	want := sourcePosition{line: 12, column: 4}
+	if got != want {
+		t.Fatalf("parseCoveragePosition = %#v, want %#v", got, want)
 	}
 }
 
@@ -809,6 +991,48 @@ func (runner *fakeRunner) Run(_ context.Context, dir string, name string, args .
 	return CommandResult{Stdout: runner.output, Stderr: runner.stderr}, runner.err
 }
 
+type generatedLiteralCoverageRunner struct{}
+
+func (runner *generatedLiteralCoverageRunner) Run(_ context.Context, _ string, _ string, args ...string) (CommandResult, error) {
+	command := strings.Join(args, " ")
+	switch {
+	case command == "list -m":
+		return CommandResult{Stdout: []byte("example.test/backend\n")}, nil
+	case command == "list ./internal/service":
+		return CommandResult{Stdout: []byte("example.test/backend/internal/service\n")}, nil
+	case command == "list ./...":
+		return CommandResult{Stdout: []byte("example.test/backend/internal/service\n")}, nil
+	case strings.HasPrefix(command, "test "):
+		profilePath := coverProfilePath(args)
+		if profilePath == "" {
+			return CommandResult{}, errors.New("missing coverprofile")
+		}
+		content := "mode: count\n" +
+			"example.test/backend/internal/service/service.go:3.32,4.8 1 1\n" +
+			"example.test/backend/internal/service/service.go:4.8,6.3 1 1\n" +
+			"example.test/backend/internal/service/service.go:7.2,7.10 1 0\n"
+		if err := os.WriteFile(profilePath, []byte(content), 0o600); err != nil {
+			return CommandResult{}, err
+		}
+		return CommandResult{}, nil
+	case strings.Contains(command, "gocyclo"):
+		return CommandResult{Stdout: []byte("2 service score internal/service/service.go:3:13\n")}, nil
+	case strings.HasPrefix(command, "tool cover -func="):
+		return CommandResult{Stdout: []byte("total:\t(statements)\t0.0%\n")}, nil
+	default:
+		return CommandResult{}, errors.New("unexpected command: " + command)
+	}
+}
+
+func coverProfilePath(args []string) string {
+	for _, arg := range args {
+		if value, ok := strings.CutPrefix(arg, "-coverprofile="); ok {
+			return value
+		}
+	}
+	return ""
+}
+
 type scriptedRunner struct {
 	calls               []fakeCall
 	coverageTotal       string
@@ -954,6 +1178,15 @@ func writeFile(t *testing.T, root, name, content string) {
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		t.Fatalf("WriteFile returned error: %v", err)
 	}
+}
+
+func oneBasedColumn(t *testing.T, line string, needle string) int {
+	t.Helper()
+	index := strings.Index(line, needle)
+	if index < 0 {
+		t.Fatalf("line %q does not contain %q", line, needle)
+	}
+	return index + 1
 }
 
 func duplicateSource(name string) string {
