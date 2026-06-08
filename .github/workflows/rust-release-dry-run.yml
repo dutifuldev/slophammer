@@ -1,0 +1,46 @@
+name: Rust Release Dry Run
+
+on:
+  push:
+    tags:
+      - "rust/v*"
+  workflow_dispatch:
+
+jobs:
+  rust-release-dry-run:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go/go.mod
+          cache: false
+      - name: Verify Rust tag shape
+        if: github.ref_type == 'tag'
+        run: |
+          case "${GITHUB_REF_NAME}" in
+            rust/v*) ;;
+            *) echo "Rust release tags must match rust/vX.Y.Z"; exit 1 ;;
+          esac
+      - run: cargo fmt --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace --all-targets
+      - run: cargo package -p slophammer-core --locked
+      - run: cargo package -p slophammer-scan --locked
+      - run: cargo install --path crates/slophammer-cli --locked
+      - run: slophammer-rs help
+      - run: slophammer-rs rules --format json
+      - run: slophammer-rs check ../fixtures/repos/rust-clean --format json
+      - run: slophammer-rs dry .. --format json
+      - run: slophammer-rs boundaries .. --format json
+      - run: slophammer-rs unsafe .. --format json
+      - run: npm ci
+        working-directory: typescript
+      - run: node ../scripts/check-conformance.mjs

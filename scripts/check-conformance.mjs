@@ -35,6 +35,22 @@ const typeScriptFixtures = [
   "adoption-before",
   "adoption-after",
 ];
+const rustFixtures = [
+  ...repoFixtures,
+  "rust-clean",
+  "rust-bad-dependency",
+  "rust-missing-audit",
+  "rust-missing-ci",
+  "rust-missing-clippy",
+  "rust-missing-coverage",
+  "rust-missing-dry",
+  "rust-missing-fmt",
+  "rust-missing-msrv",
+  "rust-missing-mutation",
+  "rust-missing-tests",
+  "rust-unsafe",
+];
+const rustErrorFixtures = ["rust-invalid-config", "rust-unknown-config"];
 
 run("npm", ["run", "build"], path.join(root, "typescript"), [0]);
 
@@ -71,8 +87,47 @@ for (const fixture of typeScriptFixtures) {
   });
 }
 
+for (const fixture of rustFixtures) {
+  assertFixture({
+    implementation: "rust",
+    fixture,
+    command: "cargo",
+    args: [
+      "run",
+      "-q",
+      "-p",
+      "slophammer-rs",
+      "--",
+      "check",
+      fixturePath(fixture),
+      "--format",
+      "json",
+    ],
+    cwd: path.join(root, "rust"),
+  });
+}
+
+for (const fixture of rustErrorFixtures) {
+  run(
+    "cargo",
+    [
+      "run",
+      "-q",
+      "-p",
+      "slophammer-rs",
+      "--",
+      "check",
+      fixturePath(fixture),
+      "--format",
+      "json",
+    ],
+    path.join(root, "rust"),
+    [2],
+  );
+}
+
 console.log(
-  `Conformance passed: ${String(goFixtures.length)} Go fixtures, ${String(typeScriptFixtures.length)} TypeScript fixtures`,
+  `Conformance passed: ${String(goFixtures.length)} Go fixtures, ${String(typeScriptFixtures.length)} TypeScript fixtures, ${String(rustFixtures.length)} Rust fixtures, ${String(rustErrorFixtures.length)} Rust error fixtures`,
 );
 
 function assertFixture({ implementation, fixture, command, args, cwd }) {

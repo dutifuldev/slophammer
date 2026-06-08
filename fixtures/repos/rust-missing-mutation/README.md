@@ -1,0 +1,2 @@
+# Rust Missing Mutation Fixture
+

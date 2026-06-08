@@ -1,0 +1,2 @@
+# Rust Invalid Config Fixture
+

@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "rust.dependency-boundaries-required",
+      "severity": "error",
+      "path": "Cargo.toml",
+      "message": "Rust dependency boundary forbids dependency on local-dep"
+    }
+  ]
+}

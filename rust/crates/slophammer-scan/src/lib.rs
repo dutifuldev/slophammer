@@ -1,0 +1,126 @@
+use camino::Utf8PathBuf;
+use ignore::WalkBuilder;
+use std::collections::BTreeMap;
+use std::fs;
+use std::path::{Path, PathBuf};
+use thiserror::Error;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RepoFile {
+    pub path: String,
+    pub content: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Snapshot {
+    pub root: PathBuf,
+    pub files: BTreeMap<String, RepoFile>,
+}
+
+impl Snapshot {
+    pub fn file(&self, path: &str) -> Option<&RepoFile> {
+        self.files.get(path)
+    }
+
+    pub fn has_case_insensitive(&self, filename: &str) -> bool {
+        self.files
+            .keys()
+            .filter(|path| !path.contains('/'))
+            .any(|path| path.eq_ignore_ascii_case(filename))
+    }
+
+    pub fn has_workflow(&self) -> bool {
+        self.files.keys().any(|path| {
+            path.starts_with(".github/workflows/")
+                && (path.ends_with(".yml") || path.ends_with(".yaml"))
+        })
+    }
+
+    pub fn content_for_paths(&self, wanted: impl Fn(&str) -> bool) -> String {
+        self.files
+            .values()
+            .filter(|file| wanted(&file.path))
+            .map(|file| file.content.as_str())
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum ScanError {
+    #[error("repository root does not exist: {0}")]
+    MissingRoot(String),
+    #[error("walk failed: {0}")]
+    Walk(#[from] ignore::Error),
+    #[error("path is not valid UTF-8: {0}")]
+    NonUtf8Path(String),
+}
+
+pub fn scan_repo(root: impl AsRef<Path>) -> Result<Snapshot, ScanError> {
+    let root = root.as_ref();
+    if !root.exists() {
+        return Err(ScanError::MissingRoot(root.display().to_string()));
+    }
+    let root = root.to_path_buf();
+    let mut files = BTreeMap::new();
+    let walker = WalkBuilder::new(&root)
+        .hidden(false)
+        .git_ignore(true)
+        .parents(true)
+        .filter_entry(|entry| !ignored_entry(entry.path()))
+        .build();
+    for entry in walker {
+        let entry = entry?;
+        let file_type = entry.file_type();
+        if !file_type.is_some_and(|item| item.is_file()) {
+            continue;
+        }
+        let Some(path) = relative_path(&root, entry.path())? else {
+            continue;
+        };
+        if let Ok(content) = fs::read_to_string(entry.path()) {
+            files.insert(path.clone(), RepoFile { path, content });
+        }
+    }
+    Ok(Snapshot { root, files })
+}
+
+fn relative_path(root: &Path, path: &Path) -> Result<Option<String>, ScanError> {
+    let Ok(relative) = path.strip_prefix(root) else {
+        return Ok(None);
+    };
+    let utf8 = Utf8PathBuf::from_path_buf(relative.to_path_buf())
+        .map_err(|path| ScanError::NonUtf8Path(path.display().to_string()))?;
+    Ok(Some(utf8.as_str().replace('\\', "/")))
+}
+
+fn ignored_entry(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| {
+            matches!(
+                name,
+                ".git" | "node_modules" | "target" | "dist" | "coverage"
+            )
+        })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn detects_workflow_paths() {
+        let snapshot = Snapshot {
+            root: PathBuf::from("."),
+            files: BTreeMap::from([(
+                ".github/workflows/ci.yml".to_owned(),
+                RepoFile {
+                    path: ".github/workflows/ci.yml".to_owned(),
+                    content: String::new(),
+                },
+            )]),
+        };
+        assert!(snapshot.has_workflow());
+    }
+}

@@ -1,0 +1,12 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "rust.msrv-required",
+      "severity": "error",
+      "path": "Cargo.toml",
+      "message": "Rust projects must declare a minimum supported Rust version"
+    }
+  ]
+}
+

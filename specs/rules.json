@@ -279,6 +279,147 @@
       "message": "TypeScript projects must respect configured dependency boundaries",
       "description": "TypeScript projects should declare dependency boundaries in slophammer.yml and keep imports inside them.",
       "status": "implemented"
+    },
+    {
+      "id": "rust.manifest-required",
+      "title": "Rust manifest required",
+      "category": "rust",
+      "severity": "error",
+      "path": "Cargo.toml",
+      "message": "Rust projects must include Cargo.toml",
+      "description": "Rust projects should include a Cargo manifest.",
+      "tool": "cargo",
+      "status": "implemented"
+    },
+    {
+      "id": "rust.msrv-required",
+      "title": "Rust MSRV required",
+      "category": "rust",
+      "severity": "error",
+      "path": "Cargo.toml",
+      "message": "Rust projects must declare a minimum supported Rust version",
+      "description": "Rust projects should declare a minimum supported Rust version.",
+      "tool": "cargo",
+      "status": "implemented"
+    },
+    {
+      "id": "rust.check-required",
+      "title": "Rust cargo check required",
+      "category": "rust",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Rust projects must declare cargo check in CI or scripts",
+      "description": "Rust projects should declare cargo check in an inspectable workflow or script.",
+      "tool": "cargo check",
+      "status": "implemented"
+    },
+    {
+      "id": "rust.fmt-required",
+      "title": "Rust formatter required",
+      "category": "rust",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Rust projects must declare cargo fmt --check in CI or scripts",
+      "description": "Rust projects should declare cargo fmt --check in CI or scripts.",
+      "tool": "cargo fmt",
+      "status": "implemented"
+    },
+    {
+      "id": "rust.clippy-required",
+      "title": "Rust Clippy required",
+      "category": "rust",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Rust projects must declare cargo clippy in CI or scripts",
+      "description": "Rust projects should declare cargo clippy with warnings denied.",
+      "tool": "cargo clippy",
+      "status": "implemented"
+    },
+    {
+      "id": "rust.test-required",
+      "title": "Rust tests required",
+      "category": "rust",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Rust projects must declare cargo test in CI or scripts",
+      "description": "Rust projects should declare cargo test in CI or scripts.",
+      "tool": "cargo test",
+      "status": "implemented"
+    },
+    {
+      "id": "rust.coverage-required",
+      "title": "Rust coverage gate required",
+      "category": "rust",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Rust projects must declare a coverage gate",
+      "description": "Rust projects should declare an enforceable coverage gate.",
+      "tool": "cargo llvm-cov",
+      "status": "implemented"
+    },
+    {
+      "id": "rust.complexity-required",
+      "title": "Rust complexity required",
+      "category": "rust",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Rust projects must enforce complexity limits",
+      "description": "Rust projects should enforce complexity limits through Clippy or Slophammer policy.",
+      "tool": "clippy",
+      "status": "implemented"
+    },
+    {
+      "id": "rust.dry-required",
+      "title": "Rust DRY check required",
+      "category": "rust",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Rust projects must declare a DRY check",
+      "description": "Rust projects should declare Slophammer's native Rust DRY check.",
+      "tool": "slophammer-rs dry",
+      "status": "implemented"
+    },
+    {
+      "id": "rust.mutation-required",
+      "title": "Rust mutation check required",
+      "category": "rust",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Rust projects must declare mutation testing",
+      "description": "Rust projects should declare mutation testing, normally through cargo-mutants.",
+      "tool": "cargo mutants",
+      "status": "implemented"
+    },
+    {
+      "id": "rust.unsafe-policy-required",
+      "title": "Rust unsafe policy required",
+      "category": "rust",
+      "severity": "error",
+      "path": "slophammer.yml",
+      "message": "Rust projects must declare and respect an unsafe-code policy",
+      "description": "Rust projects should declare and respect an unsafe-code policy in slophammer.yml.",
+      "status": "implemented"
+    },
+    {
+      "id": "rust.dependency-audit-required",
+      "title": "Rust dependency audit required",
+      "category": "rust",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Rust projects must declare dependency audit checks",
+      "description": "Rust projects should declare cargo audit or cargo deny.",
+      "tool": "cargo audit/cargo deny",
+      "status": "implemented"
+    },
+    {
+      "id": "rust.dependency-boundaries-required",
+      "title": "Rust dependency boundaries required",
+      "category": "rust",
+      "severity": "error",
+      "path": "slophammer.yml",
+      "message": "Rust projects must respect configured dependency boundaries",
+      "description": "Rust projects should declare dependency boundaries in slophammer.yml and keep local dependencies inside them.",
+      "status": "implemented"
     }
   ]
 }

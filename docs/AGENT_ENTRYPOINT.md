@@ -55,6 +55,7 @@ Use this selection model:
 | -------------------- | ------------------ | -------------------------------------------------------------------------------- |
 | Go                   | `slophammer-go`    | Public Go install                                                                |
 | TypeScript           | `slophammer-ts`    | Available from npm and this repo's TypeScript implementation |
+| Rust                 | `slophammer-rs`    | Available from this repo's Rust implementation and ready for Cargo packaging |
 | Python               | `slophammer-py`    | Not implemented yet                                                              |
 
 For a Go target outside this source tree, install the current released checker:
@@ -76,12 +77,20 @@ matching implementation for the target language, say that clearly and do not
 claim Slophammer passed. You may still apply the documented standards manually,
 but report that the language-specific Slophammer checker could not run.
 
+For Rust, use the source-tree command until a Cargo release is published:
+
+```sh
+cd rust
+cargo run -p slophammer-rs -- help
+```
+
 Before changing files, inspect the implemented rule catalog for the selected
 checker:
 
 ```sh
 slophammer-go rules --format json
 slophammer-ts rules --format json
+slophammer-rs rules --format json
 ```
 
 Then run the selected checker against the target repo:
@@ -169,6 +178,36 @@ These are hard quality targets:
 Use stricter values when the repo already supports them. Do not use weaker
 values.
 
+For Rust projects, start with this policy:
+
+```yaml
+rust:
+  coverage:
+    threshold: 85
+  complexity:
+    cognitive_max: 8
+  targets:
+    - src
+  dry:
+    max_findings: 0
+    paths:
+      - src
+    copied_blocks:
+      enabled: true
+      min_tokens: 100
+  unsafe:
+    policy: forbid
+  mutation:
+    targets:
+      - src
+  dependency_boundaries:
+    - from: .
+      allow: []
+```
+
+Adjust `rust.targets`, `rust.dry.paths`, `rust.mutation.targets`, and
+`rust.dependency_boundaries` to match the target repository.
+
 ## CI Contract
 
 CI must run the same checks a maintainer can run locally.
@@ -200,7 +239,26 @@ Use the rule catalog command when a finding needs context:
 ```sh
 slophammer-go rules --format json
 slophammer-ts rules --format json
+slophammer-rs rules --format json
 ```
+
+For a Rust project, the CI job should include:
+
+```sh
+cargo check --workspace
+cargo fmt --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace --all-targets
+cargo llvm-cov --workspace --fail-under-lines 85
+cargo audit
+slophammer-rs dry .
+slophammer-rs boundaries .
+slophammer-rs unsafe .
+slophammer-rs check .
+```
+
+Use `cargo deny` instead of or in addition to `cargo audit` when the repository
+needs license, source, or banned-dependency policy.
 
 ## Language Baselines
 
@@ -218,6 +276,14 @@ For Python:
 - run mypy
 - use type annotations on public functions and meaningful helpers
 - avoid `Any` except at narrow dynamic boundaries
+
+For Rust:
+
+- declare `rust-version` or an equivalent pinned Rust toolchain version
+- run `cargo check`, `cargo fmt --check`, `cargo clippy`, and `cargo test`
+- deny Clippy warnings in CI
+- keep unsafe code forbidden unless a narrow allow entry has a reason
+- declare dependency audit, mutation, DRY, and dependency-boundary gates
 - run tests in CI
 
 For Go:
@@ -264,6 +330,25 @@ go run ./cmd/slophammer-go crap ..
 go run ./cmd/slophammer-go mutate .. --scan
 go run ./cmd/slophammer-go check .. --execute
 ./scripts/check-go-install.sh
+node ../scripts/check-conformance.mjs
+npx -y @simpledoc/simpledoc check
+git diff --check
+```
+
+For this repository's Rust implementation, the expected validation set is:
+
+```sh
+cargo fmt --check
+cargo check --workspace
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace --all-targets
+cargo test --workspace --doc
+cargo llvm-cov --workspace --fail-under-lines 85
+cargo install --path crates/slophammer-cli --locked
+slophammer-rs dry .. --format json
+slophammer-rs boundaries .. --format json
+slophammer-rs unsafe .. --format json
+slophammer-rs check .. --format json
 node ../scripts/check-conformance.mjs
 npx -y @simpledoc/simpledoc check
 git diff --check

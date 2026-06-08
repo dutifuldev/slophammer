@@ -23,10 +23,12 @@ jobs:
           test -f scripts/check-conformance.mjs
           test -f .github/workflows/go-release-dry-run.yml
           test -f .github/workflows/typescript-release.yml
+          test -f .github/workflows/rust-release-dry-run.yml
           test -f docs/2026-05-12-guardrails.md
           test -f docs/2026-05-16-typescript-implementation.md
           test -f docs/2026-05-17-release-hardening-roadmap.md
           test -f docs/2026-05-17-required-next-work.md
+          test -f docs/2026-06-08-rust-implementation-plan.md
           test -f specs/PRODUCT.md
           test -f specs/RULES.md
           test -f specs/CONFIG.md
@@ -45,6 +47,14 @@ jobs:
           test -f fixtures/expected/adoption-before.json
           test -f fixtures/repos/adoption-after/SLOPHAMMER_REMEDIATION.md
           test -f fixtures/expected/adoption-after.json
+          test -f rust/Cargo.toml
+          test -f rust/Cargo.lock
+          test -f rust/crates/slophammer-cli/Cargo.toml
+          test -f rust/crates/slophammer-cli/src/main.rs
+          test -f fixtures/repos/rust-clean/Cargo.toml
+          test -f fixtures/expected/rust-clean.json
+          test -f fixtures/repos/rust-bad-dependency/slophammer.yml
+          test -f fixtures/expected/rust-bad-dependency.json
       - run: npx -y @simpledoc/simpledoc check
 
   go-template:
@@ -164,6 +174,40 @@ jobs:
         with:
           go-version-file: go/go.mod
           cache: false
+      - uses: dtolnay/rust-toolchain@stable
       - run: npm ci
       - run: npm run check
       - run: node ../scripts/check-conformance.mjs
+
+  rust-implementation:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
+      - name: Install Rust quality tools
+        run: |
+          cargo install cargo-audit --locked
+          cargo install cargo-mutants --locked
+      - run: cargo fmt --check
+      - run: cargo check --workspace
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace --all-targets
+      - run: cargo test --workspace --doc
+      - run: cargo llvm-cov --workspace --fail-under-lines 85
+      - run: cargo audit
+      - run: cargo mutants --workspace --list
+      - run: cargo install --path crates/slophammer-cli --locked
+      - run: slophammer-rs rules --format json
+      - run: slophammer-rs check ../fixtures/repos/rust-clean --format json
+      - run: slophammer-rs dry .. --format json
+      - run: slophammer-rs boundaries .. --format json
+      - run: slophammer-rs unsafe .. --format json
+      - run: slophammer-rs check .. --format json

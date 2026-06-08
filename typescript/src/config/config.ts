@@ -89,8 +89,9 @@ export function ruleSeverity(cfg: Config, ruleID: string, fallback: Severity): S
 }
 
 function parseConfig(root: Readonly<Record<string, unknown>>): Config {
-  assertKnownKeys(root, "root", ["rules", "go", "typescript"]);
+  assertKnownKeys(root, "root", ["rules", "go", "typescript", "rust"]);
   validateIgnoredGoConfig(root["go"]);
+  validateIgnoredRustConfig(root["rust"]);
   return {
     rules: parseRules(asRecord(root["rules"])),
     typescript: parseTypeScriptConfig(asRecord(root["typescript"]))
@@ -245,6 +246,7 @@ function validateIgnoredGoConfig(value: unknown): void {
   const root = asRecord(value);
   assertKnownKeys(root, "go", [
     "coverage_threshold",
+    "coverage_profile",
     "targets",
     "exclude",
     "dry_max_candidates",
@@ -275,6 +277,53 @@ function validateIgnoredGoConfig(value: unknown): void {
     "min_tokens"
   ]);
   validateIgnoredDependencyBoundaryKeys(root["dependency_boundaries"], "go.dependency_boundaries");
+}
+
+function validateIgnoredRustConfig(value: unknown): void {
+  const root = asRecord(value);
+  assertKnownKeys(root, "rust", [
+    "coverage",
+    "coverage_threshold",
+    "complexity",
+    "targets",
+    "exclude",
+    "dry",
+    "unsafe",
+    "mutation",
+    "dependency_boundaries"
+  ]);
+  assertKnownKeys(asRecord(root["coverage"]), "rust.coverage", ["threshold", "paths", "exclude"]);
+  assertKnownKeys(asRecord(root["complexity"]), "rust.complexity", ["cognitive_max"]);
+  const dry = asRecord(root["dry"]);
+  assertKnownKeys(dry, "rust.dry", ["max_findings", "paths", "exclude", "copied_blocks"]);
+  assertKnownKeys(asRecord(dry["copied_blocks"]), "rust.dry.copied_blocks", [
+    "enabled",
+    "min_tokens"
+  ]);
+  const unsafePolicy = asRecord(root["unsafe"]);
+  assertKnownKeys(unsafePolicy, "rust.unsafe", ["policy", "allow"]);
+  validateIgnoredUnsafeAllowKeys(unsafePolicy["allow"], "rust.unsafe.allow");
+  assertKnownKeys(asRecord(root["mutation"]), "rust.mutation", ["targets", "exclude"]);
+  validateIgnoredDependencyBoundaryKeys(
+    root["dependency_boundaries"],
+    "rust.dependency_boundaries"
+  );
+}
+
+function validateIgnoredUnsafeAllowKeys(value: unknown, field: string): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!Array.isArray(value)) {
+    throw new Error(`${field} must be an object array`);
+  }
+  for (const [index, item] of value.entries()) {
+    assertKnownKeys(
+      asBoundaryRecord(item, `${field}[${String(index)}]`),
+      `${field}[${String(index)}]`,
+      ["path", "reason"]
+    );
+  }
 }
 
 function validateIgnoredDependencyBoundaryKeys(value: unknown, field: string): void {

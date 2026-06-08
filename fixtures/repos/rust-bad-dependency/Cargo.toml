@@ -1,0 +1,9 @@
+[package]
+name = "rust-bad-dependency-fixture"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.86"
+
+[dependencies]
+local-dep = { path = "local-dep" }
+

@@ -17,3 +17,6 @@ __pycache__/
 bin/
 *.test
 
+# Rust
+target/
+rust/target/

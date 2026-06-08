@@ -12,6 +12,7 @@ The user-facing products are separate:
 | -------------- | ----------------- |
 | Go             | `slophammer-go`   |
 | TypeScript     | `slophammer-ts`   |
+| Rust           | `slophammer-rs`   |
 | Python         | `slophammer-py`   |
 
 This makes installation honest. A Go user installs the Go implementation. A
@@ -41,6 +42,7 @@ Keep language implementations at the repository top level:
 │   ├── repos/
 │   └── expected/
 ├── go/
+├── rust/
 ├── typescript/
 └── python/
 ```
@@ -94,6 +96,7 @@ The public naming model is part of the product:
 
 - the Go implementation is exposed as `slophammer-go`
 - the TypeScript implementation is exposed as `slophammer-ts`
+- the Rust implementation is exposed as `slophammer-rs`
 - existing source-tree and pre-rename commands remain compatibility forms
 - static rule detection accepts the new public commands and the old
   compatibility forms
@@ -218,6 +221,70 @@ The production Go rule set should be:
 The first group is standard Go practice. The second group should use Uncle
 Bob's tools directly. The dependency-boundary rule is Slophammer policy because
 the allowed architecture is project-specific.
+
+## Rust Implementation
+
+The Rust version should emphasize crate-level boundaries and pure rule
+evaluation:
+
+```text
+rust/
+├── Cargo.toml
+├── crates/
+│   ├── slophammer-core/
+│   ├── slophammer-config/
+│   ├── slophammer-scan/
+│   ├── slophammer-report/
+│   ├── slophammer-rust/
+│   ├── slophammer-exec/
+│   ├── slophammer-app/
+│   └── slophammer-cli/
+└── tests/
+```
+
+`slophammer-core` owns public data types such as findings, reports,
+severities, rule definitions, and exit-code concepts. Scanner, config, Rust
+rules, reporter, and execute adapters depend on core. App orchestration wires
+those pieces together. The CLI only parses arguments and maps app results to
+process output.
+
+The Rust rule crate stays pure. It receives a typed repository snapshot and
+parsed config, then returns findings. It does not walk the filesystem, execute
+Cargo, render reports, or parse CLI arguments.
+
+The Rust implementation uses existing packages and tools for commodity work:
+
+- `clap` for CLI parsing
+- `ignore` and `camino` for repository walking and paths
+- `yaml_serde` isolated behind config parsing
+- `toml_edit` for Cargo manifest inspection
+- `syn` for Rust unsafe-policy inspection
+- Cargo, rustfmt, Clippy, `cargo-llvm-cov`, `cargo audit`, and
+  `cargo-mutants` for execute-mode checks
+
+Slophammer-owned Rust policy includes rule definitions, strict config
+validation, report rendering, fixture conformance, dependency-boundary checks,
+unsafe-code policy, and copied-block DRY findings.
+
+## Rust Rule Set
+
+The production Rust rule set is:
+
+| Rule ID                               | Source of truth                         | Slophammer responsibility |
+| ------------------------------------- | --------------------------------------- | ------------------------- |
+| `rust.manifest-required`              | Cargo manifest                          | Check that `Cargo.toml` exists. |
+| `rust.msrv-required`                  | Cargo manifest or toolchain file        | Check that an MSRV is declared. |
+| `rust.check-required`                 | `cargo check`                           | Check that static checking is declared. |
+| `rust.fmt-required`                   | `cargo fmt --check`                     | Check that formatting is declared. |
+| `rust.clippy-required`                | `cargo clippy`                          | Check that linting with warnings denied is declared. |
+| `rust.test-required`                  | `cargo test`                            | Check that tests are declared. |
+| `rust.coverage-required`              | `cargo llvm-cov` or equivalent          | Check that coverage is gated. |
+| `rust.complexity-required`            | Clippy config or Slophammer AST policy  | Check complexity limit evidence. |
+| `rust.dry-required`                   | Slophammer native DRY                   | Check duplicated production code. |
+| `rust.mutation-required`              | `cargo-mutants`                         | Check that mutation testing has a workflow slot. |
+| `rust.unsafe-policy-required`         | Slophammer config plus Rust source      | Check unsafe policy declarations and violations. |
+| `rust.dependency-audit-required`      | `cargo audit` or `cargo deny`           | Check dependency audit declaration. |
+| `rust.dependency-boundaries-required` | Slophammer config plus Cargo manifests  | Check local path dependency boundaries. |
 
 ## Tooling Policy
 

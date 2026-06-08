@@ -127,3 +127,61 @@ typescript:
         - typescript/src/dry
     - from: typescript/src/repo
       allow: []
+rust:
+  coverage:
+    threshold: 85
+  complexity:
+    cognitive_max: 8
+  targets:
+    - rust/crates
+  exclude:
+    - "rust/target/**"
+  dry:
+    max_findings: 0
+    paths:
+      - rust/crates
+    exclude:
+      - "**/*_test.rs"
+      - "rust/target/**"
+    copied_blocks:
+      enabled: true
+      min_tokens: 100
+  unsafe:
+    policy: forbid
+  mutation:
+    targets:
+      - rust/crates/slophammer-rust/src
+      - rust/crates/slophammer-config/src
+      - rust/crates/slophammer-app/src
+  dependency_boundaries:
+    - from: rust/crates/slophammer-cli
+      allow:
+        - rust/crates/slophammer-app
+    - from: rust/crates/slophammer-app
+      allow:
+        - rust/crates/slophammer-config
+        - rust/crates/slophammer-core
+        - rust/crates/slophammer-exec
+        - rust/crates/slophammer-report
+        - rust/crates/slophammer-rust
+        - rust/crates/slophammer-scan
+    - from: rust/crates/slophammer-config
+      allow:
+        - rust/crates/slophammer-scan
+    - from: rust/crates/slophammer-exec
+      allow:
+        - rust/crates/slophammer-config
+        - rust/crates/slophammer-core
+        - rust/crates/slophammer-scan
+    - from: rust/crates/slophammer-report
+      allow:
+        - rust/crates/slophammer-core
+    - from: rust/crates/slophammer-rust
+      allow:
+        - rust/crates/slophammer-config
+        - rust/crates/slophammer-core
+        - rust/crates/slophammer-scan
+    - from: rust/crates/slophammer-scan
+      allow: []
+    - from: rust/crates/slophammer-core
+      allow: []

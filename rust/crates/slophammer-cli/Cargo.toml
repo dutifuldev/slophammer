@@ -1,0 +1,17 @@
+[package]
+name = "slophammer-rs"
+description = "Rust implementation of the Slophammer repository quality checker."
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+clap.workspace = true
+slophammer-app = { path = "../slophammer-app", version = "0.1.0" }
+
+[[bin]]
+name = "slophammer-rs"
+path = "src/main.rs"
