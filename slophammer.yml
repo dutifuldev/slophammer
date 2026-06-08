@@ -167,6 +167,7 @@ rust:
         - rust/crates/slophammer-scan
     - from: rust/crates/slophammer-config
       allow:
+        - rust/crates/slophammer-core
         - rust/crates/slophammer-scan
     - from: rust/crates/slophammer-exec
       allow:
