@@ -423,8 +423,8 @@ Add release dry-run coverage before publishing:
   workspace
 
 Do not publish until the installed artifact is proven by CI. The merged Rust
-implementation is source-installable, but not published to crates.io yet. A
-real Cargo release must publish the internal crates in dependency order before
+implementation is source-installable, but not published to crates.io yet. The
+`Rust Release` workflow publishes the internal crates in dependency order before
 publishing the `slophammer-rs` CLI crate:
 
 1. `slophammer-core`

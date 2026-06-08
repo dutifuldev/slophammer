@@ -123,10 +123,13 @@ crates in dependency order before publishing `slophammer-rs`:
 
 The Rust release dry-run checks source installation, command help, rule catalog
 output, fixture checks from the installed binary, and shared conformance before
-any publish step. A real crates.io release should also verify or automate the
-ordered `cargo package` and `cargo publish` sequence for every Rust workspace
-crate. After publication, users should install with
-`cargo install slophammer-rs --locked`.
+any publish step. The `Rust Release` workflow publishes on `rust/vX.Y.Z` tags
+or manual dispatch after validating the tag, release commit, Rust quality gate,
+installed CLI behavior, shared conformance, and the ordered package sequence.
+It requires `CARGO_REGISTRY_TOKEN` and publishes through
+`rust/scripts/publish-crates.sh`, which skips already-published crate versions
+so partially completed releases can be rerun. After publication, users should
+install with `cargo install slophammer-rs --locked`.
 
 ## Implementation Boundary
 

@@ -82,9 +82,32 @@ For the first crates.io release, later package commands may require earlier
 internal crates to already exist in the registry. Treat packaging as part of the
 ordered publish sequence, not as a single all-at-once workspace step.
 
-The current release dry-run workflow proves source installation and foundational
-package metadata. A crates.io release should expand that gate to document or
-automate the ordered package/publish sequence for every workspace crate.
+The release dry-run workflow proves source installation and foundational package
+metadata. The real release workflow automates the ordered package/publish
+sequence for every workspace crate.
+
+## Release Workflow
+
+The crates.io release path is implemented by
+`.github/workflows/rust-release.yml`. It runs for `rust/v*` tag pushes and can
+also be started manually with `workflow_dispatch`.
+
+Before the first release:
+
+1. Create a crates.io API token with publish access.
+2. Store it as the repository or `crates-io` environment secret named
+   `CARGO_REGISTRY_TOKEN`.
+3. Make sure the release commit is on `origin/main`.
+4. Tag the commit with the Rust workspace version, for example `rust/v0.1.0`.
+
+The workflow validates the tag, runs the Rust quality gate, runs installed CLI
+smoke tests, runs shared conformance, and then publishes the crates in order
+through `scripts/publish-crates.sh`.
+
+Publishing to crates.io is permanent. If the workflow stops after publishing
+some internal crates, rerun it with the same tag. The publish script skips crate
+versions that are already visible on crates.io and continues with the remaining
+crates.
 
 ## Publish Order
 

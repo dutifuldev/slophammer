@@ -1,0 +1,142 @@
+name: Rust Release
+
+on:
+  push:
+    tags:
+      - "rust/v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Rust release tag to publish, for example rust/v0.1.0"
+        required: true
+        type: string
+
+concurrency:
+  group: rust-release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    if: github.repository == 'dutifuldev/slophammer'
+    runs-on: ubuntu-latest
+    environment: crates-io
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go/go.mod
+          cache: false
+
+      - name: Resolve release tag
+        id: release
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "push" ]; then
+            tag="${GITHUB_REF_NAME}"
+          else
+            tag="${{ inputs.tag }}"
+          fi
+
+          if ! printf '%s' "$tag" | grep -Eq '^rust/v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "invalid Rust release tag: $tag" >&2
+            exit 1
+          fi
+
+          if ! git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "release tag does not exist locally: $tag" >&2
+            exit 1
+          fi
+
+          tag_sha="$(git rev-list -n 1 "$tag")"
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "$tag_sha" origin/main; then
+            echo "release tag $tag does not point to a commit contained in origin/main" >&2
+            exit 1
+          fi
+
+          version="$(
+            awk '
+              /^\[workspace.package\]/ { in_workspace_package = 1; next }
+              /^\[/ { in_workspace_package = 0 }
+              in_workspace_package && /^version = / {
+                gsub(/"/, "", $3)
+                print $3
+                exit
+              }
+            ' Cargo.toml
+          )"
+          expected_tag="rust/v$version"
+          if [ "$tag" != "$expected_tag" ]; then
+            echo "release tag $tag does not match Rust workspace version $version; expected $expected_tag" >&2
+            exit 1
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Check out release tag
+        working-directory: .
+        run: git checkout --detach "${{ steps.release.outputs.tag }}"
+
+      - name: Install Rust quality tools
+        run: |
+          cargo install cargo-audit --locked
+          cargo install cargo-mutants --locked
+
+      - name: Validate Rust implementation
+        run: |
+          cargo fmt --check
+          cargo check --workspace
+          cargo clippy --workspace --all-targets -- -D warnings
+          cargo test --workspace --all-targets
+          cargo test --workspace --doc
+          cargo llvm-cov --workspace --fail-under-lines 85
+          cargo audit
+          cargo mutants --workspace --list
+
+      - name: Validate installed CLI
+        run: |
+          cargo install --path crates/slophammer-cli --locked
+          slophammer-rs help
+          slophammer-rs rules --format json
+          slophammer-rs check ../fixtures/repos/rust-clean --format json
+          slophammer-rs dry .. --format json
+          slophammer-rs boundaries .. --format json
+          slophammer-rs unsafe .. --format json
+          slophammer-rs check .. --format json
+
+      - name: Validate shared conformance
+        working-directory: .
+        run: |
+          npm ci --prefix typescript
+          node scripts/check-conformance.mjs
+
+      - name: Verify ordered Cargo package sequence
+        run: scripts/publish-crates.sh --tag "${{ steps.release.outputs.tag }}" --dry-run
+
+      - name: Publish crates.io packages
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: scripts/publish-crates.sh --tag "${{ steps.release.outputs.tag }}" --publish

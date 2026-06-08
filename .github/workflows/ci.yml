@@ -24,6 +24,7 @@ jobs:
           test -f .github/workflows/go-release-dry-run.yml
           test -f .github/workflows/typescript-release.yml
           test -f .github/workflows/rust-release-dry-run.yml
+          test -f .github/workflows/rust-release.yml
           test -f docs/2026-05-12-guardrails.md
           test -f docs/2026-05-16-typescript-implementation.md
           test -f docs/2026-05-17-release-hardening-roadmap.md
@@ -49,6 +50,7 @@ jobs:
           test -f fixtures/expected/adoption-after.json
           test -f rust/Cargo.toml
           test -f rust/Cargo.lock
+          test -f rust/scripts/publish-crates.sh
           test -f rust/crates/slophammer-cli/Cargo.toml
           test -f rust/crates/slophammer-cli/src/main.rs
           test -f fixtures/repos/rust-clean/Cargo.toml

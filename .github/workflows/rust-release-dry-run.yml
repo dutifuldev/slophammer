@@ -6,6 +6,9 @@ on:
       - "rust/v*"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   rust-release-dry-run:
     runs-on: ubuntu-latest
@@ -14,6 +17,8 @@ jobs:
         working-directory: rust
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-node@v6
         with:
@@ -29,11 +34,30 @@ jobs:
             rust/v*) ;;
             *) echo "Rust release tags must match rust/vX.Y.Z"; exit 1 ;;
           esac
+      - name: Resolve package tag
+        id: package
+        run: |
+          version="$(
+            awk '
+              /^\[workspace.package\]/ { in_workspace_package = 1; next }
+              /^\[/ { in_workspace_package = 0 }
+              in_workspace_package && /^version = / {
+                gsub(/"/, "", $3)
+                print $3
+                exit
+              }
+            ' Cargo.toml
+          )"
+          if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
+            tag="${GITHUB_REF_NAME}"
+          else
+            tag="rust/v$version"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
       - run: cargo fmt --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace --all-targets
-      - run: cargo package -p slophammer-core --locked
-      - run: cargo package -p slophammer-scan --locked
+      - run: scripts/publish-crates.sh --tag "${{ steps.package.outputs.tag }}" --dry-run
       - run: cargo install --path crates/slophammer-cli --locked
       - run: slophammer-rs help
       - run: slophammer-rs rules --format json

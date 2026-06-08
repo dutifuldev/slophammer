@@ -261,8 +261,10 @@ cargo install slophammer-rs --locked
 [Required Next Work](docs/2026-05-17-required-next-work.md) records the release
 hardening tasks that were completed for the first Go release. TypeScript remains
 package-checked in CI and is published from the `typescript/` package. Rust has
-a release dry-run workflow, but crates.io publishing still requires a full
-multi-crate package pass and ordered crate publication.
+release dry-run and crates.io release workflows. A Rust crates.io release
+requires a `rust/vX.Y.Z` tag on `main` and a `CARGO_REGISTRY_TOKEN` secret; the
+workflow publishes the internal crates in dependency order before publishing
+`slophammer-rs`.
 
 ## Policy Targets
 
@@ -357,8 +359,8 @@ The Rust implementation currently provides:
   fixtures
 - CI gates for formatting, Clippy, tests, package install, native commands, and
   shared conformance
-- a release dry-run path, with crates.io publication pending until every Rust
-  workspace crate packages cleanly and is published in dependency order
+- release dry-run and crates.io release workflows that publish every Rust
+  workspace crate in dependency order
 
 ## Current Go Quality Surface
 
@@ -395,10 +397,10 @@ useful as a reference implementation:
    CI installs `slophammer-go` into a temporary `GOBIN`, packs and installs
    `slophammer-ts`, checks the public command name, and runs the shared
    conformance script. The Go release dry-run workflow validates release tags
-   and verifies tagged `go install` on release tag pushes. The Rust release
-   dry-run validates the source-install path and foundational package metadata;
-   the crates.io publish path remains pending until the full multi-crate Cargo
-   package sequence is proven.
+   and verifies tagged `go install` on release tag pushes. Rust release
+   workflows validate the source-install path and publish crates.io packages in
+   dependency order once a `rust/vX.Y.Z` tag and `CARGO_REGISTRY_TOKEN` are
+   available.
 
 ## Shared Rule Set
 
