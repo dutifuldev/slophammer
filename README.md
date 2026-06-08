@@ -397,8 +397,9 @@ useful as a reference implementation:
    `slophammer-ts`, checks the public command name, and runs the shared
    conformance script. The Go release dry-run workflow validates release tags
    and verifies tagged `go install` on release tag pushes. Rust release
-   workflows package `slophammer-rs`, install the packaged artifact, run CLI
-   smoke checks, run shared conformance, and publish only the CLI package.
+   workflows package `slophammer-rs`, test the packaged crate, install the
+   packaged artifact, run CLI smoke checks, run shared conformance, and publish
+   only the CLI package.
 
 ## Shared Rule Set
 

@@ -49,9 +49,9 @@ inside the published package unless a deliberate library API is added later.
    The publish helper targets only the single CLI package.
 
 5. Verify the package artifact before publishing. Completed.
-   The release gate should run `cargo package -p slophammer-rs --locked`, install
-   from the packaged crate or package path, and run the installed CLI smoke
-   checks plus shared conformance.
+   The release gate should run `cargo package -p slophammer-rs --locked`, test
+   the verified package directory, install from the packaged crate or package
+   path, and run the installed CLI smoke checks plus shared conformance.
 
 ## Non-Goals
 
@@ -64,6 +64,7 @@ inside the published package unless a deliberate library API is added later.
 ## Acceptance
 
 - `cargo package -p slophammer-rs --locked` succeeds before publish.
+- `cargo test` succeeds from Cargo's verified package directory.
 - The published package installs with `cargo install slophammer-rs --locked`.
 - The installed binary passes `help`, `rules`, Rust fixture checks, direct Rust
   commands, and shared conformance.

@@ -118,6 +118,9 @@ jobs:
       - name: Verify Cargo package
         run: scripts/publish-crate.sh --tag "${{ steps.release.outputs.tag }}" --dry-run
 
+      - name: Test packaged crate
+        run: scripts/test-packaged-crate.sh
+
       - name: Install packaged CLI artifact
         run: scripts/install-packaged-cli.sh
 

@@ -114,10 +114,10 @@ The production Cargo release target is one user-facing package:
 separate crates unless there is a deliberate library API to support.
 
 The Rust release workflow validates the release tag, runs the Rust quality gate,
-packages `slophammer-rs`, installs the packaged CLI artifact, runs installed CLI
-smoke tests and shared conformance, and publishes only `slophammer-rs`. After
-publication, users should install with `cargo install slophammer-rs --locked`.
-See the
+packages `slophammer-rs`, runs package tests from Cargo's verified package
+directory, installs the packaged CLI artifact, runs installed CLI smoke tests
+and shared conformance, and publishes only `slophammer-rs`. After publication,
+users should install with `cargo install slophammer-rs --locked`. See the
 [Rust CLI-only Cargo publish plan](../docs/2026-06-08-rust-cli-only-cargo-publish-plan.md).
 
 ## Implementation Boundary

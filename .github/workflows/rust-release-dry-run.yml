@@ -58,6 +58,7 @@ jobs:
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace --all-targets
       - run: scripts/publish-crate.sh --tag "${{ steps.package.outputs.tag }}" --dry-run
+      - run: scripts/test-packaged-crate.sh
       - run: scripts/install-packaged-cli.sh
       - run: slophammer-rs help
       - run: slophammer-rs rules --format json

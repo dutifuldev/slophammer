@@ -35,6 +35,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace --all-targets
 cargo llvm-cov --workspace --fail-under-lines 85
 scripts/publish-crate.sh --tag rust/v0.1.0 --dry-run
+scripts/test-packaged-crate.sh
 scripts/install-packaged-cli.sh
 slophammer-rs dry .. --format json
 slophammer-rs boundaries .. --format json
@@ -103,9 +104,10 @@ The workflow:
 2. verifies the tagged commit is on `origin/main`,
 3. runs the Rust quality gate,
 4. runs `cargo package -p slophammer-rs --locked`,
-5. installs the packaged CLI artifact,
-6. runs installed CLI smoke checks and shared conformance,
-7. publishes only `slophammer-rs`.
+5. runs `cargo test` from Cargo's verified package directory,
+6. installs the packaged CLI artifact,
+7. runs installed CLI smoke checks and shared conformance,
+8. publishes only `slophammer-rs`.
 
 Publishing to crates.io is permanent. The publish helper skips
 `slophammer-rs@<version>` if that version is already visible on crates.io.

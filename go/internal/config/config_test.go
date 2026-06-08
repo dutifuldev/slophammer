@@ -525,11 +525,10 @@ rust:
         reason: reviewed
   mutation:
     targets:
-      - rust/crates/slophammer-rust/src
+      - rust/crates/slophammer-cli/src/rust_rules
   dependency_boundaries:
-    - from: rust/crates/slophammer-app
-      allow:
-        - rust/crates/slophammer-core
+    - from: rust/crates/slophammer-cli
+      allow: []
 `,
 		},
 	}))

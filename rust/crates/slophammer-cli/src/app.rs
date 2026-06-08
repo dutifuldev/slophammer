@@ -234,8 +234,8 @@ mod tests {
     use super::*;
     use crate::core::{EXIT_FINDINGS, EXIT_OK};
     use std::fs;
-    use std::path::{Path, PathBuf};
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::path::Path;
+    use tempfile::{Builder, TempDir};
 
     #[test]
     fn unknown_only_rule_is_error() {
@@ -251,8 +251,9 @@ mod tests {
 
     #[test]
     fn clean_fixture_has_no_findings() {
+        let fixture = fixture("rust-clean");
         let result = check(CheckOptions {
-            root: fixture("rust-clean"),
+            root: fixture_path(&fixture),
             format: OutputFormat::Json,
             execute: false,
             only_rule_ids: Vec::new(),
@@ -276,8 +277,9 @@ mod tests {
             "rust-missing-tests",
             "rust-unsafe",
         ] {
+            let fixture = fixture(fixture_name);
             let result = check(CheckOptions {
-                root: fixture(fixture_name),
+                root: fixture_path(&fixture),
                 format: OutputFormat::Json,
                 execute: false,
                 only_rule_ids: Vec::new(),
@@ -289,16 +291,18 @@ mod tests {
 
     #[test]
     fn direct_commands_use_report_contract() {
+        let clean_fixture = fixture("rust-clean");
         let dry = dry(DirectOptions {
-            root: fixture("rust-clean"),
+            root: fixture_path(&clean_fixture),
             format: OutputFormat::Text,
             max_findings: None,
         });
         assert_eq!(dry.code, EXIT_OK);
         assert!(dry.stdout.contains("OK: no findings"));
 
+        let bad_dependency_fixture = fixture("rust-bad-dependency");
         let boundaries = boundaries(DirectOptions {
-            root: fixture("rust-bad-dependency"),
+            root: fixture_path(&bad_dependency_fixture),
             format: OutputFormat::Sarif,
             max_findings: None,
         });
@@ -309,8 +313,9 @@ mod tests {
                 .contains("rust.dependency-boundaries-required")
         );
 
+        let unsafe_fixture = fixture("rust-unsafe");
         let unsafe_result = unsafe_policy(DirectOptions {
-            root: fixture("rust-unsafe"),
+            root: fixture_path(&unsafe_fixture),
             format: OutputFormat::Json,
             max_findings: None,
         });
@@ -336,26 +341,25 @@ mod tests {
     #[test]
     fn check_applies_rule_severity_overrides() {
         let root = temp_root("rule-severity");
-        write_file(&root, "AGENTS.md", "# Agents\n");
+        write_file(root.path(), "AGENTS.md", "# Agents\n");
         write_file(
-            &root,
+            root.path(),
             ".github/workflows/ci.yml",
             "jobs:\n  ci:\n    steps:\n      - run: echo ok\n",
         );
         write_file(
-            &root,
+            root.path(),
             "slophammer.yml",
             "rules:\n  repo.readme-required:\n    severity: warn\n",
         );
 
         let result = check(CheckOptions {
-            root: root.to_string_lossy().into_owned(),
+            root: fixture_path(&root),
             format: OutputFormat::Json,
             execute: false,
             only_rule_ids: vec!["repo.readme-required".to_owned()],
         });
 
-        fs::remove_dir_all(&root).ok();
         assert_eq!(result.code, EXIT_FINDINGS);
         assert!(
             result
@@ -368,8 +372,9 @@ mod tests {
     #[test]
     fn config_error_fixtures_return_error_code() {
         for fixture_name in ["rust-invalid-config", "rust-unknown-config"] {
+            let fixture = fixture(fixture_name);
             let result = check(CheckOptions {
-                root: fixture(fixture_name),
+                root: fixture_path(&fixture),
                 format: OutputFormat::Json,
                 execute: false,
                 only_rule_ids: Vec::new(),
@@ -379,27 +384,107 @@ mod tests {
         }
     }
 
-    fn fixture(name: &str) -> String {
-        let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-        manifest_dir
-            .join("../../..")
-            .join("fixtures/repos")
-            .join(name)
-            .to_string_lossy()
-            .into_owned()
+    fn fixture(name: &str) -> TempDir {
+        let root = temp_root(name);
+        write_rust_fixture(root.path(), name);
+        root
     }
 
-    fn temp_root(name: &str) -> PathBuf {
-        let nonce = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("clock")
-            .as_nanos();
-        let root = std::env::temp_dir().join(format!(
-            "slophammer-rs-{name}-{}-{nonce}",
-            std::process::id()
-        ));
-        fs::create_dir_all(&root).expect("create temp root");
-        root
+    fn fixture_path(root: &TempDir) -> String {
+        root.path().to_string_lossy().into_owned()
+    }
+
+    fn write_rust_fixture(root: &Path, name: &str) {
+        match name {
+            "rust-clean" => write_clean_fixture(
+                root,
+                CLEAN_WORKFLOW,
+                "pub fn message() -> &'static str {\n    \"ok\"\n}\n",
+            ),
+            "rust-bad-dependency" => write_bad_dependency_fixture(root),
+            "rust-invalid-config" => write_invalid_config_fixture(root),
+            "rust-unknown-config" => write_unknown_config_fixture(root),
+            "rust-unsafe" => write_unsafe_fixture(root),
+            _ => write_clean_fixture(
+                root,
+                "jobs:\n  rust:\n    steps:\n      - run: cargo check --workspace\n",
+                "pub fn message() -> &'static str {\n    \"ok\"\n}\n",
+            ),
+        }
+    }
+
+    fn write_clean_fixture(root: &Path, workflow: &str, source: &str) {
+        write_file(root, "README.md", "# Rust Fixture\n");
+        write_file(root, "AGENTS.md", "# Agents\n");
+        write_file(
+            root,
+            "Cargo.toml",
+            "[package]\nname = \"rust-fixture\"\nversion = \"0.1.0\"\nedition = \"2024\"\nrust-version = \"1.86\"\n",
+        );
+        write_file(root, "src/lib.rs", source);
+        write_file(root, "clippy.toml", "cognitive-complexity-threshold = 8\n");
+        write_file(root, ".github/workflows/ci.yml", workflow);
+        write_file(root, "slophammer.yml", CLEAN_CONFIG);
+    }
+
+    fn write_bad_dependency_fixture(root: &Path) {
+        write_clean_fixture(
+            root,
+            CLEAN_WORKFLOW,
+            "pub fn message() -> &'static str {\n    local_dep::message()\n}\n",
+        );
+        write_file(
+            root,
+            "Cargo.toml",
+            "[package]\nname = \"rust-fixture\"\nversion = \"0.1.0\"\nedition = \"2024\"\nrust-version = \"1.86\"\n\n[dependencies]\nlocal-dep = { path = \"local-dep\" }\n",
+        );
+        write_file(
+            root,
+            "local-dep/Cargo.toml",
+            "[package]\nname = \"local-dep\"\nversion = \"0.1.0\"\nedition = \"2024\"\nrust-version = \"1.86\"\n",
+        );
+        write_file(
+            root,
+            "local-dep/src/lib.rs",
+            "pub fn message() -> &'static str {\n    \"dep\"\n}\n",
+        );
+    }
+
+    fn write_unsafe_fixture(root: &Path) {
+        write_clean_fixture(
+            root,
+            CLEAN_WORKFLOW,
+            "pub fn pointer_is_null() -> bool {\n    let value = unsafe { core::ptr::null::<u8>().as_ref() };\n    value.is_none()\n}\n",
+        );
+    }
+
+    fn write_invalid_config_fixture(root: &Path) {
+        write_clean_fixture(
+            root,
+            CLEAN_WORKFLOW,
+            "pub fn message() -> &'static str {\n    \"ok\"\n}\n",
+        );
+        write_file(
+            root,
+            "slophammer.yml",
+            "rust:\n  coverage:\n    threshold: 40\n",
+        );
+    }
+
+    fn write_unknown_config_fixture(root: &Path) {
+        write_clean_fixture(
+            root,
+            CLEAN_WORKFLOW,
+            "pub fn message() -> &'static str {\n    \"ok\"\n}\n",
+        );
+        write_file(root, "slophammer.yml", "rust:\n  not_a_real_key: true\n");
+    }
+
+    fn temp_root(name: &str) -> TempDir {
+        Builder::new()
+            .prefix(&format!("slophammer-rs-{name}-"))
+            .tempdir()
+            .expect("create temp root")
     }
 
     fn write_file(root: &Path, path: &str, content: &str) {
@@ -409,4 +494,44 @@ mod tests {
         }
         fs::write(path, content).expect("write file");
     }
+
+    const CLEAN_WORKFLOW: &str = r#"name: CI
+on: [push]
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - run: cargo check --workspace
+      - run: cargo fmt --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace --all-targets
+      - run: cargo llvm-cov --workspace --fail-under-lines 85
+      - run: cargo audit
+      - run: slophammer-rs dry .
+      - run: cargo mutants --workspace
+"#;
+
+    const CLEAN_CONFIG: &str = r#"rust:
+  coverage:
+    threshold: 85
+  complexity:
+    cognitive_max: 8
+  targets:
+    - src
+  dry:
+    max_findings: 0
+    paths:
+      - src
+    copied_blocks:
+      enabled: true
+      min_tokens: 100
+  unsafe:
+    policy: forbid
+  mutation:
+    targets:
+      - src
+  dependency_boundaries:
+    - from: .
+      allow: []
+"#;
 }

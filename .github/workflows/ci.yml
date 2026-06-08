@@ -52,8 +52,10 @@ jobs:
           test -f rust/Cargo.lock
           test -f rust/scripts/publish-crate.sh
           test -f rust/scripts/install-packaged-cli.sh
+          test -f rust/scripts/test-packaged-crate.sh
           test -f rust/crates/slophammer-cli/Cargo.toml
           test -f rust/crates/slophammer-cli/src/main.rs
+          test -f rust/crates/slophammer-cli/tests/cli.rs
           test ! -d rust/crates/slophammer-core
           test ! -d rust/crates/slophammer-rust
           test -f fixtures/repos/rust-clean/Cargo.toml
@@ -224,6 +226,7 @@ jobs:
       - run: cargo audit
       - run: cargo mutants --workspace --list
       - run: scripts/publish-crate.sh --tag "${{ steps.rust-package.outputs.tag }}" --dry-run
+      - run: scripts/test-packaged-crate.sh
       - run: scripts/install-packaged-cli.sh
       - run: slophammer-rs help
       - run: slophammer-rs rules --format json

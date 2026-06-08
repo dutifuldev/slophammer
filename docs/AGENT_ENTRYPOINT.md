@@ -357,6 +357,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace --all-targets
 cargo llvm-cov --workspace --fail-under-lines 85
 scripts/publish-crate.sh --tag rust/v0.1.0 --dry-run
+scripts/test-packaged-crate.sh
 scripts/install-packaged-cli.sh
 slophammer-rs dry .. --format json
 slophammer-rs boundaries .. --format json
