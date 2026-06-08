@@ -5,12 +5,12 @@ mod evidence;
 mod scope;
 mod unsafe_policy;
 
+use crate::config::Config;
+use crate::core::{Finding, find_definition};
+use crate::scan::Snapshot;
 use definitions::definition;
 pub use definitions::{default_definitions, rule_ids};
 pub use dry::dry_findings;
-use slophammer_config::Config;
-use slophammer_core::{Finding, find_definition};
-use slophammer_scan::Snapshot;
 
 pub fn run_rules(snapshot: &Snapshot, config: &Config, only_rule_ids: &[String]) -> Vec<Finding> {
     let definitions = default_definitions();
@@ -124,7 +124,7 @@ fn rust_clippy(snapshot: &Snapshot) -> Vec<Finding> {
 }
 
 fn rust_coverage(snapshot: &Snapshot, config: &Config) -> Vec<Finding> {
-    let threshold = slophammer_config::rust_coverage_threshold(config);
+    let threshold = crate::config::rust_coverage_threshold(config);
     missing(
         is_rust_project(snapshot) && !has_coverage_gate(snapshot, threshold),
         rule_ids::RUST_COVERAGE_REQUIRED,
@@ -311,7 +311,7 @@ fn ignored_project_path(path: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use slophammer_scan::{RepoFile, Snapshot};
+    use crate::scan::{RepoFile, Snapshot};
     use std::collections::BTreeMap;
     use std::path::PathBuf;
 
@@ -358,7 +358,7 @@ mod tests {
             "[package]\nname = \"x\"\nrust-version = \"1.86\"\n",
         );
         let config =
-            slophammer_config::parse("rust:\n  coverage:\n    threshold: 85\n").expect("config");
+            crate::config::parse("rust:\n  coverage:\n    threshold: 85\n").expect("config");
         assert!(rust_coverage(&snapshot, &config).is_empty());
     }
 
@@ -368,8 +368,8 @@ mod tests {
             "cargo check --workspace",
             "[package]\nname = \"x\"\nrust-version = \"1.86\"\n",
         );
-        let config = slophammer_config::parse("rust:\n  complexity:\n    cognitive_max: 8\n")
-            .expect("config");
+        let config =
+            crate::config::parse("rust:\n  complexity:\n    cognitive_max: 8\n").expect("config");
         assert!(rust_complexity(&snapshot, &config).is_empty());
     }
 

@@ -1,13 +1,13 @@
-use crate::definitions::{definition, rule_ids};
-use slophammer_config::{Config, DependencyBoundary};
-use slophammer_core::Finding;
-use slophammer_scan::Snapshot;
+use super::definitions::{definition, rule_ids};
+use crate::config::{Config, DependencyBoundary};
+use crate::core::Finding;
+use crate::scan::Snapshot;
 use std::collections::BTreeMap;
 use std::path::{Component, Path, PathBuf};
 use toml_edit::{DocumentMut, Item};
 
 pub fn boundary_findings(snapshot: &Snapshot, config: &Config) -> Vec<Finding> {
-    if !crate::is_rust_project(snapshot) {
+    if !super::is_rust_project(snapshot) {
         return Vec::new();
     }
     let Some(rust) = &config.rust else {
@@ -270,8 +270,8 @@ fn allowed(boundary: &DependencyBoundary, path: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use slophammer_config::{Config, RustConfig};
-    use slophammer_scan::{RepoFile, Snapshot};
+    use crate::config::{Config, RustConfig};
+    use crate::scan::{RepoFile, Snapshot};
     use std::collections::BTreeMap;
     use std::path::PathBuf;
 

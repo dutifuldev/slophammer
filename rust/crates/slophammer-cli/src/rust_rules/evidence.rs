@@ -1,4 +1,4 @@
-use slophammer_scan::Snapshot;
+use crate::scan::Snapshot;
 
 pub fn command_text(snapshot: &Snapshot) -> String {
     snapshot

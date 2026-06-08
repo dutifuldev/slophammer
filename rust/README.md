@@ -33,13 +33,14 @@ cargo fmt --check
 cargo check --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace --all-targets
-cargo test --workspace --doc
 cargo llvm-cov --workspace --fail-under-lines 85
-cargo install --path crates/slophammer-cli --locked
-cargo run -p slophammer-rs -- dry .. --format json
-cargo run -p slophammer-rs -- boundaries .. --format json
-cargo run -p slophammer-rs -- unsafe .. --format json
-cargo run -p slophammer-rs -- check .. --format json
+scripts/publish-crate.sh --tag rust/v0.1.0 --dry-run
+scripts/test-packaged-crate.sh
+scripts/install-packaged-cli.sh
+slophammer-rs dry .. --format json
+slophammer-rs boundaries .. --format json
+slophammer-rs unsafe .. --format json
+slophammer-rs check .. --format json
 ```
 
 `cargo audit` and `cargo mutants` are declared in CI. They require installing
@@ -65,13 +66,12 @@ cargo install slophammer-rs --locked
 The production publish target is a single user-facing Cargo package:
 `slophammer-rs`.
 
-Do not publish the current internal workspace crates just to make crates.io
-resolve the CLI package. Publishing `slophammer-core`, `slophammer-config`,
-`slophammer-rust`, or similar crates would make their public types long-term
-semver contracts before there is a real library use case.
+The Rust implementation is packaged as one publishable CLI crate. Internal
+scanner, config, rule, report, and execution modules live inside the CLI package
+instead of separate crates.io packages.
 
-Before the first crates.io release, refactor the Rust implementation so the CLI
-package can be packaged without unpublished internal dependencies:
+Before a crates.io release, verify that the CLI package can be packaged without
+unpublished internal dependencies:
 
 ```sh
 cargo package -p slophammer-rs --locked
@@ -86,20 +86,28 @@ See
 
 ## Release Workflow
 
-The current Rust release workflow and `scripts/publish-crates.sh` were created
-for an ordered multi-crate publish path. Do not use that publish path for the
-first crates.io release.
+The crates.io release path is implemented by
+`.github/workflows/rust-release.yml`. It runs for `rust/v*` tag pushes and can
+also be started manually with `workflow_dispatch`.
 
-Before the first release, replace the release workflow with a CLI-only publish
-path that:
+Before the first release:
+
+1. Create a crates.io API token with publish access.
+2. Store it as the repository or `crates-io` environment secret named
+   `CARGO_REGISTRY_TOKEN`.
+3. Make sure the release commit is on `origin/main`.
+4. Tag the commit with the Rust workspace version, for example `rust/v0.1.0`.
+
+The workflow:
 
 1. validates the `rust/vX.Y.Z` tag against the `slophammer-rs` package version,
 2. verifies the tagged commit is on `origin/main`,
 3. runs the Rust quality gate,
 4. runs `cargo package -p slophammer-rs --locked`,
-5. installs the packaged CLI artifact,
-6. runs installed CLI smoke checks and shared conformance,
-7. publishes only `slophammer-rs`.
+5. runs `cargo test` from Cargo's verified package directory,
+6. installs the packaged CLI artifact,
+7. runs installed CLI smoke checks and shared conformance,
+8. publishes only `slophammer-rs`.
 
-Publishing to crates.io is permanent. Do not publish until the CLI-only package
-artifact is proven by CI.
+Publishing to crates.io is permanent. The publish helper skips
+`slophammer-rs@<version>` if that version is already visible on crates.io.

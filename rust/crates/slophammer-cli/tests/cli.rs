@@ -1,9 +1,15 @@
 use std::process::Command;
 
+#[path = "support/fixtures.rs"]
+mod fixtures;
+use fixtures::{fixture, fixture_path};
+
 #[test]
 fn cli_checks_clean_fixture() {
+    let fixture = fixture("rust-clean");
+    let root = fixture_path(&fixture);
     let output = command()
-        .args(["check", &fixture("rust-clean"), "--format", "json"])
+        .args(["check", &root, "--format", "json"])
         .output()
         .expect("run slophammer-rs");
     assert!(output.status.success());
@@ -12,8 +18,10 @@ fn cli_checks_clean_fixture() {
 
 #[test]
 fn cli_reports_findings_exit_code() {
+    let fixture = fixture("rust-unsafe");
+    let root = fixture_path(&fixture);
     let output = command()
-        .args(["check", &fixture("rust-unsafe"), "--format", "json"])
+        .args(["check", &root, "--format", "json"])
         .output()
         .expect("run slophammer-rs");
     assert_eq!(output.status.code(), Some(1));
@@ -22,8 +30,10 @@ fn cli_reports_findings_exit_code() {
 
 #[test]
 fn cli_reports_config_errors() {
+    let fixture = fixture("rust-invalid-config");
+    let root = fixture_path(&fixture);
     let output = command()
-        .args(["check", &fixture("rust-invalid-config"), "--format", "json"])
+        .args(["check", &root, "--format", "json"])
         .output()
         .expect("run slophammer-rs");
     assert_eq!(output.status.code(), Some(2));
@@ -39,20 +49,19 @@ fn cli_exposes_direct_commands_and_rules() {
     assert!(rules.status.success());
     assert!(stdout(&rules).contains("rust.check-required"));
 
+    let bad_dependency_fixture = fixture("rust-bad-dependency");
+    let bad_dependency_root = fixture_path(&bad_dependency_fixture);
     let boundaries = command()
-        .args([
-            "boundaries",
-            &fixture("rust-bad-dependency"),
-            "--format",
-            "json",
-        ])
+        .args(["boundaries", &bad_dependency_root, "--format", "json"])
         .output()
         .expect("run slophammer-rs");
     assert_eq!(boundaries.status.code(), Some(1));
     assert!(stdout(&boundaries).contains("rust.dependency-boundaries-required"));
 
+    let unsafe_fixture = fixture("rust-unsafe");
+    let unsafe_root = fixture_path(&unsafe_fixture);
     let unsafe_result = command()
-        .args(["unsafe", &fixture("rust-unsafe"), "--format", "json"])
+        .args(["unsafe", &unsafe_root, "--format", "json"])
         .output()
         .expect("run slophammer-rs");
     assert_eq!(unsafe_result.status.code(), Some(1));
@@ -61,16 +70,6 @@ fn cli_exposes_direct_commands_and_rules() {
 
 fn command() -> Command {
     Command::new(env!("CARGO_BIN_EXE_slophammer-rs"))
-}
-
-fn fixture(name: &str) -> String {
-    let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    manifest_dir
-        .join("../../..")
-        .join("fixtures/repos")
-        .join(name)
-        .to_string_lossy()
-        .into_owned()
 }
 
 fn stdout(output: &std::process::Output) -> String {

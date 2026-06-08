@@ -1,12 +1,12 @@
-use crate::definitions::{definition, rule_ids};
-use crate::scope;
-use slophammer_config::{Config, UnsafePolicy};
-use slophammer_core::Finding;
-use slophammer_scan::Snapshot;
+use super::definitions::{definition, rule_ids};
+use super::scope;
+use crate::config::{Config, UnsafePolicy};
+use crate::core::Finding;
+use crate::scan::Snapshot;
 use syn::visit::{self, Visit};
 
 pub fn policy_findings(snapshot: &Snapshot, config: &Config) -> Vec<Finding> {
-    if !crate::is_rust_project(snapshot) {
+    if !super::is_rust_project(snapshot) {
         return Vec::new();
     }
     let Some(rust) = &config.rust else {
@@ -123,8 +123,8 @@ impl<'ast> Visit<'ast> for UnsafeVisitor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use slophammer_config::{RustConfig, RustUnsafe, UnsafeAllow};
-    use slophammer_scan::{RepoFile, Snapshot};
+    use crate::config::{RustConfig, RustUnsafe, UnsafeAllow};
+    use crate::scan::{RepoFile, Snapshot};
     use std::collections::BTreeMap;
     use std::path::PathBuf;
 

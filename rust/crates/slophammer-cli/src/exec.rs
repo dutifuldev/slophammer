@@ -1,6 +1,6 @@
-use slophammer_config::Config;
-use slophammer_core::{Finding, Severity};
-use slophammer_scan::Snapshot;
+use crate::config::Config;
+use crate::core::{Finding, Severity};
+use crate::scan::Snapshot;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use thiserror::Error;
@@ -60,7 +60,7 @@ fn execute_workspace(
     workspace_root: String,
 ) -> Vec<Finding> {
     let cwd = snapshot.root.join(&workspace_root);
-    let threshold = slophammer_config::rust_coverage_threshold(config).to_string();
+    let threshold = crate::config::rust_coverage_threshold(config).to_string();
     let mut checks = vec![
         ExecutableCheck {
             rule_id: "rust.fmt-required",
@@ -215,7 +215,7 @@ fn _pathbuf_for_docs(path: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use slophammer_scan::{RepoFile, Snapshot};
+    use crate::scan::{RepoFile, Snapshot};
     use std::collections::BTreeMap;
 
     struct FailingRunner;

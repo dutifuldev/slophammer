@@ -1,15 +1,15 @@
-use crate::definitions::{definition, rule_ids};
-use crate::scope;
-use slophammer_config::Config;
-use slophammer_core::Finding;
-use slophammer_scan::Snapshot;
+use super::definitions::{definition, rule_ids};
+use super::scope;
+use crate::config::Config;
+use crate::core::Finding;
+use crate::scan::Snapshot;
 use std::collections::BTreeMap;
 
 pub fn dry_findings(snapshot: &Snapshot, config: &Config, max_findings: usize) -> Vec<Finding> {
-    if !slophammer_config::rust_dry_copied_blocks_enabled(config) {
+    if !crate::config::rust_dry_copied_blocks_enabled(config) {
         return Vec::new();
     }
-    let min_tokens = slophammer_config::rust_dry_min_tokens(config);
+    let min_tokens = crate::config::rust_dry_min_tokens(config);
     let duplicates = copied_block_findings(snapshot, config, min_tokens);
     if duplicates.len() > max_findings {
         duplicates
@@ -88,8 +88,8 @@ fn tokens(content: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use slophammer_config::{CopiedBlocks, RustConfig, RustDry};
-    use slophammer_scan::{RepoFile, Snapshot};
+    use crate::config::{CopiedBlocks, RustConfig, RustDry};
+    use crate::scan::{RepoFile, Snapshot};
     use std::collections::BTreeMap;
     use std::path::PathBuf;
 

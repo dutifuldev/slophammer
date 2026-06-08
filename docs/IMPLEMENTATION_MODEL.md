@@ -231,26 +231,28 @@ evaluation:
 rust/
 ├── Cargo.toml
 ├── crates/
-│   ├── slophammer-core/
-│   ├── slophammer-config/
-│   ├── slophammer-scan/
-│   ├── slophammer-report/
-│   ├── slophammer-rust/
-│   ├── slophammer-exec/
-│   ├── slophammer-app/
 │   └── slophammer-cli/
+│       ├── src/main.rs
+│       ├── src/app.rs
+│       ├── src/config.rs
+│       ├── src/core.rs
+│       ├── src/exec.rs
+│       ├── src/report.rs
+│       ├── src/scan.rs
+│       └── src/rust_rules/
 └── tests/
 ```
 
-`slophammer-core` owns public data types such as findings, reports,
-severities, rule definitions, and exit-code concepts. Scanner, config, Rust
-rules, reporter, and execute adapters depend on core. App orchestration wires
-those pieces together. The CLI only parses arguments and maps app results to
-process output.
+`core` owns internal data types such as findings, reports, severities, rule
+definitions, and exit-code concepts. Scanner, config, Rust rules, reporter, and
+execute adapters depend on core. App orchestration wires those pieces together.
+The CLI only parses arguments and maps app results to process output.
 
-The Rust rule crate stays pure. It receives a typed repository snapshot and
+The Rust rule module stays pure. It receives a typed repository snapshot and
 parsed config, then returns findings. It does not walk the filesystem, execute
-Cargo, render reports, or parse CLI arguments.
+Cargo, render reports, or parse CLI arguments. The published Cargo surface is
+the single user-facing `slophammer-rs` binary package; internal modules are not
+published as separate crates.
 
 The Rust implementation uses existing packages and tools for commodity work:
 

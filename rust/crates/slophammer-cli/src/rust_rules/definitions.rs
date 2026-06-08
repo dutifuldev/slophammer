@@ -1,4 +1,4 @@
-use slophammer_core::{RuleDefinition, Severity};
+use crate::core::{RuleDefinition, Severity};
 
 pub mod rule_ids {
     pub const README_REQUIRED: &str = "repo.readme-required";
