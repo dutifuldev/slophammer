@@ -91,9 +91,12 @@ cargo install slophammer-rs --locked
 slophammer-rs help
 ```
 
-For Rust release work, use the `Rust Release` GitHub workflow or
-`rust/scripts/publish-crates.sh`. Do not publish crates out of order; the Rust
-workspace crates must publish in dependency order before `slophammer-rs`.
+For Rust release work, follow the
+[Rust CLI-only Cargo publish plan](2026-06-08-rust-cli-only-cargo-publish-plan.md).
+Do not use the current multi-crate publish workflow for the first crates.io
+release, and do not publish internal workspace crates just to satisfy Cargo
+dependency resolution. The first Cargo release should publish only the
+user-facing `slophammer-rs` package after the package layout is refactored.
 
 Before changing files, inspect the implemented rule catalog for the selected
 checker:

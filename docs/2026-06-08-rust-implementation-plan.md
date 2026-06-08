@@ -419,22 +419,17 @@ Add release dry-run coverage before publishing:
 - verify command help and rule catalog
 - verify fixture checks from the installed binary
 - verify lockfile reproducibility
-- verify the ordered crates.io package/publish sequence for the multi-crate
-  workspace
+- verify the CLI-only crates.io package/publish sequence for `slophammer-rs`
 
 Do not publish until the installed artifact is proven by CI. The merged Rust
-implementation is source-installable, but not published to crates.io yet. The
-`Rust Release` workflow publishes the internal crates in dependency order before
-publishing the `slophammer-rs` CLI crate:
+implementation is source-installable, but not published to crates.io yet.
 
-1. `slophammer-core`
-2. `slophammer-scan`
-3. `slophammer-config`
-4. `slophammer-report`
-5. `slophammer-rust`
-6. `slophammer-exec`
-7. `slophammer-app`
-8. `slophammer-rs`
+Before the first crates.io release, refactor the Rust implementation to publish
+only the user-facing `slophammer-rs` Cargo package. Do not publish internal
+workspace crates just to satisfy Cargo dependency resolution; that would create
+unwanted public library APIs. The current multi-crate publish workflow must be
+retired or replaced before release. See
+[Rust CLI-only Cargo publish plan](2026-06-08-rust-cli-only-cargo-publish-plan.md).
 
 ## Documentation Updates
 

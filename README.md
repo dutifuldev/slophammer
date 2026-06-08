@@ -261,10 +261,11 @@ cargo install slophammer-rs --locked
 [Required Next Work](docs/2026-05-17-required-next-work.md) records the release
 hardening tasks that were completed for the first Go release. TypeScript remains
 package-checked in CI and is published from the `typescript/` package. Rust has
-release dry-run and crates.io release workflows. A Rust crates.io release
-requires a `rust/vX.Y.Z` tag on `main` and a `CARGO_REGISTRY_TOKEN` secret; the
-workflow publishes the internal crates in dependency order before publishing
-`slophammer-rs`.
+release dry-run coverage, but crates.io publication is intentionally pending a
+CLI-only package refactor. The first Cargo release should publish only
+`slophammer-rs`; do not publish the internal Rust workspace crates as public
+library APIs just to satisfy Cargo dependency resolution. See the
+[Rust CLI-only Cargo publish plan](docs/2026-06-08-rust-cli-only-cargo-publish-plan.md).
 
 ## Policy Targets
 
@@ -359,8 +360,8 @@ The Rust implementation currently provides:
   fixtures
 - CI gates for formatting, Clippy, tests, package install, native commands, and
   shared conformance
-- release dry-run and crates.io release workflows that publish every Rust
-  workspace crate in dependency order
+- a documented CLI-only crates.io release target for publishing `slophammer-rs`
+  without exposing internal workspace crates as public APIs
 
 ## Current Go Quality Surface
 
@@ -397,10 +398,9 @@ useful as a reference implementation:
    CI installs `slophammer-go` into a temporary `GOBIN`, packs and installs
    `slophammer-ts`, checks the public command name, and runs the shared
    conformance script. The Go release dry-run workflow validates release tags
-   and verifies tagged `go install` on release tag pushes. Rust release
-   workflows validate the source-install path and publish crates.io packages in
-   dependency order once a `rust/vX.Y.Z` tag and `CARGO_REGISTRY_TOKEN` are
-   available.
+   and verifies tagged `go install` on release tag pushes. Rust release work
+   should next replace the multi-crate publish path with a single `slophammer-rs`
+   package release before any crates.io publication.
 
 ## Shared Rule Set
 

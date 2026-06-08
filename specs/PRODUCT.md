@@ -109,27 +109,20 @@ under `rust/crates/slophammer-cli`. It is not published to crates.io yet. Until
 publication, users install it from this repository with
 `cargo install --path rust/crates/slophammer-cli --locked`.
 
-Rust is a multi-crate Cargo workspace. A crates.io release must publish internal
-crates in dependency order before publishing `slophammer-rs`:
+The production Cargo release target is one user-facing package:
+`slophammer-rs`. Do not publish internal Rust workspace crates as public crates
+unless there is a deliberate library API to support. Before the first crates.io
+release, refactor the Rust implementation so `cargo package -p slophammer-rs
+--locked` succeeds without unpublished internal dependencies.
 
-1. `slophammer-core`
-2. `slophammer-scan`
-3. `slophammer-config`
-4. `slophammer-report`
-5. `slophammer-rust`
-6. `slophammer-exec`
-7. `slophammer-app`
-8. `slophammer-rs`
-
-The Rust release dry-run checks source installation, command help, rule catalog
-output, fixture checks from the installed binary, and shared conformance before
-any publish step. The `Rust Release` workflow publishes on `rust/vX.Y.Z` tags
-or manual dispatch after validating the tag, release commit, Rust quality gate,
-installed CLI behavior, shared conformance, and the ordered package sequence.
-It requires `CARGO_REGISTRY_TOKEN` and publishes through
-`rust/scripts/publish-crates.sh`, which skips already-published crate versions
-so partially completed releases can be rerun. After publication, users should
-install with `cargo install slophammer-rs --locked`.
+The existing multi-crate Rust release workflow is not the final publish path and
+must not be used for the first crates.io release. Replace it with a CLI-only
+workflow that validates the release tag, runs the Rust quality gate, packages
+`slophammer-rs`, installs the packaged CLI artifact, runs installed CLI smoke
+tests and shared conformance, and publishes only `slophammer-rs`. After
+publication, users should install with `cargo install slophammer-rs --locked`.
+See the
+[Rust CLI-only Cargo publish plan](../docs/2026-06-08-rust-cli-only-cargo-publish-plan.md).
 
 ## Implementation Boundary
 
