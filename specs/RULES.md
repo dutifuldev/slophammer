@@ -56,6 +56,28 @@ TypeScript project.
 | `ts.mutation-required`                | `error`  | `.github/workflows` | `TypeScript projects must declare mutation testing`            |
 | `ts.dependency-boundaries-required`   | `error`  | `slophammer.yml`    | `TypeScript projects must respect configured dependency boundaries` |
 
+## Rust Rules
+
+Rust rules apply only when the target appears to be a Rust project. A repo
+appears to be a Rust project when it contains `Cargo.toml`, production `.rs`
+source, or inspectable Cargo commands.
+
+| Rule ID                               | Severity | Finding path        | Finding message                                                |
+| ------------------------------------- | -------- | ------------------- | -------------------------------------------------------------- |
+| `rust.manifest-required`              | `error`  | `Cargo.toml`        | `Rust projects must include Cargo.toml`                        |
+| `rust.msrv-required`                  | `error`  | `Cargo.toml`        | `Rust projects must declare a minimum supported Rust version`  |
+| `rust.check-required`                 | `error`  | `.github/workflows` | `Rust projects must declare cargo check in CI or scripts`      |
+| `rust.fmt-required`                   | `error`  | `.github/workflows` | `Rust projects must declare cargo fmt --check in CI or scripts` |
+| `rust.clippy-required`                | `error`  | `.github/workflows` | `Rust projects must declare cargo clippy in CI or scripts`     |
+| `rust.test-required`                  | `error`  | `.github/workflows` | `Rust projects must declare cargo test in CI or scripts`       |
+| `rust.coverage-required`              | `error`  | `.github/workflows` | `Rust projects must declare a coverage gate`                   |
+| `rust.complexity-required`            | `error`  | `.github/workflows` | `Rust projects must enforce complexity limits`                 |
+| `rust.dry-required`                   | `error`  | `.github/workflows` | `Rust projects must declare a DRY check`                       |
+| `rust.mutation-required`              | `error`  | `.github/workflows` | `Rust projects must declare mutation testing`                  |
+| `rust.unsafe-policy-required`         | `error`  | `slophammer.yml`    | `Rust projects must declare and respect an unsafe-code policy` |
+| `rust.dependency-audit-required`      | `error`  | `.github/workflows` | `Rust projects must declare dependency audit checks`           |
+| `rust.dependency-boundaries-required` | `error`  | `slophammer.yml`    | `Rust projects must respect configured dependency boundaries`  |
+
 ## Rule Descriptions
 
 ### `repo.readme-required`
@@ -220,6 +242,73 @@ copied-block duplicate detection.
 
 Pre-rename `slophammer typescript dry` declarations remain accepted as legacy
 evidence, but new repos should declare the `slophammer-ts` command.
+
+### `rust.manifest-required`
+
+Rust projects should include a `Cargo.toml` manifest.
+
+### `rust.msrv-required`
+
+Rust projects should declare a minimum supported Rust version using
+`rust-version` in `Cargo.toml` or an equivalent pinned Rust toolchain version.
+
+### `rust.check-required`
+
+Rust projects should declare `cargo check` in an inspectable workflow or
+script.
+
+### `rust.fmt-required`
+
+Rust projects should declare `cargo fmt --check` in an inspectable workflow or
+script.
+
+### `rust.clippy-required`
+
+Rust projects should declare `cargo clippy` with warnings denied in an
+inspectable workflow or script.
+
+### `rust.test-required`
+
+Rust projects should declare `cargo test` in an inspectable workflow or script.
+
+### `rust.coverage-required`
+
+Rust projects should declare an enforceable coverage gate. The preferred tool
+is `cargo llvm-cov` with a visible threshold of at least `85`.
+
+### `rust.complexity-required`
+
+Rust projects should enforce complexity limits through Clippy configuration or
+Slophammer-owned Rust complexity policy. The recommended cognitive complexity
+maximum is `8`.
+
+### `rust.dry-required`
+
+Rust projects should declare `slophammer-rs dry` for native copied-block
+duplicate detection.
+
+### `rust.mutation-required`
+
+Rust projects should declare mutation testing, normally through `cargo-mutants`.
+The mutation command may live in normal CI, nightly CI, manual CI, or scripts.
+
+### `rust.unsafe-policy-required`
+
+Rust projects should declare an unsafe-code policy in `slophammer.yml`.
+`policy: forbid` fails unsafe blocks, unsafe functions, unsafe traits, unsafe
+impls, and unsafe extern blocks unless covered by a specific allow entry with a
+reason.
+
+### `rust.dependency-audit-required`
+
+Rust projects should declare dependency audit checks through `cargo audit`,
+`cargo deny`, or an equivalent inspectable command.
+
+### `rust.dependency-boundaries-required`
+
+Rust projects should declare dependency boundaries in `slophammer.yml`.
+Slophammer checks local path dependencies in `Cargo.toml`; external crates are
+ignored by this rule.
 
 ### `ts.mutation-required`
 

@@ -301,7 +301,7 @@ func validateKnownKeys(root *yaml.Node) error {
 	if err != nil || !ok {
 		return err
 	}
-	return validateMappingKeys(node, "root", set("rules", "go", "typescript"), validateTopLevelSection)
+	return validateMappingKeys(node, "root", set("rules", "go", "typescript", "rust"), validateTopLevelSection)
 }
 
 func validateTopLevelSection(key string, value *yaml.Node) error {
@@ -312,6 +312,8 @@ func validateTopLevelSection(key string, value *yaml.Node) error {
 		return validateGoKeys(value)
 	case "typescript":
 		return validateTypeScriptKeys(value)
+	case "rust":
+		return validateRustKeys(value)
 	default:
 		return nil
 	}
@@ -377,9 +379,11 @@ func validateTypeScriptKeys(node *yaml.Node) error {
 	return validateMappingKeys(
 		node,
 		"typescript",
-		set("coverage_threshold", "complexity_max", "dry", "mutation_targets", "dependency_boundaries"),
+		set("coverage_threshold", "coverage", "complexity_max", "dry", "mutation_targets", "dependency_boundaries"),
 		func(key string, value *yaml.Node) error {
 			switch key {
+			case "coverage":
+				return validateMappingKeys(value, "typescript.coverage", set("threshold", "paths", "exclude"), nil)
 			case "dry":
 				return validateMappingKeys(value, "typescript.dry", set("max_findings", "paths", "exclude", "copied_blocks"), func(key string, value *yaml.Node) error {
 					if key == "copied_blocks" {
@@ -396,7 +400,79 @@ func validateTypeScriptKeys(node *yaml.Node) error {
 	)
 }
 
+func validateRustKeys(node *yaml.Node) error {
+	return validateMappingKeys(
+		node,
+		"rust",
+		set(
+			"coverage",
+			"coverage_threshold",
+			"complexity",
+			"targets",
+			"exclude",
+			"dry",
+			"unsafe",
+			"mutation",
+			"dependency_boundaries",
+		),
+		func(key string, value *yaml.Node) error {
+			switch key {
+			case "coverage":
+				return validateMappingKeys(value, "rust.coverage", set("threshold", "paths", "exclude"), nil)
+			case "complexity":
+				return validateMappingKeys(value, "rust.complexity", set("cognitive_max"), nil)
+			case "dry":
+				return validateRustDryKeys(value)
+			case "unsafe":
+				return validateRustUnsafeKeys(value)
+			case "mutation":
+				return validateMappingKeys(value, "rust.mutation", set("targets", "exclude"), nil)
+			case "dependency_boundaries":
+				return validateDependencyBoundaryKeys(value, "rust.dependency_boundaries")
+			default:
+				return nil
+			}
+		},
+	)
+}
+
+func validateRustDryKeys(node *yaml.Node) error {
+	return validateMappingKeys(
+		node,
+		"rust.dry",
+		set("max_findings", "paths", "exclude", "copied_blocks"),
+		func(key string, value *yaml.Node) error {
+			if key == "copied_blocks" {
+				return validateMappingKeys(value, "rust.dry.copied_blocks", set("enabled", "min_tokens"), nil)
+			}
+			return nil
+		},
+	)
+}
+
+func validateRustUnsafeKeys(node *yaml.Node) error {
+	return validateMappingKeys(
+		node,
+		"rust.unsafe",
+		set("policy", "allow"),
+		func(key string, value *yaml.Node) error {
+			if key == "allow" {
+				return validateUnsafeAllowKeys(value, "rust.unsafe.allow")
+			}
+			return nil
+		},
+	)
+}
+
+func validateUnsafeAllowKeys(node *yaml.Node, field string) error {
+	return validateMappingSequenceKeys(node, field, set("path", "reason"))
+}
+
 func validateDependencyBoundaryKeys(node *yaml.Node, field string) error {
+	return validateMappingSequenceKeys(node, field, set("from", "allow"))
+}
+
+func validateMappingSequenceKeys(node *yaml.Node, field string, allowed map[string]struct{}) error {
 	if node.Kind == 0 || node.Tag == "!!null" {
 		return nil
 	}
@@ -404,7 +480,7 @@ func validateDependencyBoundaryKeys(node *yaml.Node, field string) error {
 		return fmt.Errorf("%s must be a sequence", field)
 	}
 	for i, item := range node.Content {
-		if err := validateMappingKeys(item, fmt.Sprintf("%s[%d]", field, i), set("from", "allow"), nil); err != nil {
+		if err := validateMappingKeys(item, fmt.Sprintf("%s[%d]", field, i), allowed, nil); err != nil {
 			return err
 		}
 	}

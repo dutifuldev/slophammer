@@ -12,6 +12,7 @@ names:
 | -------------- | --------------- |
 | Go             | `slophammer-go` |
 | TypeScript     | `slophammer-ts` |
+| Rust           | `slophammer-rs` |
 | Python         | `slophammer-py` |
 
 The product name identifies the implementation package. It does not forbid
@@ -56,6 +57,9 @@ of their command surface.
 Direct language commands may exist for checks that Slophammer owns natively.
 For example, `slophammer-ts boundaries <path>` runs the TypeScript dependency
 boundary rule directly while preserving the normal finding and exit-code model.
+`slophammer-rs dry <path>`, `slophammer-rs boundaries <path>`, and
+`slophammer-rs unsafe <path>` expose Rust DRY, dependency-boundary, and unsafe
+policy checks directly.
 
 ## Explain
 
@@ -77,7 +81,7 @@ successfully when the catalog is written.
 
 ## Release Policy
 
-The Go and TypeScript implementations are releasable products.
+The Go, TypeScript, and Rust implementations are releasable products.
 
 Go releases use the `go/` submodule tag shape:
 
@@ -99,6 +103,12 @@ publishing.
 
 The Go release dry-run workflow validates `go/vX.Y.Z` tags, runs the Go release
 checks, runs shared conformance, and verifies tagged `go install` on tag push.
+
+The Rust checker is packaged as the `slophammer-rs` Cargo package under
+`rust/crates/slophammer-cli`. Rust release dry-run checks verify package
+metadata, `cargo package`, `cargo install --path ... --locked`, command help,
+rule catalog output, fixture checks from the installed binary, and shared
+conformance before any publish step.
 
 ## Implementation Boundary
 

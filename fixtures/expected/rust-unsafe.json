@@ -1,0 +1,12 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "rust.unsafe-policy-required",
+      "severity": "error",
+      "path": "src/lib.rs",
+      "message": "Rust projects must declare and respect an unsafe-code policy"
+    }
+  ]
+}
+

@@ -1,0 +1,14 @@
+[package]
+name = "slophammer-report"
+description = "Report rendering for the Slophammer Rust implementation."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+slophammer-core = { path = "../slophammer-core", version = "0.1.0" }
+thiserror.workspace = true

@@ -176,6 +176,17 @@ describe("loadConfig strict keys", () => {
         name: "removed go mutation targets",
         content: "go:\n  mutation_targets:\n    - main.go\n",
         want: "go.mutation_targets"
+      },
+      { name: "ignored rust", content: "rust:\n  made_up: true\n", want: "rust.made_up" },
+      {
+        name: "ignored rust dry",
+        content: "rust:\n  dry:\n    made_up: true\n",
+        want: "rust.dry.made_up"
+      },
+      {
+        name: "ignored rust unsafe allow",
+        content: "rust:\n  unsafe:\n    allow:\n      - path: src/lib.rs\n        made_up: true\n",
+        want: "rust.unsafe.allow[0].made_up"
       }
     ];
 
@@ -190,14 +201,17 @@ describe("loadConfig strict keys", () => {
       expect(() => loadConfig(snapshot), testCase.name).toThrow(testCase.want);
     }
   });
+});
 
-  it("allows shared Go and TypeScript config", () => {
+describe("loadConfig shared language sections", () => {
+  it("allows shared Go, TypeScript, and Rust config", () => {
     const snapshot = newSnapshot("/repo", [
       {
         path: "slophammer.yml",
         content: [
           "go:",
           "  coverage_threshold: 85",
+          "  coverage_profile: coverage.out",
           "  targets:",
           "    - go",
           "  exclude:",
@@ -218,6 +232,36 @@ describe("loadConfig strict keys", () => {
           "    copied_blocks:",
           "      enabled: true",
           "      min_tokens: 100",
+          "rust:",
+          "  coverage:",
+          "    threshold: 85",
+          "    paths:",
+          "      - rust/crates",
+          "  complexity:",
+          "    cognitive_max: 8",
+          "  targets:",
+          "    - rust/crates",
+          "  exclude:",
+          "    - rust/target/**",
+          "  dry:",
+          "    max_findings: 0",
+          "    paths:",
+          "      - rust/crates",
+          "    copied_blocks:",
+          "      enabled: true",
+          "      min_tokens: 100",
+          "  unsafe:",
+          "    policy: forbid",
+          "    allow:",
+          "      - path: src/lib.rs",
+          "        reason: reviewed",
+          "  mutation:",
+          "    targets:",
+          "      - rust/crates/slophammer-rust/src",
+          "  dependency_boundaries:",
+          "    - from: rust/crates/slophammer-app",
+          "      allow:",
+          "        - rust/crates/slophammer-core",
           ""
         ].join("\n")
       }

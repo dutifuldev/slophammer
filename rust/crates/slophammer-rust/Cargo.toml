@@ -1,0 +1,17 @@
+[package]
+name = "slophammer-rust"
+description = "Rust rules for the Slophammer Rust implementation."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+globset.workspace = true
+slophammer-config = { path = "../slophammer-config", version = "0.1.0" }
+slophammer-core = { path = "../slophammer-core", version = "0.1.0" }
+slophammer-scan = { path = "../slophammer-scan", version = "0.1.0" }
+syn.workspace = true
+thiserror.workspace = true
+toml_edit.workspace = true

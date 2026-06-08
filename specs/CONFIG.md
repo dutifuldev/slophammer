@@ -83,6 +83,44 @@ typescript:
         - typescript/src/rules
         - typescript/src/scan
         - typescript/src/toolchecks
+rust:
+  coverage:
+    threshold: 85
+    paths:
+      - rust/crates
+    exclude:
+      - "target/**"
+      - "fixtures/**"
+  complexity:
+    cognitive_max: 8
+  targets:
+    - rust/crates
+  exclude:
+    - "target/**"
+    - "fixtures/**"
+  dry:
+    max_findings: 0
+    paths:
+      - rust/crates
+    exclude:
+      - "**/*_test.rs"
+      - "fixtures/**"
+      - "target/**"
+    copied_blocks:
+      enabled: true
+      min_tokens: 100
+  unsafe:
+    policy: forbid
+  mutation:
+    targets:
+      - rust/crates/slophammer-rust/src
+  dependency_boundaries:
+    - from: rust/crates/slophammer-rust
+      allow:
+        - rust/crates/slophammer-core
+        - rust/crates/slophammer-config
+        - rust/crates/slophammer-scan
+        - rust/crates/slophammer-report
 ```
 
 ## Rule Config
@@ -219,3 +257,59 @@ The configured DRY budget is zero for production code.
 
 External package imports are ignored. Relative imports are resolved against the
 importing source file.
+
+## Rust Config
+
+`rust.coverage`, `rust.coverage_threshold`, `rust.complexity`, `rust.targets`,
+`rust.exclude`, `rust.dry`, `rust.unsafe`, `rust.mutation`, and
+`rust.dependency_boundaries` are parsed as typed policy fields by
+`slophammer-rs`.
+
+The Rust policy values have hard recommended bounds. Slophammer rejects config
+that weakens them:
+
+- `rust.coverage.threshold` must be at least `85`.
+- `rust.coverage_threshold` must be at least `85`.
+- `rust.complexity.cognitive_max` must be at most `8`.
+- `rust.dry.max_findings` must be `0` for production code.
+
+Projects may choose stricter values, such as higher coverage or lower
+complexity limits, but they cannot configure weaker values through
+`slophammer.yml`.
+
+`rust.targets` and `rust.exclude` define default Rust production source scope.
+Targets may be `.rs` files or directories. Slophammer excludes fixture,
+template, target, and node_modules paths by default, applies configured
+excludes, sorts the result, and uses that set for source-backed Rust rules.
+
+The nested `rust.dry` shape configures native copied-block duplicate detection:
+
+- `rust.dry.max_findings` sets the finding budget.
+- `rust.dry.paths` selects paths to scan.
+- `rust.dry.exclude` excludes tests, fixtures, build output, or generated code.
+- `rust.dry.copied_blocks` configures copied-block detection.
+
+The configured DRY budget is zero for production code.
+
+`rust.unsafe` declares unsafe-code policy:
+
+| Field    | Meaning                                                        |
+| -------- | -------------------------------------------------------------- |
+| `policy` | `forbid` or `allow_documented`.                                |
+| `allow`  | Optional path and reason entries for narrow unsafe boundaries. |
+
+Under `policy: forbid`, unsafe blocks, unsafe functions, unsafe traits, unsafe
+impls, and unsafe extern blocks are findings unless covered by a specific allow
+entry with a non-empty reason.
+
+`rust.mutation.targets` declares mutation-testing scope. Static checks accept
+`cargo mutants` in normal CI, nightly CI, manual CI, or scripts.
+
+`rust.dependency_boundaries` declares local Cargo path dependency boundaries:
+
+| Field   | Meaning                                               |
+| ------- | ----------------------------------------------------- |
+| `from`  | Repository-root-relative Cargo package path.          |
+| `allow` | Local Cargo package paths that `from` may depend on.  |
+
+External crates are ignored by the boundary rule.

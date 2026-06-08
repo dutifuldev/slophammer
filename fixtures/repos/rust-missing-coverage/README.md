@@ -1,0 +1,2 @@
+# Rust Missing Coverage Fixture
+

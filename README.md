@@ -44,6 +44,7 @@ implementation, and say clearly if no matching implementation exists.
 - Separate user-facing implementations of that product.
 - A released Go implementation named `slophammer-go`.
 - A released npm TypeScript implementation named `slophammer-ts`.
+- A package-ready Rust implementation named `slophammer-rs`.
 - Go, TypeScript, and Python project templates with strict local checks.
 - A reference for project structure, testing, errors, reporting, and CI.
 - A source of patterns for agents working in different language ecosystems.
@@ -62,12 +63,14 @@ Slophammer is the standard. Implementations use short, language-specific names:
 ```sh
 slophammer-go
 slophammer-ts
+slophammer-rs
 slophammer-py
 ```
 
-`slophammer-go` is released. `slophammer-ts` is released to npm. `slophammer-py`
-is the planned Python command; the current Python work is a template, not a
-checker implementation.
+`slophammer-go` is released. `slophammer-ts` is released to npm.
+`slophammer-rs` is implemented and package-ready from the Rust workspace.
+`slophammer-py` is the planned Python command; the current Python work is a
+template, not a checker implementation.
 
 The `slophammer` npm package name is reserved for a future umbrella package or
 default installer. Language implementation packages should keep their
@@ -113,6 +116,14 @@ The TypeScript implementation also includes native copied-block detection:
 slophammer-ts check <path> --only <rule-id>
 slophammer-ts boundaries <path> [--format text|json|sarif]
 slophammer-ts dry [path] [--max-findings n] [--show-report] [--format json|text]
+```
+
+The Rust implementation includes direct Rust quality checks:
+
+```sh
+slophammer-rs dry [path] [--max-findings n] [--format json|text]
+slophammer-rs boundaries [path] [--format json|text|sarif]
+slophammer-rs unsafe [path] [--format json|text|sarif]
 ```
 
 Both working implementations expose a `rules` command with text and JSON output
@@ -177,15 +188,19 @@ The shared report model stays simple:
 ├── typescript/
 │   ├── src/
 │   └── tests/
+├── rust/
+│   ├── Cargo.toml
+│   └── crates/
 └── templates/
     ├── go/
     ├── python/
     └── typescript/
 ```
 
-`go/` and `typescript/` are working Slophammer implementations. Their public
-product names are `slophammer-go` and `slophammer-ts`. Source-tree development
-commands remain available through the local entrypoints.
+`go/`, `typescript/`, and `rust/` are working Slophammer implementations. Their
+public product names are `slophammer-go`, `slophammer-ts`, and
+`slophammer-rs`. Source-tree development commands remain available through the
+local entrypoints.
 
 Both implementations use the same internal shape:
 
@@ -226,6 +241,15 @@ slophammer-ts rules
 slophammer-ts dry .
 ```
 
+The Rust checker is package-ready from the Rust workspace:
+
+```sh
+cargo install --path rust/crates/slophammer-cli --locked
+slophammer-rs check .
+slophammer-rs rules
+slophammer-rs dry .
+```
+
 [Required Next Work](docs/2026-05-17-required-next-work.md) records the release
 hardening tasks that were completed for the first Go release. TypeScript remains
 package-checked in CI and is published from the `typescript/` package.
@@ -253,6 +277,7 @@ projects may use stricter thresholds but not weaker ones.
 | ---------- | --------------- | --------------------------------------------------------------- |
 | Go         | `slophammer-go` | Released checker, CLI, tool checks, fixtures, CI                |
 | TypeScript | `slophammer-ts` | Released npm checker, CLI, native DRY, boundaries, fixtures, CI |
+| Rust       | `slophammer-rs` | Package-ready checker, CLI, native DRY, boundaries, unsafe, fixtures, CI |
 | Python     | `slophammer-py` | Template only; checker implementation planned                   |
 
 An implementation can check more than one language. For example,
@@ -306,6 +331,23 @@ The TypeScript implementation currently provides:
 - CI gates for formatting, linting, type checking, tests, coverage, build,
   native DRY, package installation, and fixture conformance
 
+The Rust implementation currently provides:
+
+- shared repo rules for `README.md`, `AGENTS.md`, and CI
+- Rust rules for Cargo manifest, MSRV, `cargo check`, formatting, Clippy,
+  tests, coverage, complexity, DRY, mutation, unsafe policy, dependency audit,
+  and dependency boundaries
+- direct `slophammer-rs dry`, `slophammer-rs boundaries`, and
+  `slophammer-rs unsafe` commands
+- strict `slophammer.yml` config parsing with hard targets for coverage,
+  complexity, production DRY, unsafe policy, mutation, and boundaries
+- text, JSON, and SARIF report output
+- JSON rule catalog output
+- shared fixture conformance with Rust success, failure, and config-error
+  fixtures
+- CI gates for formatting, Clippy, tests, package install, native commands, and
+  shared conformance
+
 ## Current Go Quality Surface
 
 The Go implementation now covers the policy and architecture items that make it
@@ -345,10 +387,11 @@ useful as a reference implementation:
 
 ## Shared Rule Set
 
-The shared rule registry contains 26 implemented rules: 3 shared repository
-rules, 10 Go rules, and 13 TypeScript rules. Each runtime command prints the
-rules implemented by that executable: `slophammer-go rules` prints repo plus Go
-rules, and `slophammer-ts rules` prints repo plus TypeScript rules.
+The shared rule registry contains 39 implemented rules: 3 shared repository
+rules, 10 Go rules, 13 TypeScript rules, and 13 Rust rules. Each runtime command
+prints the rules implemented by that executable: `slophammer-go rules` prints
+repo plus Go rules, `slophammer-ts rules` prints repo plus TypeScript rules, and
+`slophammer-rs rules` prints repo plus Rust rules.
 
 The implemented rule set is:
 
@@ -380,6 +423,19 @@ The implemented rule set is:
 | `ts.dry-required`                   | TypeScript projects should run duplication detection.         |
 | `ts.mutation-required`              | TypeScript projects should declare mutation testing.          |
 | `ts.dependency-boundaries-required` | TypeScript projects should obey configured import boundaries. |
+| `rust.manifest-required`            | Rust projects should include `Cargo.toml`.                    |
+| `rust.msrv-required`                | Rust projects should declare an MSRV.                         |
+| `rust.check-required`               | Rust projects should run `cargo check`.                       |
+| `rust.fmt-required`                 | Rust projects should run `cargo fmt --check`.                 |
+| `rust.clippy-required`              | Rust projects should run `cargo clippy` with warnings denied. |
+| `rust.test-required`                | Rust projects should run `cargo test`.                        |
+| `rust.coverage-required`            | Rust projects should enforce coverage.                        |
+| `rust.complexity-required`          | Rust projects should enforce complexity limits.               |
+| `rust.dry-required`                 | Rust projects should run duplication detection.               |
+| `rust.mutation-required`            | Rust projects should declare mutation testing.                |
+| `rust.unsafe-policy-required`       | Rust projects should declare and respect unsafe policy.       |
+| `rust.dependency-audit-required`    | Rust projects should run dependency audit checks.             |
+| `rust.dependency-boundaries-required` | Rust projects should obey configured dependency boundaries. |
 
 The exact shared rule behavior belongs in [Rules](specs/RULES.md) so each
 implementation can share the same contract.

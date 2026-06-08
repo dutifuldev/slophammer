@@ -465,6 +465,9 @@ func TestLoadRejectsUnknownConfigKeys(t *testing.T) {
 		{name: "go structural", content: "go:\n  dry:\n    structural:\n      made_up: true\n", want: "go.dry.structural.made_up"},
 		{name: "go boundary", content: "go:\n  dependency_boundaries:\n    - from: internal/app\n      made_up: true\n", want: "go.dependency_boundaries[0].made_up"},
 		{name: "typescript", content: "typescript:\n  made_up: true\n", want: "typescript.made_up"},
+		{name: "rust", content: "rust:\n  made_up: true\n", want: "rust.made_up"},
+		{name: "rust dry", content: "rust:\n  dry:\n    made_up: true\n", want: "rust.dry.made_up"},
+		{name: "rust unsafe allow", content: "rust:\n  unsafe:\n    allow:\n      - path: src/lib.rs\n        made_up: true\n", want: "rust.unsafe.allow[0].made_up"},
 	}
 
 	for _, tt := range tests {
@@ -482,7 +485,7 @@ func TestLoadRejectsUnknownConfigKeys(t *testing.T) {
 	}
 }
 
-func TestLoadAllowsSharedGoAndTypeScriptConfig(t *testing.T) {
+func TestLoadAllowsSharedGoTypeScriptAndRustConfig(t *testing.T) {
 	_, err := Load(repo.NewSnapshot("/repo", map[string]repo.File{
 		"slophammer.yml": {
 			Path: "slophammer.yml",
@@ -490,11 +493,43 @@ func TestLoadAllowsSharedGoAndTypeScriptConfig(t *testing.T) {
   coverage_threshold: 85
 typescript:
   coverage_threshold: 85
+  coverage:
+    threshold: 85
   complexity_max: 8
   dry:
     copied_blocks:
       enabled: true
       min_tokens: 100
+rust:
+  coverage:
+    threshold: 85
+    paths:
+      - rust/crates
+  complexity:
+    cognitive_max: 8
+  targets:
+    - rust/crates
+  exclude:
+    - rust/target/**
+  dry:
+    max_findings: 0
+    paths:
+      - rust/crates
+    copied_blocks:
+      enabled: true
+      min_tokens: 100
+  unsafe:
+    policy: forbid
+    allow:
+      - path: src/lib.rs
+        reason: reviewed
+  mutation:
+    targets:
+      - rust/crates/slophammer-rust/src
+  dependency_boundaries:
+    - from: rust/crates/slophammer-app
+      allow:
+        - rust/crates/slophammer-core
 `,
 		},
 	}))

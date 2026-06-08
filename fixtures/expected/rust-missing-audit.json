@@ -1,0 +1,12 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "rust.dependency-audit-required",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Rust projects must declare dependency audit checks"
+    }
+  ]
+}
+

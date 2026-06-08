@@ -1,0 +1,2 @@
+# Rust Bad Dependency Fixture
+

@@ -1,0 +1,4 @@
+rust:
+  coverage:
+    threshold: 40
+

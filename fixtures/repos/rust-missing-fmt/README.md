@@ -1,0 +1,2 @@
+# Rust Missing Format Fixture
+
