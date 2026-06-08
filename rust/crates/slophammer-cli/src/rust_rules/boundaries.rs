@@ -264,7 +264,7 @@ fn allowed(boundary: &DependencyBoundary, path: &str) -> bool {
     boundary
         .allow
         .iter()
-        .any(|allowed| path == allowed || path.starts_with(&format!("{}/", allowed)))
+        .any(|allowed| path == allowed || path.starts_with(&format!("{allowed}/")))
 }
 
 #[cfg(test)]

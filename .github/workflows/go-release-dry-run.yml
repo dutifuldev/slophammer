@@ -51,22 +51,20 @@ jobs:
       - name: Check out release tag
         run: git checkout --detach "${{ steps.release.outputs.tag }}"
 
-      - name: Install golangci-lint
-        working-directory: go
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh |
-            sh -s -- -b "$(go env GOPATH)/bin" v2.11.0
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.11.0
+          working-directory: go
+          args: ./...
 
       - name: Validate Go implementation
         working-directory: go
         run: |
           test -z "$(gofmt -l .)"
-          golangci-lint fmt --diff
           go vet ./...
           go test ./...
           ./scripts/check-go-coverage.sh
-          golangci-lint run
           go build ./cmd/slophammer-go
           ./scripts/check-go-install.sh
           go run ./cmd/slophammer-go check ..

@@ -92,16 +92,15 @@ jobs:
       - name: Check gofmt
         run: |
           test -z "$(gofmt -l .)"
-      - name: Install golangci-lint
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh |
-            sh -s -- -b "$(go env GOPATH)/bin" v2.11.0
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
-      - run: golangci-lint fmt --diff
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.11.0
+          working-directory: go
+          args: ./...
       - run: go vet ./...
       - run: go test ./...
       - run: ./scripts/check-go-coverage.sh
-      - run: golangci-lint run
       - run: go build ./cmd/slophammer
       - run: go build ./cmd/slophammer-go
       - run: ./scripts/check-go-install.sh
