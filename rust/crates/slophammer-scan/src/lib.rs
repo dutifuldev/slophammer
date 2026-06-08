@@ -30,10 +30,7 @@ impl Snapshot {
     }
 
     pub fn has_workflow(&self) -> bool {
-        self.files.keys().any(|path| {
-            path.starts_with(".github/workflows/")
-                && (path.ends_with(".yml") || path.ends_with(".yaml"))
-        })
+        self.files.keys().any(|path| active_workflow_path(path))
     }
 
     pub fn content_for_paths(&self, wanted: impl Fn(&str) -> bool) -> String {
@@ -44,6 +41,13 @@ impl Snapshot {
             .collect::<Vec<_>>()
             .join("\n")
     }
+}
+
+fn active_workflow_path(path: &str) -> bool {
+    let Some(name) = path.strip_prefix(".github/workflows/") else {
+        return false;
+    };
+    !name.contains('/') && (name.ends_with(".yml") || name.ends_with(".yaml"))
 }
 
 #[derive(Debug, Error)]
@@ -122,5 +126,20 @@ mod tests {
             )]),
         };
         assert!(snapshot.has_workflow());
+    }
+
+    #[test]
+    fn ignores_nested_archived_workflow_paths() {
+        let snapshot = Snapshot {
+            root: PathBuf::from("."),
+            files: BTreeMap::from([(
+                ".github/workflows/archive/old.yml".to_owned(),
+                RepoFile {
+                    path: ".github/workflows/archive/old.yml".to_owned(),
+                    content: String::new(),
+                },
+            )]),
+        };
+        assert!(!snapshot.has_workflow());
     }
 }

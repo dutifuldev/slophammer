@@ -134,6 +134,7 @@ fn check_inner(options: CheckOptions, runner: &impl Runner) -> Result<AppResult,
             runner,
         ));
     }
+    slophammer_config::apply_rule_config(&config, &mut findings);
     let report = new_report(findings);
     let stdout = render_report(options.format, &report)?;
     Ok(AppResult {
@@ -163,7 +164,9 @@ fn direct_inner(
 ) -> Result<AppResult, AppError> {
     let snapshot = scan_repo(command_root(&options.root))?;
     let config = slophammer_config::load(&snapshot)?;
-    let report = new_report(check(&snapshot, &config, options.max_findings.unwrap_or(0)));
+    let mut findings = check(&snapshot, &config, options.max_findings.unwrap_or(0));
+    slophammer_config::apply_rule_config(&config, &mut findings);
+    let report = new_report(findings);
     let stdout = render_report(options.format, &report)?;
     Ok(AppResult {
         code: if report.ok { EXIT_OK } else { EXIT_FINDINGS },
@@ -236,6 +239,9 @@ pub fn rule_definition(rule_id: &str) -> Option<RuleDefinition> {
 mod tests {
     use super::*;
     use slophammer_core::{EXIT_FINDINGS, EXIT_OK};
+    use std::fs;
+    use std::path::{Path, PathBuf};
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
     fn unknown_only_rule_is_error() {
@@ -334,6 +340,38 @@ mod tests {
     }
 
     #[test]
+    fn check_applies_rule_severity_overrides() {
+        let root = temp_root("rule-severity");
+        write_file(&root, "AGENTS.md", "# Agents\n");
+        write_file(
+            &root,
+            ".github/workflows/ci.yml",
+            "jobs:\n  ci:\n    steps:\n      - run: echo ok\n",
+        );
+        write_file(
+            &root,
+            "slophammer.yml",
+            "rules:\n  repo.readme-required:\n    severity: warn\n",
+        );
+
+        let result = check(CheckOptions {
+            root: root.to_string_lossy().into_owned(),
+            format: OutputFormat::Json,
+            execute: false,
+            only_rule_ids: vec!["repo.readme-required".to_owned()],
+        });
+
+        fs::remove_dir_all(&root).ok();
+        assert_eq!(result.code, EXIT_FINDINGS);
+        assert!(
+            result
+                .stdout
+                .contains("\"rule_id\": \"repo.readme-required\"")
+        );
+        assert!(result.stdout.contains("\"severity\": \"warn\""));
+    }
+
+    #[test]
     fn config_error_fixtures_return_error_code() {
         for fixture_name in ["rust-invalid-config", "rust-unknown-config"] {
             let result = check(CheckOptions {
@@ -355,5 +393,26 @@ mod tests {
             .join(name)
             .to_string_lossy()
             .into_owned()
+    }
+
+    fn temp_root(name: &str) -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "slophammer-app-{name}-{}-{nonce}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&root).expect("create temp root");
+        root
+    }
+
+    fn write_file(root: &Path, path: &str, content: &str) {
+        let path = root.join(path);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).expect("create parent");
+        }
+        fs::write(path, content).expect("write file");
     }
 }

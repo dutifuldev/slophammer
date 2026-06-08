@@ -9,6 +9,7 @@ version.workspace = true
 
 [dependencies]
 serde.workspace = true
+slophammer-core = { path = "../slophammer-core", version = "0.1.0" }
 slophammer-scan = { path = "../slophammer-scan", version = "0.1.0" }
 thiserror.workspace = true
 yaml_serde.workspace = true

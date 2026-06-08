@@ -158,6 +158,7 @@ mod tests {
                     targets: vec!["src".to_owned()],
                     ..RustConfig::default()
                 }),
+                ..Config::default()
             },
         );
         assert!(findings.is_empty());
@@ -176,6 +177,7 @@ mod tests {
                     targets: vec!["src".to_owned()],
                     ..RustConfig::default()
                 }),
+                ..Config::default()
             },
         );
         assert_eq!(findings.len(), 1);

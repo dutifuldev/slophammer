@@ -53,7 +53,7 @@ fn run_rule(rule_id: &str, snapshot: &Snapshot, config: &Config) -> Vec<Finding>
         rule_ids::RUST_CLIPPY_REQUIRED => rust_clippy(snapshot),
         rule_ids::RUST_TEST_REQUIRED => cargo_command(snapshot, rule_id, "cargo test"),
         rule_ids::RUST_COVERAGE_REQUIRED => rust_coverage(snapshot, config),
-        rule_ids::RUST_COMPLEXITY_REQUIRED => rust_complexity(snapshot),
+        rule_ids::RUST_COMPLEXITY_REQUIRED => rust_complexity(snapshot, config),
         rule_ids::RUST_DRY_REQUIRED => rust_dry_declaration(snapshot),
         rule_ids::RUST_MUTATION_REQUIRED => cargo_command(snapshot, rule_id, "cargo mutants"),
         rule_ids::RUST_UNSAFE_POLICY_REQUIRED => unsafe_policy::policy_findings(snapshot, config),
@@ -124,20 +124,16 @@ fn rust_clippy(snapshot: &Snapshot) -> Vec<Finding> {
 }
 
 fn rust_coverage(snapshot: &Snapshot, config: &Config) -> Vec<Finding> {
-    let evidence = evidence::command_text(snapshot);
-    let threshold = slophammer_config::rust_coverage_threshold(config).to_string();
+    let threshold = slophammer_config::rust_coverage_threshold(config);
     missing(
-        is_rust_project(snapshot)
-            && !(evidence.contains("cargo llvm-cov")
-                && evidence.contains("--fail-under")
-                && evidence.contains(&threshold)),
+        is_rust_project(snapshot) && !has_coverage_gate(snapshot, threshold),
         rule_ids::RUST_COVERAGE_REQUIRED,
     )
 }
 
-fn rust_complexity(snapshot: &Snapshot) -> Vec<Finding> {
+fn rust_complexity(snapshot: &Snapshot, config: &Config) -> Vec<Finding> {
     missing(
-        is_rust_project(snapshot) && !has_complexity_limit(snapshot),
+        is_rust_project(snapshot) && !has_complexity_limit(snapshot, config),
         rule_ids::RUST_COMPLEXITY_REQUIRED,
     )
 }
@@ -194,16 +190,78 @@ fn has_msrv(snapshot: &Snapshot) -> bool {
         || snapshot
             .file("rust-toolchain.toml")
             .is_some_and(|file| toolchain_declares_version(&file.content))
+        || snapshot
+            .file("rust-toolchain")
+            .is_some_and(|file| toolchain_declares_version(&file.content))
 }
 
 fn toolchain_declares_version(content: &str) -> bool {
     content
         .lines()
-        .filter_map(|line| line.split_once('='))
-        .any(|(key, value)| key.trim() == "channel" && value.chars().any(|ch| ch.is_ascii_digit()))
+        .map(strip_inline_comment)
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .any(|line| {
+            if let Some((key, value)) = line.split_once('=') {
+                key.trim() == "channel" && value.chars().any(|ch| ch.is_ascii_digit())
+            } else {
+                line.chars().any(|ch| ch.is_ascii_digit())
+            }
+        })
 }
 
-fn has_complexity_limit(snapshot: &Snapshot) -> bool {
+fn has_coverage_gate(snapshot: &Snapshot, minimum: u32) -> bool {
+    let evidence = evidence::command_text(snapshot);
+    evidence.contains("cargo llvm-cov")
+        && coverage_thresholds(&evidence)
+            .into_iter()
+            .any(|threshold| threshold >= f64::from(minimum))
+}
+
+fn coverage_thresholds(content: &str) -> Vec<f64> {
+    let tokens = content.split_whitespace().collect::<Vec<_>>();
+    let mut thresholds = Vec::new();
+    for (index, token) in tokens.iter().enumerate() {
+        if !token.starts_with("--fail-under") {
+            continue;
+        }
+        if let Some((_, value)) = token.split_once('=') {
+            if let Some(threshold) = numeric_prefix(value) {
+                thresholds.push(threshold);
+            }
+        } else if let Some(next) = tokens
+            .get(index + 1)
+            .and_then(|value| numeric_prefix(value))
+        {
+            thresholds.push(next);
+        }
+    }
+    thresholds
+}
+
+fn numeric_prefix(value: &str) -> Option<f64> {
+    let number = value
+        .trim_matches(|ch: char| ch == '"' || ch == '\'')
+        .chars()
+        .take_while(|ch| ch.is_ascii_digit() || *ch == '.')
+        .collect::<String>();
+    if number.is_empty() {
+        None
+    } else {
+        number.parse::<f64>().ok()
+    }
+}
+
+fn has_complexity_limit(snapshot: &Snapshot, config: &Config) -> bool {
+    config
+        .rust
+        .as_ref()
+        .and_then(|rust| rust.complexity.as_ref())
+        .is_some_and(|complexity| complexity.cognitive_max <= 8)
+        || has_clippy_complexity_limit(snapshot)
+}
+
+fn has_clippy_complexity_limit(snapshot: &Snapshot) -> bool {
     snapshot
         .files
         .values()
@@ -224,6 +282,10 @@ fn has_complexity_limit(snapshot: &Snapshot) -> bool {
                     .to_ascii_lowercase()
                     .contains("clippy::cognitive_complexity")
         })
+}
+
+fn strip_inline_comment(line: &str) -> &str {
+    line.split('#').next().unwrap_or(line)
 }
 
 fn numeric_limit_at_most(content: &str, maximum: u32) -> bool {
@@ -287,5 +349,72 @@ mod tests {
                 .iter()
                 .any(|finding| finding.rule_id == rule_ids::RUST_CHECK_REQUIRED)
         );
+    }
+
+    #[test]
+    fn accepts_stricter_coverage_thresholds() {
+        let snapshot = rust_snapshot_with_workflow(
+            "cargo llvm-cov --workspace --fail-under-lines 90",
+            "[package]\nname = \"x\"\nrust-version = \"1.86\"\n",
+        );
+        let config =
+            slophammer_config::parse("rust:\n  coverage:\n    threshold: 85\n").expect("config");
+        assert!(rust_coverage(&snapshot, &config).is_empty());
+    }
+
+    #[test]
+    fn configured_complexity_policy_satisfies_complexity_rule() {
+        let snapshot = rust_snapshot_with_workflow(
+            "cargo check --workspace",
+            "[package]\nname = \"x\"\nrust-version = \"1.86\"\n",
+        );
+        let config = slophammer_config::parse("rust:\n  complexity:\n    cognitive_max: 8\n")
+            .expect("config");
+        assert!(rust_complexity(&snapshot, &config).is_empty());
+    }
+
+    #[test]
+    fn plain_rust_toolchain_pin_satisfies_msrv_rule() {
+        let mut snapshot = rust_snapshot_with_workflow(
+            "cargo check --workspace",
+            "[package]\nname = \"x\"\nedition = \"2024\"\n",
+        );
+        snapshot.files.insert(
+            "rust-toolchain".to_owned(),
+            RepoFile {
+                path: "rust-toolchain".to_owned(),
+                content: "1.86.0\n".to_owned(),
+            },
+        );
+        assert!(rust_msrv(&snapshot).is_empty());
+    }
+
+    fn rust_snapshot_with_workflow(command: &str, manifest: &str) -> Snapshot {
+        Snapshot {
+            root: PathBuf::from("."),
+            files: BTreeMap::from([
+                (
+                    "Cargo.toml".to_owned(),
+                    RepoFile {
+                        path: "Cargo.toml".to_owned(),
+                        content: manifest.to_owned(),
+                    },
+                ),
+                (
+                    "src/lib.rs".to_owned(),
+                    RepoFile {
+                        path: "src/lib.rs".to_owned(),
+                        content: "pub fn demo() {}\n".to_owned(),
+                    },
+                ),
+                (
+                    ".github/workflows/ci.yml".to_owned(),
+                    RepoFile {
+                        path: ".github/workflows/ci.yml".to_owned(),
+                        content: format!("jobs:\n  ci:\n    steps:\n      - run: {command}\n"),
+                    },
+                ),
+            ]),
+        }
     }
 }

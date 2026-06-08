@@ -1,12 +1,41 @@
 use serde::Deserialize;
+use slophammer_core::{Finding, Severity};
 use slophammer_scan::Snapshot;
 use std::collections::BTreeMap;
 use thiserror::Error;
 use yaml_serde::Value;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Config {
+    pub rules: BTreeMap<String, RuleConfig>,
     pub rust: Option<RustConfig>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct RuleConfig {
+    pub severity: Option<RuleSeverity>,
+    #[serde(default)]
+    pub disabled: bool,
+    pub reason: Option<String>,
+    pub threshold: Option<f64>,
+    pub max: Option<f64>,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum RuleSeverity {
+    Error,
+    Warn,
+}
+
+impl From<RuleSeverity> for Severity {
+    fn from(value: RuleSeverity) -> Self {
+        match value {
+            RuleSeverity::Error => Self::Error,
+            RuleSeverity::Warn => Self::Warn,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq)]
@@ -43,7 +72,7 @@ pub struct RustComplexity {
     pub cognitive_max: u32,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct RustDry {
     pub max_findings: usize,
@@ -112,7 +141,7 @@ pub enum ConfigError {
 #[serde(deny_unknown_fields)]
 struct RootConfig {
     #[serde(default)]
-    rules: BTreeMap<String, Value>,
+    rules: BTreeMap<String, RuleConfig>,
     #[serde(default)]
     go: Option<Value>,
     #[serde(default)]
@@ -134,13 +163,23 @@ pub fn load(snapshot: &Snapshot) -> Result<Config, ConfigError> {
 
 pub fn parse(content: &str) -> Result<Config, ConfigError> {
     let root: RootConfig = yaml_serde::from_str(content)?;
-    let _known_sections = (&root.rules, &root.go, &root.typescript);
-    let config = Config { rust: root.rust };
+    let _known_sections = (&root.go, &root.typescript);
+    let config = Config {
+        rules: root.rules,
+        rust: root.rust,
+    };
     validate(&config)?;
     Ok(config)
 }
 
 fn validate(config: &Config) -> Result<(), ConfigError> {
+    for (rule_id, rule) in &config.rules {
+        if rule.disabled && rule.reason.as_deref().unwrap_or("").trim().is_empty() {
+            return Err(ConfigError::Validation(format!(
+                "rules.{rule_id}.reason is required when disabled is true"
+            )));
+        }
+    }
     let Some(rust) = &config.rust else {
         return Ok(());
     };
@@ -194,6 +233,18 @@ fn validate(config: &Config) -> Result<(), ConfigError> {
         }
     }
     Ok(())
+}
+
+pub fn apply_rule_config(config: &Config, findings: &mut [Finding]) {
+    for finding in findings {
+        if let Some(severity) = rule_severity(config, &finding.rule_id) {
+            finding.severity = severity.into();
+        }
+    }
+}
+
+pub fn rule_severity(config: &Config, rule_id: &str) -> Option<RuleSeverity> {
+    config.rules.get(rule_id).and_then(|rule| rule.severity)
 }
 
 pub fn rust_targets(config: &Config) -> Vec<String> {
@@ -264,6 +315,16 @@ pub fn rust_dry_min_tokens(config: &Config) -> usize {
         .and_then(|dry| dry.copied_blocks.as_ref())
         .map(|copied_blocks| copied_blocks.min_tokens)
         .unwrap_or(100)
+}
+
+pub fn rust_dry_copied_blocks_enabled(config: &Config) -> bool {
+    config
+        .rust
+        .as_ref()
+        .and_then(|rust| rust.dry.as_ref())
+        .and_then(|dry| dry.copied_blocks.as_ref())
+        .map(|copied_blocks| copied_blocks.enabled)
+        .unwrap_or(true)
 }
 
 #[cfg(test)]
@@ -339,6 +400,10 @@ rust:
             vec!["crates/slophammer-rust".to_owned()]
         );
         assert_eq!(rust_dry_min_tokens(&config), 50);
+        assert_eq!(
+            rule_severity(&config, "repo.readme-required"),
+            Some(RuleSeverity::Warn)
+        );
     }
 
     #[test]
@@ -348,5 +413,53 @@ rust:
 
         let dry = parse("rust:\n  dry:\n    max_findings: 1\n").unwrap_err();
         assert!(dry.to_string().contains("must be 0"));
+    }
+
+    #[test]
+    fn rejects_unknown_rule_config_keys() {
+        let error = parse(
+            r#"
+rules:
+  repo.readme-required:
+    surprise: true
+"#,
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("unknown field"));
+    }
+
+    #[test]
+    fn disabled_rules_require_a_reason() {
+        let error = parse(
+            r#"
+rules:
+  repo.readme-required:
+    disabled: true
+"#,
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("reason is required"));
+    }
+
+    #[test]
+    fn applies_rule_severity_overrides() {
+        let config = parse(
+            r#"
+rules:
+  repo.readme-required:
+    severity: warn
+"#,
+        )
+        .expect("config");
+        let mut findings = vec![Finding {
+            rule_id: "repo.readme-required".to_owned(),
+            severity: Severity::Error,
+            path: "README.md".to_owned(),
+            message: "missing".to_owned(),
+        }];
+
+        apply_rule_config(&config, &mut findings);
+
+        assert_eq!(findings[0].severity, Severity::Warn);
     }
 }
