@@ -1,5 +1,5 @@
+use crate::core::{Finding, Report, Severity};
 use serde::Serialize;
-use slophammer_core::{Finding, Report, Severity};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -189,7 +189,7 @@ fn sarif_locations(path: &str) -> Vec<SarifLocation> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use slophammer_core::{Finding, Severity};
+    use crate::core::{Finding, Severity};
 
     #[test]
     fn sorts_findings() {

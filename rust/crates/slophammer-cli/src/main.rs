@@ -1,5 +1,13 @@
+mod app;
+mod config;
+mod core;
+mod exec;
+mod report;
+mod rust_rules;
+mod scan;
+
+use crate::app::{AppResult, CheckOptions, DirectOptions, OutputFormat};
 use clap::{Parser, Subcommand, ValueEnum};
-use slophammer_app::{AppResult, CheckOptions, DirectOptions, OutputFormat};
 use std::io::{self, Write};
 use std::process::ExitCode;
 
@@ -70,29 +78,29 @@ fn run(command: Command) -> AppResult {
             format,
             execute,
             only_rule_ids,
-        } => slophammer_app::check(CheckOptions {
+        } => app::check(CheckOptions {
             root: path,
             format: format.into(),
             execute,
             only_rule_ids,
         }),
-        Command::Explain { rule_id } => slophammer_app::explain(&rule_id),
-        Command::Rules { format } => slophammer_app::rules(format.into()),
+        Command::Explain { rule_id } => app::explain(&rule_id),
+        Command::Rules { format } => app::rules(format.into()),
         Command::Dry {
             path,
             format,
             max_findings,
-        } => slophammer_app::dry(DirectOptions {
+        } => app::dry(DirectOptions {
             root: path,
             format: format.into(),
             max_findings,
         }),
-        Command::Boundaries { path, format } => slophammer_app::boundaries(DirectOptions {
+        Command::Boundaries { path, format } => app::boundaries(DirectOptions {
             root: path,
             format: format.into(),
             max_findings: None,
         }),
-        Command::Unsafe { path, format } => slophammer_app::unsafe_policy(DirectOptions {
+        Command::Unsafe { path, format } => app::unsafe_policy(DirectOptions {
             root: path,
             format: format.into(),
             max_findings: None,

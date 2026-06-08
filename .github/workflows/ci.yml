@@ -50,9 +50,12 @@ jobs:
           test -f fixtures/expected/adoption-after.json
           test -f rust/Cargo.toml
           test -f rust/Cargo.lock
-          test -f rust/scripts/publish-crates.sh
+          test -f rust/scripts/publish-crate.sh
+          test -f rust/scripts/install-packaged-cli.sh
           test -f rust/crates/slophammer-cli/Cargo.toml
           test -f rust/crates/slophammer-cli/src/main.rs
+          test ! -d rust/crates/slophammer-core
+          test ! -d rust/crates/slophammer-rust
           test -f fixtures/repos/rust-clean/Cargo.toml
           test -f fixtures/expected/rust-clean.json
           test -f fixtures/repos/rust-bad-dependency/slophammer.yml
@@ -198,15 +201,31 @@ jobs:
         run: |
           cargo install cargo-audit --locked
           cargo install cargo-mutants --locked
+      - name: Resolve Rust package tag
+        id: rust-package
+        run: |
+          version="$(
+            awk '
+              /^\[workspace.package\]/ { in_workspace_package = 1; next }
+              /^\[/ { in_workspace_package = 0 }
+              in_workspace_package && /^version = / {
+                gsub(/"/, "", $3)
+                print $3
+                exit
+              }
+            ' Cargo.toml
+          )"
+          echo "tag=rust/v$version" >> "$GITHUB_OUTPUT"
       - run: cargo fmt --check
       - run: cargo check --workspace
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace --all-targets
-      - run: cargo test --workspace --doc
       - run: cargo llvm-cov --workspace --fail-under-lines 85
       - run: cargo audit
       - run: cargo mutants --workspace --list
-      - run: cargo install --path crates/slophammer-cli --locked
+      - run: scripts/publish-crate.sh --tag "${{ steps.rust-package.outputs.tag }}" --dry-run
+      - run: scripts/install-packaged-cli.sh
+      - run: slophammer-rs help
       - run: slophammer-rs rules --format json
       - run: slophammer-rs check ../fixtures/repos/rust-clean --format json
       - run: slophammer-rs dry .. --format json

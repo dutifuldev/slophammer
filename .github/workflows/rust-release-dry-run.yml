@@ -57,8 +57,8 @@ jobs:
       - run: cargo fmt --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace --all-targets
-      - run: scripts/publish-crates.sh --tag "${{ steps.package.outputs.tag }}" --dry-run
-      - run: cargo install --path crates/slophammer-cli --locked
+      - run: scripts/publish-crate.sh --tag "${{ steps.package.outputs.tag }}" --dry-run
+      - run: scripts/install-packaged-cli.sh
       - run: slophammer-rs help
       - run: slophammer-rs rules --format json
       - run: slophammer-rs check ../fixtures/repos/rust-clean --format json

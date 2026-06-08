@@ -113,14 +113,10 @@ rust:
     policy: forbid
   mutation:
     targets:
-      - rust/crates/slophammer-rust/src
+      - rust/crates/slophammer-cli/src/rust_rules
   dependency_boundaries:
-    - from: rust/crates/slophammer-rust
-      allow:
-        - rust/crates/slophammer-core
-        - rust/crates/slophammer-config
-        - rust/crates/slophammer-scan
-        - rust/crates/slophammer-report
+    - from: rust/crates/slophammer-cli
+      allow: []
 ```
 
 ## Rule Config

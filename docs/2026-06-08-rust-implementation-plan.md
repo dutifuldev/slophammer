@@ -66,39 +66,40 @@ Create a top-level Rust implementation:
 rust/
 ├── Cargo.toml
 ├── crates/
-│   ├── slophammer-core/
-│   ├── slophammer-config/
-│   ├── slophammer-scan/
-│   ├── slophammer-report/
-│   ├── slophammer-rust/
-│   ├── slophammer-exec/
-│   ├── slophammer-app/
 │   └── slophammer-cli/
+│       ├── src/main.rs
+│       ├── src/app.rs
+│       ├── src/config.rs
+│       ├── src/core.rs
+│       ├── src/exec.rs
+│       ├── src/report.rs
+│       ├── src/scan.rs
+│       └── src/rust_rules/
 └── tests/
 ```
 
-The crate split is an architecture boundary, not a promise to create a public
-library ecosystem.
+The Rust implementation is one publishable Cargo package. Its module split is
+an architecture boundary, not a promise to create a public library ecosystem.
 
 Default dependency direction:
 
 ```text
-slophammer-cli
--> slophammer-app
-   -> slophammer-config
-   -> slophammer-scan
-   -> slophammer-rust
-   -> slophammer-report
-   -> slophammer-exec
+main
+-> app
+   -> config
+   -> scan
+   -> rust_rules
+   -> report
+   -> exec
 
-slophammer-config -> slophammer-core
-slophammer-scan -> slophammer-core
-slophammer-rust -> slophammer-core
-slophammer-report -> slophammer-core
-slophammer-exec -> slophammer-core
+config -> core
+scan -> core
+rust_rules -> core
+report -> core
+exec -> core
 ```
 
-`slophammer-core` is the bottom layer. It owns shared data types such as rule
+`core` is the bottom layer. It owns shared data types such as rule
 definitions, findings, reports, severities, and exit-code concepts. The
 important boundary is that rule packages do not depend on filesystem, process,
 terminal, or report-rendering adapters.
@@ -150,7 +151,7 @@ Default packages and tools:
 | linting               | `cargo clippy`                           |
 | dependency audit      | `cargo audit` and/or `cargo deny`        |
 
-YAML should be isolated behind `slophammer-config`. Choose a maintained parser
+YAML should be isolated behind the config module. Choose a maintained parser
 after checking current dependency health. The rest of the code should not care
 which YAML package backs `slophammer.yml`.
 
@@ -245,20 +246,16 @@ rust:
   unsafe:
     policy: forbid
     allow:
-      - path: rust/crates/slophammer-rust/src/ffi.rs
+      - path: rust/crates/slophammer-cli/src/rust_rules/ffi.rs
         reason: "narrow FFI boundary"
   mutation:
     targets:
-      - rust/crates/slophammer-rust/src
+      - rust/crates/slophammer-cli/src/rust_rules
     exclude:
-      - "rust/crates/slophammer-rust/src/generated/**"
+      - "rust/crates/slophammer-cli/src/rust_rules/generated/**"
   dependency_boundaries:
-    - from: rust/crates/slophammer-rust
-      allow:
-        - rust/crates/slophammer-core
-        - rust/crates/slophammer-config
-        - rust/crates/slophammer-scan
-        - rust/crates/slophammer-report
+    - from: rust/crates/slophammer-cli
+      allow: []
 ```
 
 Hard recommended bounds:
@@ -301,7 +298,7 @@ sources, or bans.
 
 Complexity should prefer Clippy-backed configuration when possible. If Rust's
 available lint surface cannot express the whole Slophammer complexity policy,
-implement the remaining static AST metric in `slophammer-rust` with `syn`.
+implement the remaining static AST metric in `rust_rules` with `syn`.
 
 ## Direct Commands
 
@@ -404,7 +401,6 @@ Rust CI should run:
 cargo fmt --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace --all-targets
-cargo test --workspace --doc
 cargo llvm-cov --workspace --fail-under-lines 85
 cargo install --path rust/crates/slophammer-cli --locked
 slophammer-rs rules --format json
@@ -421,14 +417,10 @@ Add release dry-run coverage before publishing:
 - verify lockfile reproducibility
 - verify the CLI-only crates.io package/publish sequence for `slophammer-rs`
 
-Do not publish until the installed artifact is proven by CI. The merged Rust
-implementation is source-installable, but not published to crates.io yet.
-
-Before the first crates.io release, refactor the Rust implementation to publish
-only the user-facing `slophammer-rs` Cargo package. Do not publish internal
-workspace crates just to satisfy Cargo dependency resolution; that would create
-unwanted public library APIs. The current multi-crate publish workflow must be
-retired or replaced before release. See
+Do not publish until the installed artifact is proven by CI. The Rust
+implementation now packages only the user-facing `slophammer-rs` Cargo package.
+Internal implementation modules are private to the CLI package instead of
+separate crates.io packages. See
 [Rust CLI-only Cargo publish plan](2026-06-08-rust-cli-only-cargo-publish-plan.md).
 
 ## Documentation Updates

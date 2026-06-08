@@ -1,10 +1,8 @@
-use slophammer_config::Config;
-use slophammer_core::{
-    EXIT_ERROR, EXIT_FINDINGS, EXIT_OK, Finding, Report, RuleDefinition, find_definition,
-};
-use slophammer_exec::{RealRunner, Runner};
-use slophammer_report::{new_report, write_json, write_sarif, write_text};
-use slophammer_scan::{Snapshot, scan_repo};
+use crate::config::Config;
+use crate::core::{EXIT_ERROR, EXIT_FINDINGS, EXIT_OK, Finding, Report, RuleDefinition};
+use crate::exec::{RealRunner, Runner};
+use crate::report::{new_report, write_json, write_sarif, write_text};
+use crate::scan::{Snapshot, scan_repo};
 use std::fmt;
 use thiserror::Error;
 
@@ -40,11 +38,11 @@ pub struct AppResult {
 #[derive(Debug, Error)]
 pub enum AppError {
     #[error("scan failed: {0}")]
-    Scan(#[from] slophammer_scan::ScanError),
+    Scan(#[from] crate::scan::ScanError),
     #[error("config failed: {0}")]
-    Config(#[from] slophammer_config::ConfigError),
+    Config(#[from] crate::config::ConfigError),
     #[error("report failed: {0}")]
-    Report(#[from] slophammer_report::ReportError),
+    Report(#[from] crate::report::ReportError),
     #[error("unknown rule: {0}")]
     UnknownRule(String),
 }
@@ -66,32 +64,32 @@ pub fn check_with_runner(options: CheckOptions, runner: &impl Runner) -> AppResu
 
 pub fn dry(options: DirectOptions) -> AppResult {
     direct(options, |snapshot, config, max_findings| {
-        slophammer_rust::dry_findings(snapshot, config, max_findings)
+        crate::rust_rules::dry_findings(snapshot, config, max_findings)
     })
 }
 
 pub fn boundaries(options: DirectOptions) -> AppResult {
     direct(options, |snapshot, config, _| {
-        slophammer_rust::run_rules(
+        crate::rust_rules::run_rules(
             snapshot,
             config,
-            &[slophammer_rust::rule_ids::RUST_DEPENDENCY_BOUNDARIES_REQUIRED.to_owned()],
+            &[crate::rust_rules::rule_ids::RUST_DEPENDENCY_BOUNDARIES_REQUIRED.to_owned()],
         )
     })
 }
 
 pub fn unsafe_policy(options: DirectOptions) -> AppResult {
     direct(options, |snapshot, config, _| {
-        slophammer_rust::run_rules(
+        crate::rust_rules::run_rules(
             snapshot,
             config,
-            &[slophammer_rust::rule_ids::RUST_UNSAFE_POLICY_REQUIRED.to_owned()],
+            &[crate::rust_rules::rule_ids::RUST_UNSAFE_POLICY_REQUIRED.to_owned()],
         )
     })
 }
 
 pub fn explain(rule_id: &str) -> AppResult {
-    match slophammer_rust::explain(rule_id) {
+    match crate::rust_rules::explain(rule_id) {
         Some(text) => AppResult {
             code: EXIT_OK,
             stdout: text,
@@ -106,7 +104,7 @@ pub fn explain(rule_id: &str) -> AppResult {
 }
 
 pub fn rules(format: OutputFormat) -> AppResult {
-    let definitions = slophammer_rust::default_definitions();
+    let definitions = crate::rust_rules::default_definitions();
     match render_rules(format, &definitions) {
         Ok(stdout) => AppResult {
             code: EXIT_OK,
@@ -124,17 +122,17 @@ pub fn rules(format: OutputFormat) -> AppResult {
 fn check_inner(options: CheckOptions, runner: &impl Runner) -> Result<AppResult, AppError> {
     validate_only_rules(&options.only_rule_ids)?;
     let snapshot = scan_repo(command_root(&options.root))?;
-    let config = slophammer_config::load(&snapshot)?;
-    let mut findings = slophammer_rust::run_rules(&snapshot, &config, &options.only_rule_ids);
+    let config = crate::config::load(&snapshot)?;
+    let mut findings = crate::rust_rules::run_rules(&snapshot, &config, &options.only_rule_ids);
     if options.execute {
-        findings.extend(slophammer_exec::execute_rust_checks(
+        findings.extend(crate::exec::execute_rust_checks(
             &snapshot,
             &config,
             &options.only_rule_ids,
             runner,
         ));
     }
-    slophammer_config::apply_rule_config(&config, &mut findings);
+    crate::config::apply_rule_config(&config, &mut findings);
     let report = new_report(findings);
     let stdout = render_report(options.format, &report)?;
     Ok(AppResult {
@@ -163,9 +161,9 @@ fn direct_inner(
     check: impl FnOnce(&Snapshot, &Config, usize) -> Vec<Finding>,
 ) -> Result<AppResult, AppError> {
     let snapshot = scan_repo(command_root(&options.root))?;
-    let config = slophammer_config::load(&snapshot)?;
+    let config = crate::config::load(&snapshot)?;
     let mut findings = check(&snapshot, &config, options.max_findings.unwrap_or(0));
-    slophammer_config::apply_rule_config(&config, &mut findings);
+    crate::config::apply_rule_config(&config, &mut findings);
     let report = new_report(findings);
     let stdout = render_report(options.format, &report)?;
     Ok(AppResult {
@@ -177,7 +175,7 @@ fn direct_inner(
 
 fn validate_only_rules(only_rule_ids: &[String]) -> Result<(), AppError> {
     for rule_id in only_rule_ids {
-        if !slophammer_rust::known_rule(rule_id) {
+        if !crate::rust_rules::known_rule(rule_id) {
             return Err(AppError::UnknownRule(rule_id.clone()));
         }
     }
@@ -231,14 +229,10 @@ impl fmt::Display for OutputFormat {
     }
 }
 
-pub fn rule_definition(rule_id: &str) -> Option<RuleDefinition> {
-    find_definition(&slophammer_rust::default_definitions(), rule_id).cloned()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use slophammer_core::{EXIT_FINDINGS, EXIT_OK};
+    use crate::core::{EXIT_FINDINGS, EXIT_OK};
     use std::fs;
     use std::path::{Path, PathBuf};
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -401,7 +395,7 @@ mod tests {
             .expect("clock")
             .as_nanos();
         let root = std::env::temp_dir().join(format!(
-            "slophammer-app-{name}-{}-{nonce}",
+            "slophammer-rs-{name}-{}-{nonce}",
             std::process::id()
         ));
         fs::create_dir_all(&root).expect("create temp root");

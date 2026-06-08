@@ -1,14 +1,5 @@
 [workspace]
-members = [
-  "crates/slophammer-app",
-  "crates/slophammer-cli",
-  "crates/slophammer-config",
-  "crates/slophammer-core",
-  "crates/slophammer-exec",
-  "crates/slophammer-report",
-  "crates/slophammer-rust",
-  "crates/slophammer-scan",
-]
+members = ["crates/slophammer-cli"]
 resolver = "2"
 
 [workspace.package]
@@ -30,12 +21,3 @@ syn = { version = "2.0.111", features = ["full", "visit"] }
 thiserror = "2.0.17"
 toml_edit = "0.23.7"
 yaml_serde = "0.10.4"
-
-[patch.crates-io]
-slophammer-app = { path = "crates/slophammer-app" }
-slophammer-config = { path = "crates/slophammer-config" }
-slophammer-core = { path = "crates/slophammer-core" }
-slophammer-exec = { path = "crates/slophammer-exec" }
-slophammer-report = { path = "crates/slophammer-report" }
-slophammer-rust = { path = "crates/slophammer-rust" }
-slophammer-scan = { path = "crates/slophammer-scan" }

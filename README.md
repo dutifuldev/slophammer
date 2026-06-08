@@ -260,11 +260,9 @@ cargo install slophammer-rs --locked
 
 [Required Next Work](docs/2026-05-17-required-next-work.md) records the release
 hardening tasks that were completed for the first Go release. TypeScript remains
-package-checked in CI and is published from the `typescript/` package. Rust has
-release dry-run coverage, but crates.io publication is intentionally pending a
-CLI-only package refactor. The first Cargo release should publish only
-`slophammer-rs`; do not publish the internal Rust workspace crates as public
-library APIs just to satisfy Cargo dependency resolution. See the
+package-checked in CI and is published from the `typescript/` package. Rust now
+uses a CLI-only Cargo package path: the first crates.io release publishes only
+`slophammer-rs`, not internal workspace crates. See the
 [Rust CLI-only Cargo publish plan](docs/2026-06-08-rust-cli-only-cargo-publish-plan.md).
 
 ## Policy Targets
@@ -360,8 +358,8 @@ The Rust implementation currently provides:
   fixtures
 - CI gates for formatting, Clippy, tests, package install, native commands, and
   shared conformance
-- a documented CLI-only crates.io release target for publishing `slophammer-rs`
-  without exposing internal workspace crates as public APIs
+- a CLI-only crates.io release path that packages, installs, validates, and
+  publishes only `slophammer-rs`
 
 ## Current Go Quality Surface
 
@@ -398,9 +396,9 @@ useful as a reference implementation:
    CI installs `slophammer-go` into a temporary `GOBIN`, packs and installs
    `slophammer-ts`, checks the public command name, and runs the shared
    conformance script. The Go release dry-run workflow validates release tags
-   and verifies tagged `go install` on release tag pushes. Rust release work
-   should next replace the multi-crate publish path with a single `slophammer-rs`
-   package release before any crates.io publication.
+   and verifies tagged `go install` on release tag pushes. Rust release
+   workflows package `slophammer-rs`, install the packaged artifact, run CLI
+   smoke checks, run shared conformance, and publish only the CLI package.
 
 ## Shared Rule Set
 

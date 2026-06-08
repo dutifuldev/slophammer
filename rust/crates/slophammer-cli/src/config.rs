@@ -1,6 +1,6 @@
+use crate::core::{Finding, Severity};
+use crate::scan::Snapshot;
 use serde::Deserialize;
-use slophammer_core::{Finding, Severity};
-use slophammer_scan::Snapshot;
 use std::collections::BTreeMap;
 use thiserror::Error;
 use yaml_serde::Value;
@@ -370,7 +370,7 @@ rust:
   dry:
     max_findings: 0
     paths:
-      - crates/slophammer-rust
+      - crates/slophammer-cli/src/rust_rules
     exclude:
       - tests/**
     copied_blocks:
@@ -379,17 +379,16 @@ rust:
   unsafe:
     policy: allow_documented
     allow:
-      - path: crates/slophammer-rust/src/ffi.rs
+      - path: crates/slophammer-cli/src/rust_rules/ffi.rs
         reason: ffi boundary
   mutation:
     targets:
-      - crates/slophammer-rust/src
+      - crates/slophammer-cli/src/rust_rules
     exclude:
       - generated/**
   dependency_boundaries:
-    - from: crates/slophammer-rust
-      allow:
-        - crates/slophammer-core
+    - from: crates/slophammer-cli
+      allow: []
 "#,
         )
         .expect("config");
@@ -397,7 +396,7 @@ rust:
         assert_eq!(rust_targets(&config), vec!["crates"]);
         assert_eq!(
             rust_dry_paths(&config),
-            vec!["crates/slophammer-rust".to_owned()]
+            vec!["crates/slophammer-cli/src/rust_rules".to_owned()]
         );
         assert_eq!(rust_dry_min_tokens(&config), 50);
         assert_eq!(

@@ -12,9 +12,10 @@ The first crates.io release should publish one user-facing package:
 `slophammer-rs`.
 
 Do not publish the internal workspace crates just to make Cargo resolve the CLI
-package. Publishing `slophammer-core`, `slophammer-config`, `slophammer-rust`,
-or similar internal crates would turn their public types into long-term semver
-contracts before we have a real embedding use case.
+package. Publishing internal support crates would turn their public types into
+long-term semver contracts before we have a real embedding use case.
+
+This package layout and release path are now implemented in the Rust workspace.
 
 ## Target Shape
 
@@ -32,25 +33,22 @@ inside the published package unless a deliberate library API is added later.
 
 ## Implementation Plan
 
-1. Refactor the Rust workspace into one publishable CLI package.
+1. Refactor the Rust workspace into one publishable CLI package. Completed.
    Keep the code organized as internal modules under the `slophammer-rs`
    package, or use another single-package layout that lets `cargo package -p
    slophammer-rs --locked` succeed without unpublished internal crates.
 
-2. Keep public API small.
+2. Keep public API small. Completed.
    The CLI crate should not expose internal rule, scan, config, execution, or
    report APIs as stable libraries by accident.
 
-3. Replace the Rust release workflow.
-   The current multi-crate publish workflow must not be used for the first
-   crates.io release. Replace it with a workflow that packages and publishes
-   only `slophammer-rs`.
+3. Replace the Rust release workflow. Completed.
+   The release workflow packages and publishes only `slophammer-rs`.
 
-4. Replace the publish helper.
-   Retire the ordered internal-crate publish script, or change it so publish
-   mode targets only the single CLI package.
+4. Replace the publish helper. Completed.
+   The publish helper targets only the single CLI package.
 
-5. Verify the package artifact before publishing.
+5. Verify the package artifact before publishing. Completed.
    The release gate should run `cargo package -p slophammer-rs --locked`, install
    from the packaged crate or package path, and run the installed CLI smoke
    checks plus shared conformance.

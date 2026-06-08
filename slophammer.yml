@@ -150,39 +150,9 @@ rust:
     policy: forbid
   mutation:
     targets:
-      - rust/crates/slophammer-rust/src
-      - rust/crates/slophammer-config/src
-      - rust/crates/slophammer-app/src
+      - rust/crates/slophammer-cli/src/rust_rules
+      - rust/crates/slophammer-cli/src/config.rs
+      - rust/crates/slophammer-cli/src/app.rs
   dependency_boundaries:
     - from: rust/crates/slophammer-cli
-      allow:
-        - rust/crates/slophammer-app
-    - from: rust/crates/slophammer-app
-      allow:
-        - rust/crates/slophammer-config
-        - rust/crates/slophammer-core
-        - rust/crates/slophammer-exec
-        - rust/crates/slophammer-report
-        - rust/crates/slophammer-rust
-        - rust/crates/slophammer-scan
-    - from: rust/crates/slophammer-config
-      allow:
-        - rust/crates/slophammer-core
-        - rust/crates/slophammer-scan
-    - from: rust/crates/slophammer-exec
-      allow:
-        - rust/crates/slophammer-config
-        - rust/crates/slophammer-core
-        - rust/crates/slophammer-scan
-    - from: rust/crates/slophammer-report
-      allow:
-        - rust/crates/slophammer-core
-    - from: rust/crates/slophammer-rust
-      allow:
-        - rust/crates/slophammer-config
-        - rust/crates/slophammer-core
-        - rust/crates/slophammer-scan
-    - from: rust/crates/slophammer-scan
-      allow: []
-    - from: rust/crates/slophammer-core
       allow: []

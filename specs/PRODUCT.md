@@ -110,16 +110,12 @@ publication, users install it from this repository with
 `cargo install --path rust/crates/slophammer-cli --locked`.
 
 The production Cargo release target is one user-facing package:
-`slophammer-rs`. Do not publish internal Rust workspace crates as public crates
-unless there is a deliberate library API to support. Before the first crates.io
-release, refactor the Rust implementation so `cargo package -p slophammer-rs
---locked` succeeds without unpublished internal dependencies.
+`slophammer-rs`. Internal Rust implementation modules are not published as
+separate crates unless there is a deliberate library API to support.
 
-The existing multi-crate Rust release workflow is not the final publish path and
-must not be used for the first crates.io release. Replace it with a CLI-only
-workflow that validates the release tag, runs the Rust quality gate, packages
-`slophammer-rs`, installs the packaged CLI artifact, runs installed CLI smoke
-tests and shared conformance, and publishes only `slophammer-rs`. After
+The Rust release workflow validates the release tag, runs the Rust quality gate,
+packages `slophammer-rs`, installs the packaged CLI artifact, runs installed CLI
+smoke tests and shared conformance, and publishes only `slophammer-rs`. After
 publication, users should install with `cargo install slophammer-rs --locked`.
 See the
 [Rust CLI-only Cargo publish plan](../docs/2026-06-08-rust-cli-only-cargo-publish-plan.md).

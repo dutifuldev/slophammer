@@ -93,10 +93,9 @@ slophammer-rs help
 
 For Rust release work, follow the
 [Rust CLI-only Cargo publish plan](2026-06-08-rust-cli-only-cargo-publish-plan.md).
-Do not use the current multi-crate publish workflow for the first crates.io
-release, and do not publish internal workspace crates just to satisfy Cargo
-dependency resolution. The first Cargo release should publish only the
-user-facing `slophammer-rs` package after the package layout is refactored.
+Do not publish internal implementation modules as separate crates just to
+satisfy Cargo dependency resolution. The Rust release workflow should publish
+only the user-facing `slophammer-rs` package.
 
 Before changing files, inspect the implemented rule catalog for the selected
 checker:
@@ -356,9 +355,9 @@ cargo fmt --check
 cargo check --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace --all-targets
-cargo test --workspace --doc
 cargo llvm-cov --workspace --fail-under-lines 85
-cargo install --path crates/slophammer-cli --locked
+scripts/publish-crate.sh --tag rust/v0.1.0 --dry-run
+scripts/install-packaged-cli.sh
 slophammer-rs dry .. --format json
 slophammer-rs boundaries .. --format json
 slophammer-rs unsafe .. --format json

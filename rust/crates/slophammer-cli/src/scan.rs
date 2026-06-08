@@ -32,15 +32,6 @@ impl Snapshot {
     pub fn has_workflow(&self) -> bool {
         self.files.keys().any(|path| active_workflow_path(path))
     }
-
-    pub fn content_for_paths(&self, wanted: impl Fn(&str) -> bool) -> String {
-        self.files
-            .values()
-            .filter(|file| wanted(&file.path))
-            .map(|file| file.content.as_str())
-            .collect::<Vec<_>>()
-            .join("\n")
-    }
 }
 
 fn active_workflow_path(path: &str) -> bool {

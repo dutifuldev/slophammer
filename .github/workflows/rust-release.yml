@@ -111,14 +111,18 @@ jobs:
           cargo check --workspace
           cargo clippy --workspace --all-targets -- -D warnings
           cargo test --workspace --all-targets
-          cargo test --workspace --doc
           cargo llvm-cov --workspace --fail-under-lines 85
           cargo audit
           cargo mutants --workspace --list
 
+      - name: Verify Cargo package
+        run: scripts/publish-crate.sh --tag "${{ steps.release.outputs.tag }}" --dry-run
+
+      - name: Install packaged CLI artifact
+        run: scripts/install-packaged-cli.sh
+
       - name: Validate installed CLI
         run: |
-          cargo install --path crates/slophammer-cli --locked
           slophammer-rs help
           slophammer-rs rules --format json
           slophammer-rs check ../fixtures/repos/rust-clean --format json
@@ -133,10 +137,7 @@ jobs:
           npm ci --prefix typescript
           node scripts/check-conformance.mjs
 
-      - name: Verify ordered Cargo package sequence
-        run: scripts/publish-crates.sh --tag "${{ steps.release.outputs.tag }}" --dry-run
-
-      - name: Publish crates.io packages
+      - name: Publish crates.io package
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: scripts/publish-crates.sh --tag "${{ steps.release.outputs.tag }}" --publish
+        run: scripts/publish-crate.sh --tag "${{ steps.release.outputs.tag }}" --publish

@@ -1,6 +1,6 @@
+use crate::config::Config;
+use crate::scan::Snapshot;
 use globset::{Glob, GlobSet, GlobSetBuilder};
-use slophammer_config::Config;
-use slophammer_scan::Snapshot;
 
 pub fn rust_files(snapshot: &Snapshot, paths: &[String], excludes: &[String]) -> Vec<String> {
     let exclude_set = globset(excludes);
@@ -22,16 +22,16 @@ pub fn rust_files(snapshot: &Snapshot, paths: &[String], excludes: &[String]) ->
 pub fn configured_rust_files(snapshot: &Snapshot, config: &Config) -> Vec<String> {
     rust_files(
         snapshot,
-        &slophammer_config::rust_targets(config),
-        &slophammer_config::rust_exclude(config),
+        &crate::config::rust_targets(config),
+        &crate::config::rust_exclude(config),
     )
 }
 
 pub fn dry_rust_files(snapshot: &Snapshot, config: &Config) -> Vec<String> {
     rust_files(
         snapshot,
-        &slophammer_config::rust_dry_paths(config),
-        &slophammer_config::rust_dry_exclude(config),
+        &crate::config::rust_dry_paths(config),
+        &crate::config::rust_dry_exclude(config),
     )
 }
 

@@ -335,85 +335,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "slophammer-app"
-version = "0.1.0"
-dependencies = [
- "serde_json",
- "slophammer-config",
- "slophammer-core",
- "slophammer-exec",
- "slophammer-report",
- "slophammer-rust",
- "slophammer-scan",
- "thiserror",
-]
-
-[[package]]
-name = "slophammer-config"
-version = "0.1.0"
-dependencies = [
- "serde",
- "slophammer-core",
- "slophammer-scan",
- "thiserror",
- "yaml_serde",
-]
-
-[[package]]
-name = "slophammer-core"
-version = "0.1.0"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "slophammer-exec"
-version = "0.1.0"
-dependencies = [
- "slophammer-config",
- "slophammer-core",
- "slophammer-scan",
- "thiserror",
-]
-
-[[package]]
-name = "slophammer-report"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "slophammer-core",
- "thiserror",
-]
-
-[[package]]
 name = "slophammer-rs"
 version = "0.1.0"
 dependencies = [
+ "camino",
  "clap",
- "slophammer-app",
-]
-
-[[package]]
-name = "slophammer-rust"
-version = "0.1.0"
-dependencies = [
  "globset",
- "slophammer-config",
- "slophammer-core",
- "slophammer-scan",
+ "ignore",
+ "serde",
+ "serde_json",
  "syn",
  "thiserror",
  "toml_edit",
-]
-
-[[package]]
-name = "slophammer-scan"
-version = "0.1.0"
-dependencies = [
- "camino",
- "ignore",
- "thiserror",
+ "yaml_serde",
 ]
 
 [[package]]

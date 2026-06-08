@@ -9,8 +9,16 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
+camino.workspace = true
 clap.workspace = true
-slophammer-app = { path = "../slophammer-app", version = "0.1.0" }
+globset.workspace = true
+ignore.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+syn.workspace = true
+thiserror.workspace = true
+toml_edit.workspace = true
+yaml_serde.workspace = true
 
 [[bin]]
 name = "slophammer-rs"
