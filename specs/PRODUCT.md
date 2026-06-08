@@ -104,11 +104,29 @@ publishing.
 The Go release dry-run workflow validates `go/vX.Y.Z` tags, runs the Go release
 checks, runs shared conformance, and verifies tagged `go install` on tag push.
 
-The Rust checker is packaged as the `slophammer-rs` Cargo package under
-`rust/crates/slophammer-cli`. Rust release dry-run checks verify package
-metadata, `cargo package`, `cargo install --path ... --locked`, command help,
-rule catalog output, fixture checks from the installed binary, and shared
-conformance before any publish step.
+The Rust checker is intended to publish as the `slophammer-rs` Cargo package
+under `rust/crates/slophammer-cli`. It is not published to crates.io yet. Until
+publication, users install it from this repository with
+`cargo install --path rust/crates/slophammer-cli --locked`.
+
+Rust is a multi-crate Cargo workspace. A crates.io release must publish internal
+crates in dependency order before publishing `slophammer-rs`:
+
+1. `slophammer-core`
+2. `slophammer-scan`
+3. `slophammer-config`
+4. `slophammer-report`
+5. `slophammer-rust`
+6. `slophammer-exec`
+7. `slophammer-app`
+8. `slophammer-rs`
+
+The Rust release dry-run checks source installation, command help, rule catalog
+output, fixture checks from the installed binary, and shared conformance before
+any publish step. A real crates.io release should also verify or automate the
+ordered `cargo package` and `cargo publish` sequence for every Rust workspace
+crate. After publication, users should install with
+`cargo install slophammer-rs --locked`.
 
 ## Implementation Boundary
 

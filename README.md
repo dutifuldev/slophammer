@@ -44,7 +44,8 @@ implementation, and say clearly if no matching implementation exists.
 - Separate user-facing implementations of that product.
 - A released Go implementation named `slophammer-go`.
 - A released npm TypeScript implementation named `slophammer-ts`.
-- A package-ready Rust implementation named `slophammer-rs`.
+- A source-installable Rust implementation named `slophammer-rs`, with
+  crates.io publication pending.
 - Go, TypeScript, and Python project templates with strict local checks.
 - A reference for project structure, testing, errors, reporting, and CI.
 - A source of patterns for agents working in different language ecosystems.
@@ -68,9 +69,9 @@ slophammer-py
 ```
 
 `slophammer-go` is released. `slophammer-ts` is released to npm.
-`slophammer-rs` is implemented and package-ready from the Rust workspace.
-`slophammer-py` is the planned Python command; the current Python work is a
-template, not a checker implementation.
+`slophammer-rs` is implemented and source-installable from the Rust workspace,
+but is not published to crates.io yet. `slophammer-py` is the planned Python
+command; the current Python work is a template, not a checker implementation.
 
 The `slophammer` npm package name is reserved for a future umbrella package or
 default installer. Language implementation packages should keep their
@@ -241,7 +242,8 @@ slophammer-ts rules
 slophammer-ts dry .
 ```
 
-The Rust checker is package-ready from the Rust workspace:
+The Rust checker is available from this source tree while crates.io publication
+is pending:
 
 ```sh
 cargo install --path rust/crates/slophammer-cli --locked
@@ -250,9 +252,17 @@ slophammer-rs rules
 slophammer-rs dry .
 ```
 
+After the Cargo release is published, the intended public install command is:
+
+```sh
+cargo install slophammer-rs --locked
+```
+
 [Required Next Work](docs/2026-05-17-required-next-work.md) records the release
 hardening tasks that were completed for the first Go release. TypeScript remains
-package-checked in CI and is published from the `typescript/` package.
+package-checked in CI and is published from the `typescript/` package. Rust has
+a release dry-run workflow, but crates.io publishing still requires a full
+multi-crate package pass and ordered crate publication.
 
 ## Policy Targets
 
@@ -277,7 +287,7 @@ projects may use stricter thresholds but not weaker ones.
 | ---------- | --------------- | --------------------------------------------------------------- |
 | Go         | `slophammer-go` | Released checker, CLI, tool checks, fixtures, CI                |
 | TypeScript | `slophammer-ts` | Released npm checker, CLI, native DRY, boundaries, fixtures, CI |
-| Rust       | `slophammer-rs` | Package-ready checker, CLI, native DRY, boundaries, unsafe, fixtures, CI |
+| Rust       | `slophammer-rs` | Source-installable checker, CLI, native DRY, boundaries, unsafe, fixtures, CI; crates.io pending |
 | Python     | `slophammer-py` | Template only; checker implementation planned                   |
 
 An implementation can check more than one language. For example,
@@ -347,6 +357,8 @@ The Rust implementation currently provides:
   fixtures
 - CI gates for formatting, Clippy, tests, package install, native commands, and
   shared conformance
+- a release dry-run path, with crates.io publication pending until every Rust
+  workspace crate packages cleanly and is published in dependency order
 
 ## Current Go Quality Surface
 
@@ -383,7 +395,10 @@ useful as a reference implementation:
    CI installs `slophammer-go` into a temporary `GOBIN`, packs and installs
    `slophammer-ts`, checks the public command name, and runs the shared
    conformance script. The Go release dry-run workflow validates release tags
-   and verifies tagged `go install` on release tag pushes.
+   and verifies tagged `go install` on release tag pushes. The Rust release
+   dry-run validates the source-install path and foundational package metadata;
+   the crates.io publish path remains pending until the full multi-crate Cargo
+   package sequence is proven.
 
 ## Shared Rule Set
 

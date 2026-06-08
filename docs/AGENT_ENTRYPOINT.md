@@ -55,7 +55,7 @@ Use this selection model:
 | -------------------- | ------------------ | -------------------------------------------------------------------------------- |
 | Go                   | `slophammer-go`    | Public Go install                                                                |
 | TypeScript           | `slophammer-ts`    | Available from npm and this repo's TypeScript implementation |
-| Rust                 | `slophammer-rs`    | Available from this repo's Rust implementation and ready for Cargo packaging |
+| Rust                 | `slophammer-rs`    | Available from this repo's Rust implementation; crates.io release pending |
 | Python               | `slophammer-py`    | Not implemented yet                                                              |
 
 For a Go target outside this source tree, install the current released checker:
@@ -82,6 +82,13 @@ For Rust, use the source-tree command until a Cargo release is published:
 ```sh
 cd rust
 cargo run -p slophammer-rs -- help
+```
+
+After a crates.io release exists, use the public Cargo install:
+
+```sh
+cargo install slophammer-rs --locked
+slophammer-rs help
 ```
 
 Before changing files, inspect the implemented rule catalog for the selected
