@@ -5,6 +5,19 @@ mod fixtures;
 use fixtures::{fixture, fixture_path};
 
 #[test]
+fn cli_exposes_version() {
+    let output = command()
+        .arg("--version")
+        .output()
+        .expect("run slophammer-rs");
+    assert!(output.status.success());
+    assert_eq!(
+        stdout(&output).trim(),
+        format!("slophammer-rs {}", env!("CARGO_PKG_VERSION"))
+    );
+}
+
+#[test]
 fn cli_checks_clean_fixture() {
     let fixture = fixture("rust-clean");
     let root = fixture_path(&fixture);

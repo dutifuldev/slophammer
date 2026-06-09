@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Rust release tag to publish, for example rust/v0.1.0"
+        description: "Rust release tag to publish, for example rust/v0.1.1"
         required: true
         type: string
 
@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   release:
@@ -126,6 +126,7 @@ jobs:
 
       - name: Validate installed CLI
         run: |
+          slophammer-rs --version
           slophammer-rs help
           slophammer-rs rules --format json
           slophammer-rs check ../fixtures/repos/rust-clean --format json
@@ -144,3 +145,42 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: scripts/publish-crate.sh --tag "${{ steps.release.outputs.tag }}" --publish
+
+      - name: Create GitHub Release
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          tag="${{ steps.release.outputs.tag }}"
+          version="${{ steps.release.outputs.version }}"
+          notes_file="$(mktemp)"
+
+          cat > "$notes_file" <<EOF
+          Published the Slophammer Rust CLI to crates.io.
+
+          Install with:
+
+          \`\`\`sh
+          cargo install slophammer-rs --version $version --locked
+          \`\`\`
+
+          Crate: https://crates.io/crates/slophammer-rs/$version
+          EOF
+
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release edit "$tag" \
+              --title "slophammer-rs v$version" \
+              --notes-file "$notes_file" \
+              --draft=false \
+              --prerelease=false \
+              --latest \
+              --verify-tag
+          else
+            gh release create "$tag" \
+              --title "slophammer-rs v$version" \
+              --notes-file "$notes_file" \
+              --latest \
+              --verify-tag
+          fi

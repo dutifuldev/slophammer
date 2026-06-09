@@ -55,7 +55,7 @@ Use this selection model:
 | -------------------- | ------------------ | -------------------------------------------------------------------------------- |
 | Go                   | `slophammer-go`    | Public Go install                                                                |
 | TypeScript           | `slophammer-ts`    | Available from npm and this repo's TypeScript implementation |
-| Rust                 | `slophammer-rs`    | Available from this repo's Rust implementation; crates.io release pending |
+| Rust                 | `slophammer-rs`    | Available from crates.io and this repo's Rust implementation |
 | Python               | `slophammer-py`    | Not implemented yet                                                              |
 
 For a Go target outside this source tree, install the current released checker:
@@ -77,18 +77,18 @@ matching implementation for the target language, say that clearly and do not
 claim Slophammer passed. You may still apply the documented standards manually,
 but report that the language-specific Slophammer checker could not run.
 
-For Rust, use the source-tree command until a Cargo release is published:
-
-```sh
-cd rust
-cargo run -p slophammer-rs -- help
-```
-
-After a crates.io release exists, use the public Cargo install:
+For Rust targets outside this source tree, install the current released checker:
 
 ```sh
 cargo install slophammer-rs --locked
 slophammer-rs help
+```
+
+For this repository's Rust implementation, use the source-tree command:
+
+```sh
+cd rust
+cargo run -p slophammer-rs -- help
 ```
 
 For Rust release work, follow the
@@ -356,9 +356,10 @@ cargo check --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace --all-targets
 cargo llvm-cov --workspace --fail-under-lines 85
-scripts/publish-crate.sh --tag rust/v0.1.0 --dry-run
+scripts/publish-crate.sh --tag rust/v0.1.1 --dry-run
 scripts/test-packaged-crate.sh
 scripts/install-packaged-cli.sh
+slophammer-rs --version
 slophammer-rs dry .. --format json
 slophammer-rs boundaries .. --format json
 slophammer-rs unsafe .. --format json

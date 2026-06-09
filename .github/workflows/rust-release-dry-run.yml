@@ -60,6 +60,7 @@ jobs:
       - run: scripts/publish-crate.sh --tag "${{ steps.package.outputs.tag }}" --dry-run
       - run: scripts/test-packaged-crate.sh
       - run: scripts/install-packaged-cli.sh
+      - run: slophammer-rs --version
       - run: slophammer-rs help
       - run: slophammer-rs rules --format json
       - run: slophammer-rs check ../fixtures/repos/rust-clean --format json

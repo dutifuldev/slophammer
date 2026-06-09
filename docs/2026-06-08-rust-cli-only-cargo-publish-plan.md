@@ -16,6 +16,7 @@ package. Publishing internal support crates would turn their public types into
 long-term semver contracts before we have a real embedding use case.
 
 This package layout and release path are now implemented in the Rust workspace.
+The first release shipped as `slophammer-rs` on crates.io.
 
 ## Target Shape
 
@@ -43,7 +44,8 @@ inside the published package unless a deliberate library API is added later.
    report APIs as stable libraries by accident.
 
 3. Replace the Rust release workflow. Completed.
-   The release workflow packages and publishes only `slophammer-rs`.
+   The release workflow packages and publishes only `slophammer-rs`, then
+   creates or updates the matching GitHub Release.
 
 4. Replace the publish helper. Completed.
    The publish helper targets only the single CLI package.
@@ -67,6 +69,6 @@ inside the published package unless a deliberate library API is added later.
 - `cargo test` succeeds from Cargo's verified package directory.
 - The published package installs with `cargo install slophammer-rs --locked`.
 - The installed binary passes `help`, `rules`, Rust fixture checks, direct Rust
-  commands, and shared conformance.
+  commands, `--version`, and shared conformance.
 - Internal implementation modules can change without semver promises beyond the
   CLI, config, report, exit-code, and rule-ID contracts.

@@ -44,8 +44,7 @@ implementation, and say clearly if no matching implementation exists.
 - Separate user-facing implementations of that product.
 - A released Go implementation named `slophammer-go`.
 - A released npm TypeScript implementation named `slophammer-ts`.
-- A source-installable Rust implementation named `slophammer-rs`, with
-  crates.io publication pending.
+- A released Cargo implementation named `slophammer-rs`.
 - Go, TypeScript, and Python project templates with strict local checks.
 - A reference for project structure, testing, errors, reporting, and CI.
 - A source of patterns for agents working in different language ecosystems.
@@ -69,9 +68,9 @@ slophammer-py
 ```
 
 `slophammer-go` is released. `slophammer-ts` is released to npm.
-`slophammer-rs` is implemented and source-installable from the Rust workspace,
-but is not published to crates.io yet. `slophammer-py` is the planned Python
-command; the current Python work is a template, not a checker implementation.
+`slophammer-rs` is released to crates.io. `slophammer-py` is the planned
+Python command; the current Python work is a template, not a checker
+implementation.
 
 The `slophammer` npm package name is reserved for a future umbrella package or
 default installer. Language implementation packages should keep their
@@ -242,8 +241,16 @@ slophammer-ts rules
 slophammer-ts dry .
 ```
 
-The Rust checker is available from this source tree while crates.io publication
-is pending:
+The Rust checker is released to crates.io:
+
+```sh
+cargo install slophammer-rs --locked
+slophammer-rs check .
+slophammer-rs rules
+slophammer-rs dry .
+```
+
+For local Rust development, install from the source tree:
 
 ```sh
 cargo install --path rust/crates/slophammer-cli --locked
@@ -252,16 +259,10 @@ slophammer-rs rules
 slophammer-rs dry .
 ```
 
-After the Cargo release is published, the intended public install command is:
-
-```sh
-cargo install slophammer-rs --locked
-```
-
 [Required Next Work](docs/2026-05-17-required-next-work.md) records the release
 hardening tasks that were completed for the first Go release. TypeScript remains
 package-checked in CI and is published from the `typescript/` package. Rust now
-uses a CLI-only Cargo package path: the first crates.io release publishes only
+uses a CLI-only Cargo package path: crates.io releases publish only
 `slophammer-rs`, not internal workspace crates. See the
 [Rust CLI-only Cargo publish plan](docs/2026-06-08-rust-cli-only-cargo-publish-plan.md).
 
@@ -288,7 +289,7 @@ projects may use stricter thresholds but not weaker ones.
 | ---------- | --------------- | --------------------------------------------------------------- |
 | Go         | `slophammer-go` | Released checker, CLI, tool checks, fixtures, CI                |
 | TypeScript | `slophammer-ts` | Released npm checker, CLI, native DRY, boundaries, fixtures, CI |
-| Rust       | `slophammer-rs` | Source-installable checker, CLI, native DRY, boundaries, unsafe, fixtures, CI; crates.io pending |
+| Rust       | `slophammer-rs` | Released Cargo checker, CLI, native DRY, boundaries, unsafe, fixtures, CI |
 | Python     | `slophammer-py` | Template only; checker implementation planned                   |
 
 An implementation can check more than one language. For example,
@@ -398,8 +399,8 @@ useful as a reference implementation:
    conformance script. The Go release dry-run workflow validates release tags
    and verifies tagged `go install` on release tag pushes. Rust release
    workflows package `slophammer-rs`, test the packaged crate, install the
-   packaged artifact, run CLI smoke checks, run shared conformance, and publish
-   only the CLI package.
+   packaged artifact, run CLI smoke checks, run shared conformance, publish
+   only the CLI package, and create the GitHub Release.
 
 ## Shared Rule Set
 
