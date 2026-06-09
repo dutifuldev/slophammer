@@ -13,6 +13,7 @@ use std::process::ExitCode;
 
 #[derive(Parser)]
 #[command(name = "slophammer-rs")]
+#[command(version)]
 #[command(about = "Rust implementation of the Slophammer repository quality checker.")]
 struct Cli {
     #[command(subcommand)]

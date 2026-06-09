@@ -17,7 +17,14 @@ cargo run -p slophammer-rs -- boundaries ..
 cargo run -p slophammer-rs -- unsafe ..
 ```
 
-Install the local package:
+Install the public package:
+
+```sh
+cargo install slophammer-rs --locked
+slophammer-rs check .
+```
+
+Install the local package during source-tree development:
 
 ```sh
 cargo install --path crates/slophammer-cli --locked
@@ -34,9 +41,10 @@ cargo check --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace --all-targets
 cargo llvm-cov --workspace --fail-under-lines 85
-scripts/publish-crate.sh --tag rust/v0.1.0 --dry-run
+scripts/publish-crate.sh --tag rust/v0.1.1 --dry-run
 scripts/test-packaged-crate.sh
 scripts/install-packaged-cli.sh
+slophammer-rs --version
 slophammer-rs dry .. --format json
 slophammer-rs boundaries .. --format json
 slophammer-rs unsafe .. --format json
@@ -48,17 +56,16 @@ slophammer-rs check .. --format json
 
 ## Crates.io Status
 
-`slophammer-rs` is not published to crates.io yet. Until it is published,
-install from this source tree:
-
-```sh
-cargo install --path crates/slophammer-cli --locked
-```
-
-After publication, the intended public install command is:
+`slophammer-rs` is published to crates.io. Install the released checker with:
 
 ```sh
 cargo install slophammer-rs --locked
+```
+
+For local Rust development, install from this source tree:
+
+```sh
+cargo install --path crates/slophammer-cli --locked
 ```
 
 ## Publish Prerequisites
@@ -90,13 +97,13 @@ The crates.io release path is implemented by
 `.github/workflows/rust-release.yml`. It runs for `rust/v*` tag pushes and can
 also be started manually with `workflow_dispatch`.
 
-Before the first release:
+Before a release:
 
 1. Create a crates.io API token with publish access.
 2. Store it as the repository or `crates-io` environment secret named
    `CARGO_REGISTRY_TOKEN`.
 3. Make sure the release commit is on `origin/main`.
-4. Tag the commit with the Rust workspace version, for example `rust/v0.1.0`.
+4. Tag the commit with the Rust workspace version, for example `rust/v0.1.1`.
 
 The workflow:
 
@@ -107,7 +114,8 @@ The workflow:
 5. runs `cargo test` from Cargo's verified package directory,
 6. installs the packaged CLI artifact,
 7. runs installed CLI smoke checks and shared conformance,
-8. publishes only `slophammer-rs`.
+8. publishes only `slophammer-rs`,
+9. creates or updates the GitHub Release for the Rust release tag.
 
 Publishing to crates.io is permanent. The publish helper skips
 `slophammer-rs@<version>` if that version is already visible on crates.io.
