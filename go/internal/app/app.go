@@ -327,75 +327,106 @@ func applyMutationConfig(options *toolchecks.MutationOptions, cfg config.Config)
 	options.Targets = targets
 }
 
+type goToolEnv struct {
+	snapshot        repo.Snapshot
+	options         CheckOptions
+	cfg             config.Config
+	runner          toolchecks.Runner
+	root            string
+	coverageProfile string
+}
+
 func executeGoChecks(ctx context.Context, snapshot repo.Snapshot, checkOptions CheckOptions, cfg config.Config, runner toolchecks.Runner) []rules.Finding {
-	var findings []rules.Finding
-	root := commandRoot(checkOptions.Root)
 	coverageProfile := checkOptions.CoverageProfile
 	if coverageProfile == "" {
 		coverageProfile = cfg.GoCoverageProfile()
 	}
-	if ruleSelected(checkOptions.OnlyRuleIDs, rules.GoDryRequiredRuleID) && cfg.Go.DRYMaxCandidatesSet {
-		paths, exclude := cfg.GoDRYScope()
-		options := toolchecks.DryOptions{
-			Root:                root,
-			MaximumCandidates:   cfg.Go.DRYMaxCandidates,
-			MaximumSet:          true,
-			Paths:               append([]string(nil), paths...),
-			Exclude:             append([]string(nil), exclude...),
-			StructuralEnabled:   cfg.Go.DRY.Structural.Enabled,
-			StructuralSet:       cfg.Go.DRY.Structural.EnabledSet,
-			StructuralThreshold: cfg.Go.DRY.Structural.Threshold,
-			StructuralMinLines:  cfg.Go.DRY.Structural.MinLines,
-			StructuralMinNodes:  cfg.Go.DRY.Structural.MinNodes,
-			CopiedBlockEnabled:  cfg.Go.DRY.CopiedBlocks.Enabled,
-			CopiedBlockSet:      cfg.Go.DRY.CopiedBlocks.EnabledSet,
-			CopiedBlockTokens:   cfg.Go.DRY.CopiedBlocks.MinTokens,
-		}
-		findings = appendToolFinding(findings, rules.GoDryRequiredRuleID, cfg, "DRY check exceeded the configured candidate budget", func(out, errOut io.Writer) int {
-			return checkDryInModules(ctx, snapshot, options, out, errOut, runner)
-		})
+	env := goToolEnv{
+		snapshot:        snapshot,
+		options:         checkOptions,
+		cfg:             cfg,
+		runner:          runner,
+		root:            commandRoot(checkOptions.Root),
+		coverageProfile: coverageProfile,
 	}
-	if ruleSelected(checkOptions.OnlyRuleIDs, rules.GoCoverageRequiredRuleID) && cfg.Go.CoverageThreshold > 0 {
-		targets, exclude := cfg.GoScope()
+	var findings []rules.Finding
+	findings = append(findings, executeGoDryCheck(ctx, env)...)
+	findings = append(findings, executeGoMetricChecks(ctx, env)...)
+	findings = append(findings, executeGoMutationCheck(ctx, env)...)
+	return findings
+}
+
+func executeGoDryCheck(ctx context.Context, env goToolEnv) []rules.Finding {
+	if !ruleSelected(env.options.OnlyRuleIDs, rules.GoDryRequiredRuleID) || !env.cfg.Go.DRYMaxCandidatesSet {
+		return nil
+	}
+	paths, exclude := env.cfg.GoDRYScope()
+	options := toolchecks.DryOptions{
+		Root:                env.root,
+		MaximumCandidates:   env.cfg.Go.DRYMaxCandidates,
+		MaximumSet:          true,
+		Paths:               append([]string(nil), paths...),
+		Exclude:             append([]string(nil), exclude...),
+		StructuralEnabled:   env.cfg.Go.DRY.Structural.Enabled,
+		StructuralSet:       env.cfg.Go.DRY.Structural.EnabledSet,
+		StructuralThreshold: env.cfg.Go.DRY.Structural.Threshold,
+		StructuralMinLines:  env.cfg.Go.DRY.Structural.MinLines,
+		StructuralMinNodes:  env.cfg.Go.DRY.Structural.MinNodes,
+		CopiedBlockEnabled:  env.cfg.Go.DRY.CopiedBlocks.Enabled,
+		CopiedBlockSet:      env.cfg.Go.DRY.CopiedBlocks.EnabledSet,
+		CopiedBlockTokens:   env.cfg.Go.DRY.CopiedBlocks.MinTokens,
+	}
+	return appendToolFinding(nil, rules.GoDryRequiredRuleID, env.cfg, "DRY check exceeded the configured candidate budget", func(out, errOut io.Writer) int {
+		return checkDryInModules(ctx, env.snapshot, options, out, errOut, env.runner)
+	})
+}
+
+func executeGoMetricChecks(ctx context.Context, env goToolEnv) []rules.Finding {
+	targets, exclude := env.cfg.GoScope()
+	var findings []rules.Finding
+	if ruleSelected(env.options.OnlyRuleIDs, rules.GoCoverageRequiredRuleID) && env.cfg.Go.CoverageThreshold > 0 {
 		options := toolchecks.CoverageOptions{
-			Root:            root,
-			Threshold:       cfg.Go.CoverageThreshold,
+			Root:            env.root,
+			Threshold:       env.cfg.Go.CoverageThreshold,
 			ThresholdSet:    true,
-			CoverageProfile: coverageProfile,
+			CoverageProfile: env.coverageProfile,
 			Targets:         append([]string(nil), targets...),
 			Exclude:         append([]string(nil), exclude...),
 		}
-		findings = appendToolFinding(findings, rules.GoCoverageRequiredRuleID, cfg, "Go coverage is below the configured threshold", func(out, errOut io.Writer) int {
-			return checkCoverageInModules(ctx, snapshot, options, out, errOut, runner)
+		findings = appendToolFinding(findings, rules.GoCoverageRequiredRuleID, env.cfg, "Go coverage is below the configured threshold", func(out, errOut io.Writer) int {
+			return checkCoverageInModules(ctx, env.snapshot, options, out, errOut, env.runner)
 		})
 	}
-	if ruleSelected(checkOptions.OnlyRuleIDs, rules.GoCRAPRequiredRuleID) && cfg.Go.CRAPMaxScore > 0 {
-		targets, exclude := cfg.GoScope()
+	if ruleSelected(env.options.OnlyRuleIDs, rules.GoCRAPRequiredRuleID) && env.cfg.Go.CRAPMaxScore > 0 {
 		options := toolchecks.CRAPOptions{
-			Root:            root,
-			MaximumScore:    cfg.Go.CRAPMaxScore,
+			Root:            env.root,
+			MaximumScore:    env.cfg.Go.CRAPMaxScore,
 			MaximumSet:      true,
-			CoverageProfile: coverageProfile,
+			CoverageProfile: env.coverageProfile,
 			Targets:         append([]string(nil), targets...),
 			Exclude:         append([]string(nil), exclude...),
 		}
-		findings = appendToolFinding(findings, rules.GoCRAPRequiredRuleID, cfg, "crap4go found functions above the configured score", func(out, errOut io.Writer) int {
-			return checkCRAPInModules(ctx, snapshot, options, out, errOut, runner)
-		})
-	}
-	targets, exclude := cfg.GoMutationScope()
-	if ruleSelected(checkOptions.OnlyRuleIDs, rules.GoMutationRequiredRuleID) && len(targets) > 0 {
-		options := toolchecks.MutationOptions{
-			Root:    root,
-			Targets: targets,
-			Exclude: exclude,
-			Scan:    true,
-		}
-		findings = appendToolFinding(findings, rules.GoMutationRequiredRuleID, cfg, "mutate4go failed for at least one configured target", func(out, errOut io.Writer) int {
-			return checkMutationInModules(ctx, snapshot, options, out, errOut, runner)
+		findings = appendToolFinding(findings, rules.GoCRAPRequiredRuleID, env.cfg, "crap4go found functions above the configured score", func(out, errOut io.Writer) int {
+			return checkCRAPInModules(ctx, env.snapshot, options, out, errOut, env.runner)
 		})
 	}
 	return findings
+}
+
+func executeGoMutationCheck(ctx context.Context, env goToolEnv) []rules.Finding {
+	targets, exclude := env.cfg.GoMutationScope()
+	if !ruleSelected(env.options.OnlyRuleIDs, rules.GoMutationRequiredRuleID) || len(targets) == 0 {
+		return nil
+	}
+	options := toolchecks.MutationOptions{
+		Root:    env.root,
+		Targets: targets,
+		Exclude: exclude,
+		Scan:    true,
+	}
+	return appendToolFinding(nil, rules.GoMutationRequiredRuleID, env.cfg, "mutate4go failed for at least one configured target", func(out, errOut io.Writer) int {
+		return checkMutationInModules(ctx, env.snapshot, options, out, errOut, env.runner)
+	})
 }
 
 func resolveGoMutationTargets(snapshot repo.Snapshot, options toolchecks.MutationOptions) (toolchecks.MutationOptions, error) {

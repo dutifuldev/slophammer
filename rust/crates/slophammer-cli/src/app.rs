@@ -266,7 +266,11 @@ mod tests {
             only_rule_ids: vec!["missing.rule".to_owned(), "other.rule".to_owned()],
         });
         assert_eq!(result.code, EXIT_ERROR);
-        assert!(result.stderr.contains("unknown rule: missing.rule, other.rule"));
+        assert!(
+            result
+                .stderr
+                .contains("unknown rule: missing.rule, other.rule")
+        );
     }
 
     #[test]

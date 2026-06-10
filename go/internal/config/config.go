@@ -377,26 +377,37 @@ func validateTypeScriptKeys(node *yaml.Node) error {
 		node,
 		"typescript",
 		set("coverage", "complexity", "dry", "mutation", "dependency_boundaries"),
+		validateTypeScriptSection,
+	)
+}
+
+func validateTypeScriptSection(key string, value *yaml.Node) error {
+	switch key {
+	case "coverage":
+		return validateMappingKeys(value, "typescript.coverage", set("threshold", "paths", "exclude"), nil)
+	case "complexity":
+		return validateMappingKeys(value, "typescript.complexity", set("max"), nil)
+	case "mutation":
+		return validateMappingKeys(value, "typescript.mutation", set("targets"), nil)
+	case "dry":
+		return validateCopiedBlockDryKeys(value, "typescript.dry")
+	case "dependency_boundaries":
+		return validateDependencyBoundaryKeys(value, "typescript.dependency_boundaries")
+	default:
+		return nil
+	}
+}
+
+func validateCopiedBlockDryKeys(node *yaml.Node, field string) error {
+	return validateMappingKeys(
+		node,
+		field,
+		set("max_findings", "paths", "exclude", "copied_blocks"),
 		func(key string, value *yaml.Node) error {
-			switch key {
-			case "coverage":
-				return validateMappingKeys(value, "typescript.coverage", set("threshold", "paths", "exclude"), nil)
-			case "complexity":
-				return validateMappingKeys(value, "typescript.complexity", set("max"), nil)
-			case "mutation":
-				return validateMappingKeys(value, "typescript.mutation", set("targets"), nil)
-			case "dry":
-				return validateMappingKeys(value, "typescript.dry", set("max_findings", "paths", "exclude", "copied_blocks"), func(key string, value *yaml.Node) error {
-					if key == "copied_blocks" {
-						return validateMappingKeys(value, "typescript.dry.copied_blocks", set("enabled", "min_tokens"), nil)
-					}
-					return nil
-				})
-			case "dependency_boundaries":
-				return validateDependencyBoundaryKeys(value, "typescript.dependency_boundaries")
-			default:
-				return nil
+			if key == "copied_blocks" {
+				return validateMappingKeys(value, field+".copied_blocks", set("enabled", "min_tokens"), nil)
 			}
+			return nil
 		},
 	)
 }
@@ -422,7 +433,7 @@ func validateRustKeys(node *yaml.Node) error {
 			case "complexity":
 				return validateMappingKeys(value, "rust.complexity", set("cognitive_max"), nil)
 			case "dry":
-				return validateRustDryKeys(value)
+				return validateCopiedBlockDryKeys(value, "rust.dry")
 			case "unsafe":
 				return validateRustUnsafeKeys(value)
 			case "mutation":
@@ -432,20 +443,6 @@ func validateRustKeys(node *yaml.Node) error {
 			default:
 				return nil
 			}
-		},
-	)
-}
-
-func validateRustDryKeys(node *yaml.Node) error {
-	return validateMappingKeys(
-		node,
-		"rust.dry",
-		set("max_findings", "paths", "exclude", "copied_blocks"),
-		func(key string, value *yaml.Node) error {
-			if key == "copied_blocks" {
-				return validateMappingKeys(value, "rust.dry.copied_blocks", set("enabled", "min_tokens"), nil)
-			}
-			return nil
 		},
 	)
 }

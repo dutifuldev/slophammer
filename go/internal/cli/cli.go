@@ -190,13 +190,7 @@ func parseCheckArgs(args []string, errOut io.Writer) (app.CheckOptions, bool) {
 func parseCheckArg(options *app.CheckOptions, args []string, index int, errOut io.Writer) (int, bool) {
 	switch args[index] {
 	case "--format":
-		value, ok := nextArg(args, index)
-		if !ok {
-			_, _ = fmt.Fprintln(errOut, "--format requires a value")
-			return 0, false
-		}
-		options.Format = value
-		return 1, true
+		return parseCheckFormat(options, args, index, errOut)
 	case "--json":
 		options.Format = "json"
 		return 0, true
@@ -204,22 +198,40 @@ func parseCheckArg(options *app.CheckOptions, args []string, index int, errOut i
 		options.Execute = true
 		return 0, true
 	case "--coverage-profile":
-		value, ok := parseFileFlag(args, index, "--coverage-profile", errOut)
-		if !ok {
-			return 0, false
-		}
-		options.CoverageProfile = value
-		return 1, true
+		return parseCheckCoverageProfile(options, args, index, errOut)
 	case "--only":
-		ruleIDs, ok := parseOnlyRuleIDs(args, index, errOut)
-		if !ok {
-			return 0, false
-		}
-		options.OnlyRuleIDs = append(options.OnlyRuleIDs, ruleIDs...)
-		return 1, true
+		return parseCheckOnly(options, args, index, errOut)
 	default:
 		return 0, parseCheckPath(options, args[index], errOut)
 	}
+}
+
+func parseCheckFormat(options *app.CheckOptions, args []string, index int, errOut io.Writer) (int, bool) {
+	value, ok := nextArg(args, index)
+	if !ok {
+		_, _ = fmt.Fprintln(errOut, "--format requires a value")
+		return 0, false
+	}
+	options.Format = value
+	return 1, true
+}
+
+func parseCheckCoverageProfile(options *app.CheckOptions, args []string, index int, errOut io.Writer) (int, bool) {
+	value, ok := parseFileFlag(args, index, "--coverage-profile", errOut)
+	if !ok {
+		return 0, false
+	}
+	options.CoverageProfile = value
+	return 1, true
+}
+
+func parseCheckOnly(options *app.CheckOptions, args []string, index int, errOut io.Writer) (int, bool) {
+	ruleIDs, ok := parseOnlyRuleIDs(args, index, errOut)
+	if !ok {
+		return 0, false
+	}
+	options.OnlyRuleIDs = append(options.OnlyRuleIDs, ruleIDs...)
+	return 1, true
 }
 
 func parseOnlyRuleIDs(args []string, index int, errOut io.Writer) ([]string, bool) {
