@@ -17,6 +17,7 @@ for turning an existing repo into one with enforceable quality gates.
 - Keep business rules independent from IO, frameworks, databases, queues, clocks, and network clients.
 - Add or update the nearest tests when changing behavior.
 - Run the relevant formatter, linter, type checker, and test command before finishing a change.
+- Run `make check` (or the per-language target such as `make check-go`) from the repo root to run the same gates CI runs.
 
 ## TypeScript
 
