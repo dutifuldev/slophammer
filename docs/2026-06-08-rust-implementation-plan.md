@@ -2,6 +2,7 @@
 title: Rust Implementation Plan
 author: Bob <dutifulbob@gmail.com>
 date: 2026-06-08
+status: completed
 ---
 
 # Rust Implementation Plan

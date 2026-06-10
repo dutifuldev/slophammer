@@ -11,6 +11,10 @@ config fails the check with exit code `2`.
 Config keys are strict. Unknown root, rule, language, DRY, copied-block, or
 dependency-boundary keys fail instead of being ignored.
 
+The Go and TypeScript sections use flat keys while the Rust section uses
+nested keys. The nested shape is the long-term target; see the
+[Config Dialect Decision](../docs/2026-06-10-config-dialect-decision.md).
+
 ## Shape
 
 ```yaml

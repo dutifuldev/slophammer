@@ -2,6 +2,7 @@
 title: Release Hardening Roadmap
 author: Bob <dutifulbob@gmail.com>
 date: 2026-05-17
+status: completed
 ---
 
 # Release Hardening Roadmap

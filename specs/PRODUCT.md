@@ -51,15 +51,24 @@ with `--format json` and `--format sarif`.
 the same report model as static findings.
 
 `--only <rule-id>` evaluates a focused rule without requiring every other rule
-to pass first. Implementations support it when focused adoption checks are part
-of their command surface.
+to pass first. The flag repeats and also accepts comma-separated rule IDs.
+Unknown rule IDs are command errors. All implementations support it.
+
+Implementations may add flags when a check needs extra inputs.
+`slophammer-go check` accepts `--coverage-profile <file>` to reuse an existing
+Go coverage profile during `--execute` runs.
 
 Direct language commands may exist for checks that Slophammer owns natively.
-For example, `slophammer-ts boundaries <path>` runs the TypeScript dependency
-boundary rule directly while preserving the normal finding and exit-code model.
-`slophammer-rs dry <path>`, `slophammer-rs boundaries <path>`, and
-`slophammer-rs unsafe <path>` expose Rust DRY, dependency-boundary, and unsafe
-policy checks directly.
+All direct commands preserve the normal finding and exit-code model:
+
+- `slophammer-go dry <path>`, `slophammer-go coverage <path>`,
+  `slophammer-go crap <path>`, and `slophammer-go mutate <path> [--scan]` run
+  the Go DRY, coverage, CRAP, and mutation checks directly.
+- `slophammer-ts dry <path>` and `slophammer-ts boundaries <path>` run the
+  TypeScript DRY and dependency boundary rules directly.
+- `slophammer-rs dry <path>`, `slophammer-rs boundaries <path>`, and
+  `slophammer-rs unsafe <path>` expose Rust DRY, dependency-boundary, and
+  unsafe policy checks directly.
 
 ## Explain
 
@@ -104,10 +113,11 @@ publishing.
 The Go release dry-run workflow validates `go/vX.Y.Z` tags, runs the Go release
 checks, runs shared conformance, and verifies tagged `go install` on tag push.
 
-The Rust checker is intended to publish as the `slophammer-rs` Cargo package
-under `rust/crates/slophammer-cli`. It is not published to crates.io yet. Until
-publication, users install it from this repository with
-`cargo install --path rust/crates/slophammer-cli --locked`.
+The Rust checker is released to crates.io as the `slophammer-rs` Cargo package
+built from `rust/crates/slophammer-cli`. Users install a release with
+`cargo install slophammer-rs --locked`. For local development, install from
+the source tree with `cargo install --path rust/crates/slophammer-cli
+--locked`.
 
 The production Cargo release target is one user-facing package:
 `slophammer-rs`. Internal Rust implementation modules are not published as
@@ -116,8 +126,7 @@ separate crates unless there is a deliberate library API to support.
 The Rust release workflow validates the release tag, runs the Rust quality gate,
 packages `slophammer-rs`, runs package tests from Cargo's verified package
 directory, installs the packaged CLI artifact, runs installed CLI smoke tests
-and shared conformance, and publishes only `slophammer-rs`. After publication,
-users should install with `cargo install slophammer-rs --locked`. See the
+and shared conformance, and publishes only `slophammer-rs`. See the
 [Rust CLI-only Cargo publish plan](../docs/2026-06-08-rust-cli-only-cargo-publish-plan.md).
 
 ## Implementation Boundary

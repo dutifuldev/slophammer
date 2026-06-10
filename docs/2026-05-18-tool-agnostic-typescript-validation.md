@@ -2,6 +2,7 @@
 title: Tool-Agnostic TypeScript Validation
 author: Bob <dutifulbob@gmail.com>
 date: 2026-05-18
+status: completed
 ---
 
 # Tool-Agnostic TypeScript Validation

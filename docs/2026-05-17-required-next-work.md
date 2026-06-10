@@ -2,6 +2,7 @@
 title: Required Next Work
 author: Bob <dutifulbob@gmail.com>
 date: 2026-05-17
+status: completed
 ---
 
 # Required Next Work
