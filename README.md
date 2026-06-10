@@ -396,11 +396,13 @@ useful as a reference implementation:
 7. Release checks exercise installed artifacts.
    CI installs `slophammer-go` into a temporary `GOBIN`, packs and installs
    `slophammer-ts`, checks the public command name, and runs the shared
-   conformance script. The Go release dry-run workflow validates release tags
-   and verifies tagged `go install` on release tag pushes. Rust release
-   workflows package `slophammer-rs`, test the packaged crate, install the
-   packaged artifact, run CLI smoke checks, run shared conformance, publish
-   only the CLI package, and create the GitHub Release.
+   conformance script. The Go release workflow validates release tags,
+   verifies tagged `go install` on release tag pushes, and creates the GitHub
+   Release. The TypeScript release workflow publishes to npm and creates the
+   GitHub Release. Rust release workflows package `slophammer-rs`, test the
+   packaged crate, install the packaged artifact, run CLI smoke checks, run
+   shared conformance, publish only the CLI package, and create the GitHub
+   Release.
 
 ## Shared Rule Set
 
