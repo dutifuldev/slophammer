@@ -6,6 +6,7 @@ import (
 	"io"
 	"math"
 	"strconv"
+	"strings"
 
 	"github.com/dutifuldev/slophammer/go/internal/app"
 	"github.com/dutifuldev/slophammer/go/internal/toolchecks"
@@ -180,7 +181,7 @@ func parseCheckArgs(args []string, errOut io.Writer) (app.CheckOptions, bool) {
 		i += advance
 	}
 	if options.Root == "" {
-		_, _ = fmt.Fprintln(errOut, "usage: slophammer-go check <path> [--format text|json|sarif] [--execute] [--coverage-profile file]")
+		_, _ = fmt.Fprintln(errOut, "usage: slophammer-go check <path> [--format text|json|sarif] [--execute] [--only rule-id] [--coverage-profile file]")
 		return app.CheckOptions{}, false
 	}
 	return options, true
@@ -209,9 +210,36 @@ func parseCheckArg(options *app.CheckOptions, args []string, index int, errOut i
 		}
 		options.CoverageProfile = value
 		return 1, true
+	case "--only":
+		ruleIDs, ok := parseOnlyRuleIDs(args, index, errOut)
+		if !ok {
+			return 0, false
+		}
+		options.OnlyRuleIDs = append(options.OnlyRuleIDs, ruleIDs...)
+		return 1, true
 	default:
 		return 0, parseCheckPath(options, args[index], errOut)
 	}
+}
+
+func parseOnlyRuleIDs(args []string, index int, errOut io.Writer) ([]string, bool) {
+	value, ok := nextArg(args, index)
+	if !ok {
+		_, _ = fmt.Fprintln(errOut, "--only requires a rule id")
+		return nil, false
+	}
+	var ruleIDs []string
+	for _, part := range strings.Split(value, ",") {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			ruleIDs = append(ruleIDs, trimmed)
+		}
+	}
+	if len(ruleIDs) == 0 {
+		_, _ = fmt.Fprintln(errOut, "--only requires a rule id")
+		return nil, false
+	}
+	return ruleIDs, true
 }
 
 func parseCheckPath(options *app.CheckOptions, arg string, errOut io.Writer) bool {
@@ -457,7 +485,7 @@ func parseSinglePathOption(currentRoot string, arg string, command string, errOu
 
 func printUsage(out io.Writer) {
 	_, _ = fmt.Fprintln(out, "usage:")
-	_, _ = fmt.Fprintln(out, "  slophammer-go check <path> [--format text|json|sarif] [--execute] [--coverage-profile file]")
+	_, _ = fmt.Fprintln(out, "  slophammer-go check <path> [--format text|json|sarif] [--execute] [--only rule-id] [--coverage-profile file]")
 	_, _ = fmt.Fprintln(out, "  slophammer-go explain <rule-id>")
 	_, _ = fmt.Fprintln(out, "  slophammer-go rules [--format text|json]")
 	_, _ = fmt.Fprintln(out, "  slophammer-go dry [path] [--max-candidates n] [--show-report] [--format json|text]")

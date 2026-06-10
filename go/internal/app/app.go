@@ -29,6 +29,7 @@ type CheckOptions struct {
 	Format          string
 	Execute         bool
 	CoverageProfile string
+	OnlyRuleIDs     []string
 }
 
 type RulesOptions struct {
@@ -40,6 +41,10 @@ func Check(ctx context.Context, options CheckOptions, out io.Writer, errOut io.W
 }
 
 func check(ctx context.Context, options CheckOptions, out io.Writer, errOut io.Writer, runner toolchecks.Runner) int {
+	if err := validateOnlyRuleIDs(options.OnlyRuleIDs); err != nil {
+		_, _ = fmt.Fprintf(errOut, "check failed: %v\n", err)
+		return ExitError
+	}
 	snapshot, err := scan.Repo(options.Root)
 	if err != nil {
 		_, _ = fmt.Fprintf(errOut, "scan failed: %v\n", err)
@@ -50,10 +55,12 @@ func check(ctx context.Context, options CheckOptions, out io.Writer, errOut io.W
 		_, _ = fmt.Fprintf(errOut, "config failed: %v\n", err)
 		return ExitError
 	}
-	result := rules.RunWithConfig(ctx, snapshot, rules.DefaultRules(), cfg)
-	if options.Execute {
+	ruleSet := filterRuleSet(rules.DefaultRules(), options.OnlyRuleIDs)
+	result := rules.RunWithConfig(ctx, snapshot, ruleSet, cfg)
+	if options.Execute && shouldExecuteGoChecks(options.OnlyRuleIDs) {
 		findings := append([]rules.Finding(nil), result.Findings...)
-		findings = append(findings, executeGoChecks(ctx, snapshot, options, cfg, runner)...)
+		executed := executeGoChecks(ctx, snapshot, options, cfg, runner)
+		findings = append(findings, filterFindings(executed, options.OnlyRuleIDs)...)
 		result = rules.NewReport(findings)
 	}
 	if err := writeReport(out, options.Format, result); err != nil {
@@ -64,6 +71,81 @@ func check(ctx context.Context, options CheckOptions, out io.Writer, errOut io.W
 		return ExitOK
 	}
 	return ExitFindings
+}
+
+func validateOnlyRuleIDs(onlyRuleIDs []string) error {
+	if len(onlyRuleIDs) == 0 {
+		return nil
+	}
+	known := make(map[string]bool)
+	for _, definition := range rules.DefaultDefinitions() {
+		known[definition.ID] = true
+	}
+	var unknown []string
+	for _, ruleID := range onlyRuleIDs {
+		if !known[ruleID] {
+			unknown = append(unknown, ruleID)
+		}
+	}
+	if len(unknown) > 0 {
+		return fmt.Errorf("unknown rule: %s", strings.Join(unknown, ", "))
+	}
+	return nil
+}
+
+func ruleIDSet(ruleIDs []string) map[string]bool {
+	wanted := make(map[string]bool, len(ruleIDs))
+	for _, ruleID := range ruleIDs {
+		wanted[ruleID] = true
+	}
+	return wanted
+}
+
+func filterRuleSet(ruleSet []rules.Rule, onlyRuleIDs []string) []rules.Rule {
+	if len(onlyRuleIDs) == 0 {
+		return ruleSet
+	}
+	wanted := ruleIDSet(onlyRuleIDs)
+	filtered := make([]rules.Rule, 0, len(ruleSet))
+	for _, rule := range ruleSet {
+		if wanted[rule.Metadata().ID] {
+			filtered = append(filtered, rule)
+		}
+	}
+	return filtered
+}
+
+func filterFindings(findings []rules.Finding, onlyRuleIDs []string) []rules.Finding {
+	if len(onlyRuleIDs) == 0 {
+		return findings
+	}
+	wanted := ruleIDSet(onlyRuleIDs)
+	filtered := make([]rules.Finding, 0, len(findings))
+	for _, finding := range findings {
+		if wanted[finding.RuleID] {
+			filtered = append(filtered, finding)
+		}
+	}
+	return filtered
+}
+
+var executableGoRuleIDs = map[string]bool{
+	rules.GoDryRequiredRuleID:      true,
+	rules.GoCoverageRequiredRuleID: true,
+	rules.GoCRAPRequiredRuleID:     true,
+	rules.GoMutationRequiredRuleID: true,
+}
+
+func shouldExecuteGoChecks(onlyRuleIDs []string) bool {
+	if len(onlyRuleIDs) == 0 {
+		return true
+	}
+	for _, ruleID := range onlyRuleIDs {
+		if executableGoRuleIDs[ruleID] {
+			return true
+		}
+	}
+	return false
 }
 
 func Explain(ruleID string, out io.Writer, errOut io.Writer) int {

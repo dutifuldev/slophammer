@@ -78,6 +78,51 @@ func TestCheckReturnsFindingsForMissingFiles(t *testing.T) {
 	}
 }
 
+func TestCheckOnlyFiltersFindings(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	options := CheckOptions{Root: t.TempDir(), Format: "json", OnlyRuleIDs: []string{"repo.readme-required"}}
+	code := Check(context.Background(), options, &out, &errOut)
+
+	if code != ExitFindings {
+		t.Fatalf("code = %d, want %d; stderr=%q", code, ExitFindings, errOut.String())
+	}
+	if !strings.Contains(out.String(), "repo.readme-required") {
+		t.Fatalf("json output = %q", out.String())
+	}
+	if strings.Contains(out.String(), "repo.agents-required") {
+		t.Fatalf("json output should not include filtered rules: %q", out.String())
+	}
+}
+
+func TestCheckOnlyPassesWhenFocusedRuleIsClean(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "README.md", "# Test\n")
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	options := CheckOptions{Root: root, Format: "json", OnlyRuleIDs: []string{"repo.readme-required"}}
+	code := Check(context.Background(), options, &out, &errOut)
+
+	if code != ExitOK {
+		t.Fatalf("code = %d, want %d; stderr=%q", code, ExitOK, errOut.String())
+	}
+}
+
+func TestCheckRejectsUnknownOnlyRule(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	options := CheckOptions{Root: t.TempDir(), Format: "json", OnlyRuleIDs: []string{"repo.not-a-rule"}}
+	code := Check(context.Background(), options, &out, &errOut)
+
+	if code != ExitError {
+		t.Fatalf("code = %d, want %d", code, ExitError)
+	}
+	if !strings.Contains(errOut.String(), "unknown rule: repo.not-a-rule") {
+		t.Fatalf("stderr = %q", errOut.String())
+	}
+}
+
 func TestCheckRejectsUnknownFormat(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer
