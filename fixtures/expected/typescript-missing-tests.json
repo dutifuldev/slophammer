@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "ts.test-required",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "TypeScript projects must declare tests in CI or scripts"
+    }
+  ]
+}

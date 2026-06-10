@@ -1,0 +1,13 @@
+name: CI
+on: [push]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: npx prettier --check .
+      - run: npx eslint .
+      - run: npx tsc --noEmit
+      - run: npx vitest run
+      - run: npx vitest run --coverage
+      - run: npx slophammer-ts dry .
+      - run: npx stryker run
