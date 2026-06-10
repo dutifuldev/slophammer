@@ -15,53 +15,18 @@ jobs:
           node-version: "22"
 
       - name: Check markdown links to local files
+        run: node scripts/check-doc-links.mjs
+      - name: Check fixture contract completeness
         run: |
-          test -f README.md
-          test -f LICENSE
-          test -f AGENTS.md
-          test -f slophammer.yml
-          test -f scripts/check-conformance.mjs
-          test -f .github/workflows/go-release-dry-run.yml
-          test -f .github/workflows/typescript-release.yml
-          test -f .github/workflows/rust-release-dry-run.yml
-          test -f .github/workflows/rust-release.yml
-          test -f docs/2026-05-12-guardrails.md
-          test -f docs/2026-05-16-typescript-implementation.md
-          test -f docs/2026-05-17-release-hardening-roadmap.md
-          test -f docs/2026-05-17-required-next-work.md
-          test -f docs/2026-06-08-rust-implementation-plan.md
-          test -f specs/PRODUCT.md
-          test -f specs/RULES.md
-          test -f specs/CONFIG.md
-          test -f specs/REPORT_FORMAT.md
-          test -f specs/EXIT_CODES.md
-          test -f specs/rules.json
-          test -f fixtures/repos/clean/README.md
-          test -f fixtures/repos/go-clean/README.md
-          test -f fixtures/repos/go-bad-dependency/slophammer.yml
-          test -f fixtures/expected/clean.json
-          test -f fixtures/expected/go-clean.json
-          test -f fixtures/expected/go-bad-dependency.json
-          test -f fixtures/repos/typescript-clean/README.md
-          test -f fixtures/expected/typescript-clean.json
-          test -f fixtures/repos/adoption-before/SLOPHAMMER_REMEDIATION.md
-          test -f fixtures/expected/adoption-before.json
-          test -f fixtures/repos/adoption-after/SLOPHAMMER_REMEDIATION.md
-          test -f fixtures/expected/adoption-after.json
-          test -f rust/Cargo.toml
+          for fixture in fixtures/expected/*.json; do
+            test -d "fixtures/repos/$(basename "$fixture" .json)"
+          done
+      - name: Check Rust packaging shape
+        run: |
           test -f rust/Cargo.lock
-          test -f rust/scripts/publish-crate.sh
-          test -f rust/scripts/install-packaged-cli.sh
-          test -f rust/scripts/test-packaged-crate.sh
           test -f rust/crates/slophammer-cli/Cargo.toml
-          test -f rust/crates/slophammer-cli/src/main.rs
-          test -f rust/crates/slophammer-cli/tests/cli.rs
           test ! -d rust/crates/slophammer-core
           test ! -d rust/crates/slophammer-rust
-          test -f fixtures/repos/rust-clean/Cargo.toml
-          test -f fixtures/expected/rust-clean.json
-          test -f fixtures/repos/rust-bad-dependency/slophammer.yml
-          test -f fixtures/expected/rust-bad-dependency.json
       - run: npx -y @simpledoc/simpledoc check
 
   go-template:
