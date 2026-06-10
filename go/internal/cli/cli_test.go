@@ -263,6 +263,32 @@ func TestRunCheckRejectsMissingFormatValue(t *testing.T) {
 	assertCLIError(t, []string{"check", ".", "--format"}, "--format requires a value")
 }
 
+func TestParseCheckArgsAllowsOnly(t *testing.T) {
+	var errOut bytes.Buffer
+	options, ok := parseCheckArgs([]string{"/repo", "--only", "repo.readme-required", "--only", "repo.ci-required, repo.agents-required"}, &errOut)
+
+	if !ok {
+		t.Fatalf("ok = false; stderr=%q", errOut.String())
+	}
+	want := []string{"repo.readme-required", "repo.ci-required", "repo.agents-required"}
+	if len(options.OnlyRuleIDs) != len(want) {
+		t.Fatalf("OnlyRuleIDs = %#v, want %#v", options.OnlyRuleIDs, want)
+	}
+	for i, ruleID := range want {
+		if options.OnlyRuleIDs[i] != ruleID {
+			t.Fatalf("OnlyRuleIDs = %#v, want %#v", options.OnlyRuleIDs, want)
+		}
+	}
+}
+
+func TestRunCheckRejectsMissingOnlyValue(t *testing.T) {
+	assertCLIError(t, []string{"check", ".", "--only"}, "--only requires a value")
+}
+
+func TestRunCheckRejectsEmptyOnlyValue(t *testing.T) {
+	assertCLIError(t, []string{"check", ".", "--only", " , "}, "--only requires a rule id")
+}
+
 func TestRunCheckRejectsUnknownOption(t *testing.T) {
 	assertCLIError(t, []string{"check", "--wat", "."}, "unknown check option")
 }

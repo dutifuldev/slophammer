@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "ts.no-unsafe-types",
+      "severity": "error",
+      "path": "eslint.config.mjs",
+      "message": "TypeScript projects must reject unsafe type operations"
+    }
+  ]
+}

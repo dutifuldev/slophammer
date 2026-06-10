@@ -26,19 +26,22 @@ func TestLoadParsesPolicyConfig(t *testing.T) {
   go.crap-required:
     severity: warn
 go:
-  coverage_threshold: 85
-  coverage_profile: coverage.out
+  coverage:
+    threshold: 85
+    profile: coverage.out
   targets:
     - go
   exclude:
     - "go/generated/**"
-  dry_max_candidates: 0
-  dry_paths:
-    - go/cmd
-    - go/internal
-  dry_exclude:
-    - "**/*_test.go"
-  crap_max_score: 8
+  dry:
+    max_findings: 0
+    paths:
+      - go/cmd
+      - go/internal
+    exclude:
+      - "**/*_test.go"
+  crap:
+    max_score: 8
   mutation:
     targets:
       - internal/rules
@@ -115,13 +118,15 @@ func TestLoadPrefersRootConfig(t *testing.T) {
 		"fixtures/repos/go-bad-dependency/slophammer.yml": {
 			Path: "fixtures/repos/go-bad-dependency/slophammer.yml",
 			Content: `go:
-  dry_max_candidates: 1
+  dry:
+    max_findings: 1
 `,
 		},
 		"slophammer.yml": {
 			Path: "slophammer.yml",
 			Content: `go:
-  dry_max_candidates: 0
+  dry:
+    max_findings: 0
   targets:
     - go/internal/rules
 `,
@@ -169,7 +174,8 @@ func TestGoCoverageProfileIsRelativeToConfigFile(t *testing.T) {
 		"go/slophammer.yml": {
 			Path: "go/slophammer.yml",
 			Content: `go:
-  coverage_profile: coverage.out
+  coverage:
+    profile: coverage.out
 `,
 		},
 	}))
@@ -187,7 +193,8 @@ func TestGoCoverageProfilePreservesAbsoluteWindowsPath(t *testing.T) {
 		"go/slophammer.yml": {
 			Path: "go/slophammer.yml",
 			Content: `go:
-  coverage_profile: 'C:\ci\coverage.out'
+  coverage:
+    profile: 'C:\ci\coverage.out'
 `,
 		},
 	}))
@@ -366,13 +373,13 @@ func TestLoadRejectsNegativeDryBudget(t *testing.T) {
 	_, err := Load(repo.NewSnapshot("/repo", map[string]repo.File{
 		"slophammer.yml": {
 			Path:    "slophammer.yml",
-			Content: "go:\n  dry_max_candidates: -1\n",
+			Content: "go:\n  dry:\n    max_findings: -1\n",
 		},
 	}))
 	if err == nil {
 		t.Fatal("Load returned nil error")
 	}
-	if !strings.Contains(err.Error(), "dry_max_candidates") {
+	if !strings.Contains(err.Error(), "max_findings") {
 		t.Fatalf("error = %v", err)
 	}
 }
@@ -410,13 +417,13 @@ func TestLoadRejectsWeakerRecommendedGoTargets(t *testing.T) {
 	}{
 		{
 			name:    "coverage",
-			content: "go:\n  coverage_threshold: 84\n",
-			want:    "coverage_threshold",
+			content: "go:\n  coverage:\n    threshold: 84\n",
+			want:    "coverage.threshold",
 		},
 		{
 			name:    "crap",
-			content: "go:\n  crap_max_score: 9\n",
-			want:    "crap_max_score",
+			content: "go:\n  crap:\n    max_score: 9\n",
+			want:    "crap.max_score",
 		},
 	}
 
@@ -461,10 +468,21 @@ func TestLoadRejectsUnknownConfigKeys(t *testing.T) {
 		{name: "go", content: "go:\n  made_up: true\n", want: "go.made_up"},
 		{name: "go mutation", content: "go:\n  mutation:\n    made_up: true\n", want: "go.mutation.made_up"},
 		{name: "removed go mutation targets", content: "go:\n  mutation_targets:\n    - main.go\n", want: "go.mutation_targets"},
+		{name: "removed go coverage_threshold", content: "go:\n  coverage_threshold: 85\n", want: "go.coverage_threshold"},
+		{name: "removed go crap_max_score", content: "go:\n  crap_max_score: 8\n", want: "go.crap_max_score"},
+		{name: "removed typescript complexity_max", content: "typescript:\n  complexity_max: 8\n", want: "typescript.complexity_max"},
+		{name: "removed typescript mutation_targets", content: "typescript:\n  mutation_targets:\n    - src/rules.ts\n", want: "typescript.mutation_targets"},
+		{name: "removed rust coverage_threshold", content: "rust:\n  coverage_threshold: 85\n", want: "rust.coverage_threshold"},
 		{name: "go dry", content: "go:\n  dry:\n    made_up: true\n", want: "go.dry.made_up"},
 		{name: "go structural", content: "go:\n  dry:\n    structural:\n      made_up: true\n", want: "go.dry.structural.made_up"},
 		{name: "go boundary", content: "go:\n  dependency_boundaries:\n    - from: internal/app\n      made_up: true\n", want: "go.dependency_boundaries[0].made_up"},
 		{name: "typescript", content: "typescript:\n  made_up: true\n", want: "typescript.made_up"},
+		{name: "typescript coverage", content: "typescript:\n  coverage:\n    made_up: true\n", want: "typescript.coverage.made_up"},
+		{name: "typescript complexity", content: "typescript:\n  complexity:\n    made_up: true\n", want: "typescript.complexity.made_up"},
+		{name: "typescript mutation", content: "typescript:\n  mutation:\n    made_up: true\n", want: "typescript.mutation.made_up"},
+		{name: "typescript dry", content: "typescript:\n  dry:\n    made_up: true\n", want: "typescript.dry.made_up"},
+		{name: "typescript copied blocks", content: "typescript:\n  dry:\n    copied_blocks:\n      made_up: true\n", want: "typescript.dry.copied_blocks.made_up"},
+		{name: "typescript boundary", content: "typescript:\n  dependency_boundaries:\n    - from: src/app\n      made_up: true\n", want: "typescript.dependency_boundaries[0].made_up"},
 		{name: "rust", content: "rust:\n  made_up: true\n", want: "rust.made_up"},
 		{name: "rust dry", content: "rust:\n  dry:\n    made_up: true\n", want: "rust.dry.made_up"},
 		{name: "rust unsafe allow", content: "rust:\n  unsafe:\n    allow:\n      - path: src/lib.rs\n        made_up: true\n", want: "rust.unsafe.allow[0].made_up"},
@@ -490,12 +508,13 @@ func TestLoadAllowsSharedGoTypeScriptAndRustConfig(t *testing.T) {
 		"slophammer.yml": {
 			Path: "slophammer.yml",
 			Content: `go:
-  coverage_threshold: 85
-typescript:
-  coverage_threshold: 85
   coverage:
     threshold: 85
-  complexity_max: 8
+typescript:
+  coverage:
+    threshold: 85
+  complexity:
+    max: 8
   dry:
     copied_blocks:
       enabled: true

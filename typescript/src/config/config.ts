@@ -40,7 +40,6 @@ export type CoverageConfig = {
 };
 
 export type TypeScriptConfig = {
-  readonly coverageThreshold: number;
   readonly coverage: CoverageConfig;
   readonly complexityMax: number;
   readonly dry: DryConfig;
@@ -57,7 +56,6 @@ export function emptyConfig(): Config {
   return {
     rules: new Map(),
     typescript: {
-      coverageThreshold: 0,
       coverage: { threshold: 0, paths: [], exclude: [] },
       complexityMax: 0,
       dry: {
@@ -93,15 +91,15 @@ function parseConfig(root: Readonly<Record<string, unknown>>): Config {
   validateIgnoredGoConfig(root["go"]);
   validateIgnoredRustConfig(root["rust"]);
   return {
-    rules: parseRules(asRecord(root["rules"])),
-    typescript: parseTypeScriptConfig(asRecord(root["typescript"]))
+    rules: parseRules(asSection(root["rules"], "rules")),
+    typescript: parseTypeScriptConfig(asSection(root["typescript"], "typescript"))
   };
 }
 
 function parseRules(root: Readonly<Record<string, unknown>>): ReadonlyMap<string, RuleConfig> {
   const rules = new Map<string, RuleConfig>();
   for (const [ruleID, value] of Object.entries(root)) {
-    const raw = asRecord(value);
+    const raw = asSection(value, `rules.${ruleID}`);
     assertKnownKeys(raw, `rules.${ruleID}`, ["severity", "disabled", "reason", "threshold", "max"]);
     const severity = parseSeverity(ruleID, raw["severity"]);
     rules.set(ruleID, {
@@ -117,27 +115,29 @@ function parseRules(root: Readonly<Record<string, unknown>>): ReadonlyMap<string
 
 function parseTypeScriptConfig(root: Readonly<Record<string, unknown>>): TypeScriptConfig {
   assertKnownKeys(root, "typescript", [
-    "coverage_threshold",
     "coverage",
-    "complexity_max",
+    "complexity",
     "dry",
-    "mutation_targets",
+    "mutation",
     "dependency_boundaries"
   ]);
-  const coverage = asRecord(root["coverage"]);
+  const coverage = asSection(root["coverage"], "typescript.coverage");
   assertKnownKeys(coverage, "typescript.coverage", ["threshold", "paths", "exclude"]);
-  const dry = asRecord(root["dry"]);
+  const complexity = asSection(root["complexity"], "typescript.complexity");
+  assertKnownKeys(complexity, "typescript.complexity", ["max"]);
+  const mutation = asSection(root["mutation"], "typescript.mutation");
+  assertKnownKeys(mutation, "typescript.mutation", ["targets"]);
+  const dry = asSection(root["dry"], "typescript.dry");
   assertKnownKeys(dry, "typescript.dry", ["max_findings", "paths", "exclude", "copied_blocks"]);
-  const copiedBlocks = asRecord(dry["copied_blocks"]);
+  const copiedBlocks = asSection(dry["copied_blocks"], "typescript.dry.copied_blocks");
   assertKnownKeys(copiedBlocks, "typescript.dry.copied_blocks", ["enabled", "min_tokens"]);
   return {
-    coverageThreshold: optionalNumber(root["coverage_threshold"], "typescript.coverage_threshold"),
     coverage: {
       threshold: optionalNumber(coverage["threshold"], "typescript.coverage.threshold"),
       paths: optionalStringArray(coverage["paths"], "typescript.coverage.paths"),
       exclude: optionalStringArray(coverage["exclude"], "typescript.coverage.exclude")
     },
-    complexityMax: optionalNumber(root["complexity_max"], "typescript.complexity_max"),
+    complexityMax: optionalNumber(complexity["max"], "typescript.complexity.max"),
     dry: {
       maxFindings: optionalNumber(dry["max_findings"], "typescript.dry.max_findings"),
       maxFindingsSet: dry["max_findings"] !== undefined,
@@ -152,7 +152,7 @@ function parseTypeScriptConfig(root: Readonly<Record<string, unknown>>): TypeScr
         )
       }
     },
-    mutationTargets: optionalStringArray(root["mutation_targets"], "typescript.mutation_targets"),
+    mutationTargets: optionalStringArray(mutation["targets"], "typescript.mutation.targets"),
     dependencyBoundaries: asDependencyBoundaries(root["dependency_boundaries"])
   };
 }
@@ -178,9 +178,6 @@ function validateTypeScriptConfig(cfg: TypeScriptConfig, filePath: string): void
 }
 
 function validateCoverageThreshold(cfg: TypeScriptConfig, filePath: string): void {
-  if (cfg.coverageThreshold > 0 && cfg.coverageThreshold < minimumCoverageThreshold) {
-    throw new Error(`${filePath}: typescript.coverage_threshold must be at least 85`);
-  }
   if (cfg.coverage.threshold > 0 && cfg.coverage.threshold < minimumCoverageThreshold) {
     throw new Error(`${filePath}: typescript.coverage.threshold must be at least 85`);
   }
@@ -188,7 +185,7 @@ function validateCoverageThreshold(cfg: TypeScriptConfig, filePath: string): voi
 
 function validateComplexityMax(cfg: TypeScriptConfig, filePath: string): void {
   if (cfg.complexityMax > 0 && cfg.complexityMax > maximumComplexity) {
-    throw new Error(`${filePath}: typescript.complexity_max must be at most 8`);
+    throw new Error(`${filePath}: typescript.complexity.max must be at most 8`);
   }
 }
 
@@ -222,9 +219,12 @@ function asConfigRoot(value: unknown, filePath: string): Readonly<Record<string,
   throw new Error(`${filePath}: root must be an object`);
 }
 
-function asRecord(value: unknown): Readonly<Record<string, unknown>> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+function asSection(value: unknown, field: string): Readonly<Record<string, unknown>> {
+  if (value === undefined || value === null) {
     return {};
+  }
+  if (typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${field} must be a mapping`);
   }
   return value as Readonly<Record<string, unknown>>;
 }
@@ -243,22 +243,26 @@ function assertKnownKeys(
 }
 
 function validateIgnoredGoConfig(value: unknown): void {
-  const root = asRecord(value);
+  const root = asSection(value, "go");
   assertKnownKeys(root, "go", [
-    "coverage_threshold",
-    "coverage_profile",
+    "coverage",
     "targets",
     "exclude",
-    "dry_max_candidates",
-    "dry_paths",
-    "dry_exclude",
     "dry",
-    "crap_max_score",
+    "crap",
     "mutation",
     "dependency_boundaries"
   ]);
-  assertKnownKeys(asRecord(root["mutation"]), "go.mutation", ["targets", "exclude"]);
-  const dry = asRecord(root["dry"]);
+  assertKnownKeys(asSection(root["coverage"], "go.coverage"), "go.coverage", [
+    "threshold",
+    "profile"
+  ]);
+  assertKnownKeys(asSection(root["crap"], "go.crap"), "go.crap", ["max_score"]);
+  assertKnownKeys(asSection(root["mutation"], "go.mutation"), "go.mutation", [
+    "targets",
+    "exclude"
+  ]);
+  const dry = asSection(root["dry"], "go.dry");
   assertKnownKeys(dry, "go.dry", [
     "max_findings",
     "paths",
@@ -266,13 +270,13 @@ function validateIgnoredGoConfig(value: unknown): void {
     "structural",
     "copied_blocks"
   ]);
-  assertKnownKeys(asRecord(dry["structural"]), "go.dry.structural", [
+  assertKnownKeys(asSection(dry["structural"], "go.dry.structural"), "go.dry.structural", [
     "enabled",
     "threshold",
     "min_lines",
     "min_nodes"
   ]);
-  assertKnownKeys(asRecord(dry["copied_blocks"]), "go.dry.copied_blocks", [
+  assertKnownKeys(asSection(dry["copied_blocks"], "go.dry.copied_blocks"), "go.dry.copied_blocks", [
     "enabled",
     "min_tokens"
   ]);
@@ -280,10 +284,9 @@ function validateIgnoredGoConfig(value: unknown): void {
 }
 
 function validateIgnoredRustConfig(value: unknown): void {
-  const root = asRecord(value);
+  const root = asSection(value, "rust");
   assertKnownKeys(root, "rust", [
     "coverage",
-    "coverage_threshold",
     "complexity",
     "targets",
     "exclude",
@@ -292,18 +295,28 @@ function validateIgnoredRustConfig(value: unknown): void {
     "mutation",
     "dependency_boundaries"
   ]);
-  assertKnownKeys(asRecord(root["coverage"]), "rust.coverage", ["threshold", "paths", "exclude"]);
-  assertKnownKeys(asRecord(root["complexity"]), "rust.complexity", ["cognitive_max"]);
-  const dry = asRecord(root["dry"]);
-  assertKnownKeys(dry, "rust.dry", ["max_findings", "paths", "exclude", "copied_blocks"]);
-  assertKnownKeys(asRecord(dry["copied_blocks"]), "rust.dry.copied_blocks", [
-    "enabled",
-    "min_tokens"
+  assertKnownKeys(asSection(root["coverage"], "rust.coverage"), "rust.coverage", [
+    "threshold",
+    "paths",
+    "exclude"
   ]);
-  const unsafePolicy = asRecord(root["unsafe"]);
+  assertKnownKeys(asSection(root["complexity"], "rust.complexity"), "rust.complexity", [
+    "cognitive_max"
+  ]);
+  const dry = asSection(root["dry"], "rust.dry");
+  assertKnownKeys(dry, "rust.dry", ["max_findings", "paths", "exclude", "copied_blocks"]);
+  assertKnownKeys(
+    asSection(dry["copied_blocks"], "rust.dry.copied_blocks"),
+    "rust.dry.copied_blocks",
+    ["enabled", "min_tokens"]
+  );
+  const unsafePolicy = asSection(root["unsafe"], "rust.unsafe");
   assertKnownKeys(unsafePolicy, "rust.unsafe", ["policy", "allow"]);
   validateIgnoredUnsafeAllowKeys(unsafePolicy["allow"], "rust.unsafe.allow");
-  assertKnownKeys(asRecord(root["mutation"]), "rust.mutation", ["targets", "exclude"]);
+  assertKnownKeys(asSection(root["mutation"], "rust.mutation"), "rust.mutation", [
+    "targets",
+    "exclude"
+  ]);
   validateIgnoredDependencyBoundaryKeys(
     root["dependency_boundaries"],
     "rust.dependency_boundaries"

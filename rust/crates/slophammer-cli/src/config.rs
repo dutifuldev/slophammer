@@ -42,7 +42,6 @@ impl From<RuleSeverity> for Severity {
 #[serde(deny_unknown_fields)]
 pub struct RustConfig {
     pub coverage: Option<RustCoverage>,
-    pub coverage_threshold: Option<u32>,
     pub complexity: Option<RustComplexity>,
     #[serde(default)]
     pub targets: Vec<String>,
@@ -183,11 +182,7 @@ fn validate(config: &Config) -> Result<(), ConfigError> {
     let Some(rust) = &config.rust else {
         return Ok(());
     };
-    let coverage_threshold = rust
-        .coverage
-        .as_ref()
-        .map(|coverage| coverage.threshold)
-        .or(rust.coverage_threshold);
+    let coverage_threshold = rust.coverage.as_ref().map(|coverage| coverage.threshold);
     if let Some(threshold) = coverage_threshold {
         if threshold < 85 {
             return Err(ConfigError::Validation(
@@ -274,12 +269,6 @@ pub fn rust_coverage_threshold(config: &Config) -> u32 {
         .rust
         .as_ref()
         .and_then(|rust| rust.coverage.as_ref().map(|coverage| coverage.threshold))
-        .or_else(|| {
-            config
-                .rust
-                .as_ref()
-                .and_then(|rust| rust.coverage_threshold)
-        })
         .unwrap_or(85)
 }
 

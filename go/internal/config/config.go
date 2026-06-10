@@ -32,16 +32,16 @@ type RuleConfig struct {
 }
 
 type GoConfig struct {
-	CoverageThreshold    float64              `yaml:"coverage_threshold"`
-	CoverageProfile      string               `yaml:"coverage_profile"`
+	CoverageThreshold    float64              `yaml:"-"`
+	CoverageProfile      string               `yaml:"-"`
 	Targets              []string             `yaml:"targets"`
 	Exclude              []string             `yaml:"exclude"`
-	DRYMaxCandidates     int                  `yaml:"dry_max_candidates"`
+	DRYMaxCandidates     int                  `yaml:"-"`
 	DRYMaxCandidatesSet  bool                 `yaml:"-"`
-	DRYPaths             []string             `yaml:"dry_paths"`
-	DRYExclude           []string             `yaml:"dry_exclude"`
+	DRYPaths             []string             `yaml:"-"`
+	DRYExclude           []string             `yaml:"-"`
 	DRY                  DryConfig            `yaml:"dry"`
-	CRAPMaxScore         float64              `yaml:"crap_max_score"`
+	CRAPMaxScore         float64              `yaml:"-"`
 	Mutation             MutationConfig       `yaml:"mutation"`
 	DependencyBoundaries []DependencyBoundary `yaml:"dependency_boundaries"`
 }
@@ -97,16 +97,19 @@ func (cfg *GoConfig) UnmarshalYAML(value *yaml.Node) error {
 		Structural   dryStructuralConfig `yaml:"structural"`
 		CopiedBlocks dryCopiedConfig     `yaml:"copied_blocks"`
 	}
+	type goCoverageConfig struct {
+		Threshold float64 `yaml:"threshold"`
+		Profile   string  `yaml:"profile"`
+	}
+	type goCRAPConfig struct {
+		MaxScore float64 `yaml:"max_score"`
+	}
 	type goConfig struct {
-		CoverageThreshold    float64              `yaml:"coverage_threshold"`
-		CoverageProfile      string               `yaml:"coverage_profile"`
+		Coverage             goCoverageConfig     `yaml:"coverage"`
 		Targets              []string             `yaml:"targets"`
 		Exclude              []string             `yaml:"exclude"`
-		DRYMaxCandidates     *int                 `yaml:"dry_max_candidates"`
-		DRYPaths             []string             `yaml:"dry_paths"`
-		DRYExclude           []string             `yaml:"dry_exclude"`
 		DRY                  dryConfig            `yaml:"dry"`
-		CRAPMaxScore         float64              `yaml:"crap_max_score"`
+		CRAP                 goCRAPConfig         `yaml:"crap"`
 		Mutation             MutationConfig       `yaml:"mutation"`
 		DependencyBoundaries []DependencyBoundary `yaml:"dependency_boundaries"`
 	}
@@ -114,16 +117,10 @@ func (cfg *GoConfig) UnmarshalYAML(value *yaml.Node) error {
 	if err := value.Decode(&parsed); err != nil {
 		return err
 	}
-	cfg.CoverageThreshold = parsed.CoverageThreshold
-	cfg.CoverageProfile = parsed.CoverageProfile
+	cfg.CoverageThreshold = parsed.Coverage.Threshold
+	cfg.CoverageProfile = parsed.Coverage.Profile
 	cfg.Targets = parsed.Targets
 	cfg.Exclude = parsed.Exclude
-	if parsed.DRYMaxCandidates != nil {
-		cfg.DRYMaxCandidates = *parsed.DRYMaxCandidates
-		cfg.DRYMaxCandidatesSet = true
-	}
-	cfg.DRYPaths = parsed.DRYPaths
-	cfg.DRYExclude = parsed.DRYExclude
 	if parsed.DRY.MaxFindings != nil {
 		cfg.DRY.MaxFindings = *parsed.DRY.MaxFindings
 		cfg.DRY.MaxFindingsSet = true
@@ -150,7 +147,7 @@ func (cfg *GoConfig) UnmarshalYAML(value *yaml.Node) error {
 		cfg.DRY.CopiedBlocks.Enabled = *parsed.DRY.CopiedBlocks.Enabled
 		cfg.DRY.CopiedBlocks.EnabledSet = true
 	}
-	cfg.CRAPMaxScore = parsed.CRAPMaxScore
+	cfg.CRAPMaxScore = parsed.CRAP.MaxScore
 	cfg.Mutation = parsed.Mutation
 	cfg.DependencyBoundaries = parsed.DependencyBoundaries
 	return nil
@@ -330,22 +327,22 @@ func validateGoKeys(node *yaml.Node) error {
 		node,
 		"go",
 		set(
-			"coverage_threshold",
-			"coverage_profile",
+			"coverage",
 			"targets",
 			"exclude",
-			"dry_max_candidates",
-			"dry_paths",
-			"dry_exclude",
 			"dry",
-			"crap_max_score",
+			"crap",
 			"mutation",
 			"dependency_boundaries",
 		),
 		func(key string, value *yaml.Node) error {
 			switch key {
+			case "coverage":
+				return validateMappingKeys(value, "go.coverage", set("threshold", "profile"), nil)
 			case "dry":
 				return validateGoDryKeys(value)
+			case "crap":
+				return validateMappingKeys(value, "go.crap", set("max_score"), nil)
 			case "mutation":
 				return validateMappingKeys(value, "go.mutation", set("targets", "exclude"), nil)
 			case "dependency_boundaries":
@@ -379,23 +376,38 @@ func validateTypeScriptKeys(node *yaml.Node) error {
 	return validateMappingKeys(
 		node,
 		"typescript",
-		set("coverage_threshold", "coverage", "complexity_max", "dry", "mutation_targets", "dependency_boundaries"),
+		set("coverage", "complexity", "dry", "mutation", "dependency_boundaries"),
+		validateTypeScriptSection,
+	)
+}
+
+func validateTypeScriptSection(key string, value *yaml.Node) error {
+	switch key {
+	case "coverage":
+		return validateMappingKeys(value, "typescript.coverage", set("threshold", "paths", "exclude"), nil)
+	case "complexity":
+		return validateMappingKeys(value, "typescript.complexity", set("max"), nil)
+	case "mutation":
+		return validateMappingKeys(value, "typescript.mutation", set("targets"), nil)
+	case "dry":
+		return validateCopiedBlockDryKeys(value, "typescript.dry")
+	case "dependency_boundaries":
+		return validateDependencyBoundaryKeys(value, "typescript.dependency_boundaries")
+	default:
+		return nil
+	}
+}
+
+func validateCopiedBlockDryKeys(node *yaml.Node, field string) error {
+	return validateMappingKeys(
+		node,
+		field,
+		set("max_findings", "paths", "exclude", "copied_blocks"),
 		func(key string, value *yaml.Node) error {
-			switch key {
-			case "coverage":
-				return validateMappingKeys(value, "typescript.coverage", set("threshold", "paths", "exclude"), nil)
-			case "dry":
-				return validateMappingKeys(value, "typescript.dry", set("max_findings", "paths", "exclude", "copied_blocks"), func(key string, value *yaml.Node) error {
-					if key == "copied_blocks" {
-						return validateMappingKeys(value, "typescript.dry.copied_blocks", set("enabled", "min_tokens"), nil)
-					}
-					return nil
-				})
-			case "dependency_boundaries":
-				return validateDependencyBoundaryKeys(value, "typescript.dependency_boundaries")
-			default:
-				return nil
+			if key == "copied_blocks" {
+				return validateMappingKeys(value, field+".copied_blocks", set("enabled", "min_tokens"), nil)
 			}
+			return nil
 		},
 	)
 }
@@ -406,7 +418,6 @@ func validateRustKeys(node *yaml.Node) error {
 		"rust",
 		set(
 			"coverage",
-			"coverage_threshold",
 			"complexity",
 			"targets",
 			"exclude",
@@ -422,7 +433,7 @@ func validateRustKeys(node *yaml.Node) error {
 			case "complexity":
 				return validateMappingKeys(value, "rust.complexity", set("cognitive_max"), nil)
 			case "dry":
-				return validateRustDryKeys(value)
+				return validateCopiedBlockDryKeys(value, "rust.dry")
 			case "unsafe":
 				return validateRustUnsafeKeys(value)
 			case "mutation":
@@ -432,20 +443,6 @@ func validateRustKeys(node *yaml.Node) error {
 			default:
 				return nil
 			}
-		},
-	)
-}
-
-func validateRustDryKeys(node *yaml.Node) error {
-	return validateMappingKeys(
-		node,
-		"rust.dry",
-		set("max_findings", "paths", "exclude", "copied_blocks"),
-		func(key string, value *yaml.Node) error {
-			if key == "copied_blocks" {
-				return validateMappingKeys(value, "rust.dry.copied_blocks", set("enabled", "min_tokens"), nil)
-			}
-			return nil
 		},
 	)
 }
@@ -605,9 +602,6 @@ func validateGoTargets(cfg GoConfig) error {
 }
 
 func validateDryBudgets(cfg GoConfig) error {
-	if cfg.DRYMaxCandidatesSet && cfg.DRYMaxCandidates < 0 {
-		return fmt.Errorf("go.dry_max_candidates must be non-negative")
-	}
 	if cfg.DRY.MaxFindingsSet && cfg.DRY.MaxFindings < 0 {
 		return fmt.Errorf("go.dry.max_findings must be non-negative")
 	}
@@ -616,10 +610,10 @@ func validateDryBudgets(cfg GoConfig) error {
 
 func validateGoThresholds(cfg GoConfig) error {
 	if cfg.CoverageThreshold > 0 && cfg.CoverageThreshold < MinimumGoCoverageThreshold {
-		return fmt.Errorf("go.coverage_threshold must be at least %.1f", float64(MinimumGoCoverageThreshold))
+		return fmt.Errorf("go.coverage.threshold must be at least %.1f", float64(MinimumGoCoverageThreshold))
 	}
 	if cfg.CRAPMaxScore > 0 && cfg.CRAPMaxScore > MaximumGoCRAPScore {
-		return fmt.Errorf("go.crap_max_score must be at most %.1f", float64(MaximumGoCRAPScore))
+		return fmt.Errorf("go.crap.max_score must be at most %.1f", float64(MaximumGoCRAPScore))
 	}
 	return nil
 }

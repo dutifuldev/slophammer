@@ -220,9 +220,9 @@ runs configured local tool commands.
 `templates/` contains language project references that agents can copy from.
 Those templates are not full Slophammer implementations yet.
 
-`scripts/check-conformance.mjs` runs the shared fixture contract against the Go
-and TypeScript implementations. It verifies JSON report shape, findings, and
-exit codes for the fixture sets each implementation supports.
+`scripts/check-conformance.mjs` runs the shared fixture contract against the
+Go, TypeScript, and Rust implementations. It verifies JSON report shape,
+findings, and exit codes for the fixture sets each implementation supports.
 
 The Go checker is released from the
 [Slophammer releases](https://github.com/dutifuldev/slophammer/releases). Install

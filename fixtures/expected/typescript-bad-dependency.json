@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "ts.dependency-boundaries-required",
+      "severity": "error",
+      "path": "src/rules/rules.ts",
+      "message": "Import src/app/app.js is outside allowed dependencies for src/rules"
+    }
+  ]
+}

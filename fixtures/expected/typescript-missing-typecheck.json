@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "ts.typecheck-required",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "TypeScript projects must declare a no-emit typecheck in CI or scripts"
+    }
+  ]
+}

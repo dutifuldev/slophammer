@@ -8,22 +8,22 @@ describe("loadConfig", () => {
     const snapshot = newSnapshot("/repo", [
       {
         path: "slophammer.yml",
-        content: "typescript:\n  coverage_threshold: 84\n"
+        content: "typescript:\n  coverage:\n    threshold: 84\n"
       }
     ]);
 
-    expect(() => loadConfig(snapshot)).toThrow("coverage_threshold");
+    expect(() => loadConfig(snapshot)).toThrow("coverage.threshold");
   });
 
   it("rejects weak TypeScript complexity targets", () => {
     const snapshot = newSnapshot("/repo", [
       {
         path: "slophammer.yml",
-        content: "typescript:\n  complexity_max: 9\n"
+        content: "typescript:\n  complexity:\n    max: 9\n"
       }
     ]);
 
-    expect(() => loadConfig(snapshot)).toThrow("complexity_max");
+    expect(() => loadConfig(snapshot)).toThrow("complexity.max");
   });
 
   it("rejects non-numeric TypeScript policy values", () => {
@@ -32,8 +32,10 @@ describe("loadConfig", () => {
         path: "slophammer.yml",
         content: [
           "typescript:",
-          '  coverage_threshold: "90"',
-          '  complexity_max: "6"',
+          "  coverage:",
+          '    threshold: "90"',
+          "  complexity:",
+          '    max: "6"',
           "  dry:",
           '    max_findings: "0"',
           "    copied_blocks:",
@@ -43,7 +45,7 @@ describe("loadConfig", () => {
       }
     ]);
 
-    expect(() => loadConfig(snapshot)).toThrow("coverage_threshold must be a number");
+    expect(() => loadConfig(snapshot)).toThrow("coverage.threshold must be a number");
   });
 
   it("rejects non-boolean TypeScript copied-block toggles", () => {
@@ -177,6 +179,56 @@ describe("loadConfig strict keys", () => {
         content: "go:\n  mutation_targets:\n    - main.go\n",
         want: "go.mutation_targets"
       },
+      {
+        name: "removed go coverage_threshold",
+        content: "go:\n  coverage_threshold: 85\n",
+        want: "go.coverage_threshold"
+      },
+      {
+        name: "removed typescript coverage_threshold",
+        content: "typescript:\n  coverage_threshold: 85\n",
+        want: "typescript.coverage_threshold"
+      },
+      {
+        name: "removed typescript complexity_max",
+        content: "typescript:\n  complexity_max: 8\n",
+        want: "typescript.complexity_max"
+      },
+      {
+        name: "removed typescript mutation_targets",
+        content: "typescript:\n  mutation_targets:\n    - src/rules.ts\n",
+        want: "typescript.mutation_targets"
+      },
+      {
+        name: "removed rust coverage_threshold",
+        content: "rust:\n  coverage_threshold: 85\n",
+        want: "rust.coverage_threshold"
+      },
+      {
+        name: "scalar typescript complexity",
+        content: "typescript:\n  complexity: 8\n",
+        want: "typescript.complexity must be a mapping"
+      },
+      {
+        name: "scalar typescript coverage",
+        content: "typescript:\n  coverage: 85\n",
+        want: "typescript.coverage must be a mapping"
+      },
+      {
+        name: "scalar go coverage",
+        content: "go:\n  coverage: 85\n",
+        want: "go.coverage must be a mapping"
+      },
+      {
+        name: "scalar rust coverage",
+        content: "rust:\n  coverage: 85\n",
+        want: "rust.coverage must be a mapping"
+      },
+      {
+        name: "scalar typescript section",
+        content: "typescript: 8\n",
+        want: "typescript must be a mapping"
+      },
       { name: "ignored rust", content: "rust:\n  made_up: true\n", want: "rust.made_up" },
       {
         name: "ignored rust dry",
@@ -210,8 +262,9 @@ describe("loadConfig shared language sections", () => {
         path: "slophammer.yml",
         content: [
           "go:",
-          "  coverage_threshold: 85",
-          "  coverage_profile: coverage.out",
+          "  coverage:",
+          "    threshold: 85",
+          "    profile: coverage.out",
           "  targets:",
           "    - go",
           "  exclude:",
@@ -220,14 +273,18 @@ describe("loadConfig shared language sections", () => {
           "    structural:",
           "      enabled: true",
           "      threshold: 0.82",
+          "  crap:",
+          "    max_score: 8",
           "  mutation:",
           "    targets:",
           "      - go/internal/rules",
           "    exclude:",
           "      - go/internal/rules/generated/**",
           "typescript:",
-          "  coverage_threshold: 85",
-          "  complexity_max: 8",
+          "  coverage:",
+          "    threshold: 85",
+          "  complexity:",
+          "    max: 8",
           "  dry:",
           "    copied_blocks:",
           "      enabled: true",
@@ -266,7 +323,7 @@ describe("loadConfig shared language sections", () => {
       }
     ]);
 
-    expect(loadConfig(snapshot).typescript.coverageThreshold).toBe(85);
+    expect(loadConfig(snapshot).typescript.coverage.threshold).toBe(85);
   });
 });
 
@@ -275,11 +332,11 @@ describe("loadConfig config discovery", () => {
     const snapshot = newSnapshot("/repo", [
       {
         path: "fixtures/repos/example/slophammer.yml",
-        content: "typescript:\n  coverage_threshold: 84\n"
+        content: "typescript:\n  coverage:\n    threshold: 84\n"
       }
     ]);
 
-    expect(loadConfig(snapshot).typescript.coverageThreshold).toBe(0);
+    expect(loadConfig(snapshot).typescript.coverage.threshold).toBe(0);
   });
 });
 
@@ -310,14 +367,14 @@ describe("loadConfig shared rules", () => {
     const snapshot = newSnapshot("/repo", [
       {
         path: "fixtures/repos/example/slophammer.yml",
-        content: "typescript:\n  coverage_threshold: 84\n"
+        content: "typescript:\n  coverage:\n    threshold: 84\n"
       },
       {
         path: "slophammer.yml",
-        content: "typescript:\n  coverage_threshold: 85\n"
+        content: "typescript:\n  coverage:\n    threshold: 85\n"
       }
     ]);
 
-    expect(loadConfig(snapshot).typescript.coverageThreshold).toBe(85);
+    expect(loadConfig(snapshot).typescript.coverage.threshold).toBe(85);
   });
 });

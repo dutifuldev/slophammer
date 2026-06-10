@@ -45,6 +45,8 @@ pub enum AppError {
     Report(#[from] crate::report::ReportError),
     #[error("unknown rule: {0}")]
     UnknownRule(String),
+    #[error("--only requires a rule id")]
+    EmptyOnlyRule,
 }
 
 pub fn check(options: CheckOptions) -> AppResult {
@@ -120,15 +122,15 @@ pub fn rules(format: OutputFormat) -> AppResult {
 }
 
 fn check_inner(options: CheckOptions, runner: &impl Runner) -> Result<AppResult, AppError> {
-    validate_only_rules(&options.only_rule_ids)?;
+    let only_rule_ids = expand_only_rule_ids(&options.only_rule_ids)?;
     let snapshot = scan_repo(command_root(&options.root))?;
     let config = crate::config::load(&snapshot)?;
-    let mut findings = crate::rust_rules::run_rules(&snapshot, &config, &options.only_rule_ids);
+    let mut findings = crate::rust_rules::run_rules(&snapshot, &config, &only_rule_ids);
     if options.execute {
         findings.extend(crate::exec::execute_rust_checks(
             &snapshot,
             &config,
-            &options.only_rule_ids,
+            &only_rule_ids,
             runner,
         ));
     }
@@ -173,13 +175,26 @@ fn direct_inner(
     })
 }
 
-fn validate_only_rules(only_rule_ids: &[String]) -> Result<(), AppError> {
-    for rule_id in only_rule_ids {
-        if !crate::rust_rules::known_rule(rule_id) {
-            return Err(AppError::UnknownRule(rule_id.clone()));
-        }
+fn expand_only_rule_ids(raw: &[String]) -> Result<Vec<String>, AppError> {
+    let expanded: Vec<String> = raw
+        .iter()
+        .flat_map(|value| value.split(','))
+        .map(str::trim)
+        .filter(|rule_id| !rule_id.is_empty())
+        .map(str::to_owned)
+        .collect();
+    if !raw.is_empty() && expanded.is_empty() {
+        return Err(AppError::EmptyOnlyRule);
     }
-    Ok(())
+    let unknown: Vec<&str> = expanded
+        .iter()
+        .filter(|rule_id| !crate::rust_rules::known_rule(rule_id))
+        .map(String::as_str)
+        .collect();
+    if !unknown.is_empty() {
+        return Err(AppError::UnknownRule(unknown.join(", ")));
+    }
+    Ok(expanded)
 }
 
 fn command_root(root: &str) -> &str {
@@ -248,10 +263,38 @@ mod tests {
             root: ".".to_owned(),
             format: OutputFormat::Json,
             execute: false,
-            only_rule_ids: vec!["missing.rule".to_owned()],
+            only_rule_ids: vec!["missing.rule".to_owned(), "other.rule".to_owned()],
         });
         assert_eq!(result.code, EXIT_ERROR);
-        assert!(result.stderr.contains("unknown rule"));
+        assert!(
+            result
+                .stderr
+                .contains("unknown rule: missing.rule, other.rule")
+        );
+    }
+
+    #[test]
+    fn only_rules_accept_comma_separated_ids() {
+        let fixture = fixture("rust-clean");
+        let result = check(CheckOptions {
+            root: fixture_path(&fixture),
+            format: OutputFormat::Json,
+            execute: false,
+            only_rule_ids: vec!["repo.readme-required, repo.agents-required".to_owned()],
+        });
+        assert_eq!(result.code, EXIT_OK, "{}", result.stderr);
+    }
+
+    #[test]
+    fn empty_only_rules_are_an_error() {
+        let result = check(CheckOptions {
+            root: ".".to_owned(),
+            format: OutputFormat::Json,
+            execute: false,
+            only_rule_ids: vec![" , ".to_owned()],
+        });
+        assert_eq!(result.code, EXIT_ERROR);
+        assert!(result.stderr.contains("--only requires a rule id"));
     }
 
     #[test]

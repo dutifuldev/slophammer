@@ -78,6 +78,51 @@ func TestCheckReturnsFindingsForMissingFiles(t *testing.T) {
 	}
 }
 
+func TestCheckOnlyFiltersFindings(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	options := CheckOptions{Root: t.TempDir(), Format: "json", OnlyRuleIDs: []string{"repo.readme-required"}}
+	code := Check(context.Background(), options, &out, &errOut)
+
+	if code != ExitFindings {
+		t.Fatalf("code = %d, want %d; stderr=%q", code, ExitFindings, errOut.String())
+	}
+	if !strings.Contains(out.String(), "repo.readme-required") {
+		t.Fatalf("json output = %q", out.String())
+	}
+	if strings.Contains(out.String(), "repo.agents-required") {
+		t.Fatalf("json output should not include filtered rules: %q", out.String())
+	}
+}
+
+func TestCheckOnlyPassesWhenFocusedRuleIsClean(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "README.md", "# Test\n")
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	options := CheckOptions{Root: root, Format: "json", OnlyRuleIDs: []string{"repo.readme-required"}}
+	code := Check(context.Background(), options, &out, &errOut)
+
+	if code != ExitOK {
+		t.Fatalf("code = %d, want %d; stderr=%q", code, ExitOK, errOut.String())
+	}
+}
+
+func TestCheckRejectsUnknownOnlyRule(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	options := CheckOptions{Root: t.TempDir(), Format: "json", OnlyRuleIDs: []string{"repo.not-a-rule"}}
+	code := Check(context.Background(), options, &out, &errOut)
+
+	if code != ExitError {
+		t.Fatalf("code = %d, want %d", code, ExitError)
+	}
+	if !strings.Contains(errOut.String(), "unknown rule: repo.not-a-rule") {
+		t.Fatalf("stderr = %q", errOut.String())
+	}
+}
+
 func TestCheckRejectsUnknownFormat(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer
@@ -131,9 +176,12 @@ func TestCheckExecuteAddsToolFindings(t *testing.T) {
 	writeFile(t, root, "internal/example.go", "package internal\n")
 	writeFile(t, root, "slophammer.yml", strings.Join([]string{
 		"go:",
-		"  coverage_threshold: 85",
-		"  dry_max_candidates: 0",
-		"  crap_max_score: 8",
+		"  coverage:",
+		"    threshold: 85",
+		"  dry:",
+		"    max_findings: 0",
+		"  crap:",
+		"    max_score: 8",
 		"  mutation:",
 		"    targets:",
 		"      - internal/example.go",
@@ -152,6 +200,50 @@ func TestCheckExecuteAddsToolFindings(t *testing.T) {
 	assertFinding(t, report, rules.GoCoverageRequiredRuleID)
 	assertFinding(t, report, rules.GoCRAPRequiredRuleID)
 	assertFinding(t, report, rules.GoMutationRequiredRuleID)
+}
+
+func TestCheckExecuteOnlyRunsSelectedToolChecks(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "README.md", "# Test\n")
+	writeFile(t, root, "AGENTS.md", "# Agents\n")
+	writeFile(t, root, ".github/workflows/ci.yml", "name: CI\n")
+	writeFile(t, root, "left.go", duplicateGoSource("Left"))
+	writeFile(t, root, "right.go", duplicateGoSource("Right"))
+	writeFile(t, root, "internal/example.go", "package internal\n")
+	writeFile(t, root, "slophammer.yml", strings.Join([]string{
+		"go:",
+		"  coverage:",
+		"    threshold: 85",
+		"  dry:",
+		"    max_findings: 0",
+		"  crap:",
+		"    max_score: 8",
+		"  mutation:",
+		"    targets:",
+		"      - internal/example.go",
+		"",
+	}, "\n"))
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	options := CheckOptions{
+		Root:        root,
+		Format:      "json",
+		Execute:     true,
+		OnlyRuleIDs: []string{rules.GoDryRequiredRuleID},
+	}
+	code := check(context.Background(), options, &out, &errOut, executeFakeRunner{})
+
+	if code != ExitFindings {
+		t.Fatalf("code = %d, want %d; stderr=%q", code, ExitFindings, errOut.String())
+	}
+	report := unmarshalReport(t, out.Bytes(), "execute only")
+	assertFinding(t, report, rules.GoDryRequiredRuleID)
+	for _, finding := range report.Findings {
+		if finding.RuleID != rules.GoDryRequiredRuleID {
+			t.Fatalf("unexpected finding %q in --only run", finding.RuleID)
+		}
+	}
 }
 
 func TestCheckExecuteReusesConfiguredCoverageProfile(t *testing.T) {
@@ -504,7 +596,7 @@ func TestCheckMutationInModulesRebasesExcludesInSingleModuleFallback(t *testing.
 
 func TestRunWithCommandConfigLoadsRepoConfig(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, root, "slophammer.yml", "go:\n  crap_max_score: 8\n")
+	writeFile(t, root, "slophammer.yml", "go:\n  crap:\n    max_score: 8\n")
 
 	var errOut bytes.Buffer
 	code := runWithCommandConfig(root, &errOut, func(snapshot repo.Snapshot, cfg config.Config) int {

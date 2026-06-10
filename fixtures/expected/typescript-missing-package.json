@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "ts.package-required",
+      "severity": "error",
+      "path": "package.json",
+      "message": "TypeScript projects must include package.json"
+    }
+  ]
+}

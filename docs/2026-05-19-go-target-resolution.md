@@ -2,6 +2,7 @@
 title: Go Target Resolution
 author: Bob <dutifulbob@gmail.com>
 date: 2026-05-19
+status: completed
 ---
 
 # Go Target Resolution

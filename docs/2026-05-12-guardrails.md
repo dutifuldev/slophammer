@@ -2,6 +2,7 @@
 title: Guardrails
 author: Bob <dutifulbob@gmail.com>
 date: 2026-05-12
+status: completed
 ---
 
 # Guardrails

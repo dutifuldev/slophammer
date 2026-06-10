@@ -1,0 +1,14 @@
+{
+  "name": "typescript-missing-lint-fixture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "format": "prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "dry": "slophammer-ts dry .",
+    "mutate": "stryker run",
+    "check": "npm run format && npm run typecheck && npm test && npm run coverage && npm run dry"
+  }
+}
