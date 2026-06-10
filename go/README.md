@@ -59,9 +59,9 @@ go install github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.0
 Before tagging, run the full Go validation set and the shared conformance
 script.
 
-The Go release dry-run workflow validates `go/vX.Y.Z` tags and runs the same
-release checks. On tag pushes, it also verifies the documented tagged
-`go install` command.
+The Go release workflow validates `go/vX.Y.Z` tags and runs the same release
+checks. On tag pushes, it also verifies the documented tagged `go install`
+command and creates the GitHub Release.
 
 ## Local Checks
 

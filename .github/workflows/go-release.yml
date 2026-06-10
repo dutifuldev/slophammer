@@ -1,4 +1,4 @@
-name: Go Release Dry Run
+name: Go Release
 
 on:
   workflow_dispatch:
@@ -12,10 +12,10 @@ on:
       - "go/v*"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  dry-run:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -84,3 +84,38 @@ jobs:
           GOBIN="$tmp/bin" go install "github.com/dutifuldev/slophammer/go/cmd/slophammer-go@$RELEASE_VERSION"
           "$tmp/bin/slophammer-go" help
           "$tmp/bin/slophammer-go" rules --format json
+
+      - name: Create GitHub Release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          tag="${{ steps.release.outputs.tag }}"
+          version="${{ steps.release.outputs.version }}"
+          notes_file="$(mktemp)"
+
+          cat > "$notes_file" <<EOF
+          Released the Slophammer Go CLI.
+
+          Install with:
+
+          \`\`\`sh
+          go install github.com/dutifuldev/slophammer/go/cmd/slophammer-go@$version
+          \`\`\`
+          EOF
+
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release edit "$tag" \
+              --title "slophammer-go $version" \
+              --notes-file "$notes_file" \
+              --draft=false \
+              --prerelease=false \
+              --verify-tag
+          else
+            gh release create "$tag" \
+              --title "slophammer-go $version" \
+              --notes-file "$notes_file" \
+              --verify-tag
+          fi

@@ -107,11 +107,12 @@ go install github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.0
 
 The TypeScript checker is released as the `slophammer-ts` npm package. The
 TypeScript release workflow validates `typescript/vX.Y.Z` tags, runs the full
-TypeScript package gate, runs shared conformance, and publishes with npm trusted
-publishing.
+TypeScript package gate, runs shared conformance, publishes with npm trusted
+publishing, and creates the GitHub Release.
 
-The Go release dry-run workflow validates `go/vX.Y.Z` tags, runs the Go release
-checks, runs shared conformance, and verifies tagged `go install` on tag push.
+The Go release workflow validates `go/vX.Y.Z` tags, runs the Go release
+checks, runs shared conformance, verifies tagged `go install` on tag push, and
+creates the GitHub Release.
 
 The Rust checker is released to crates.io as the `slophammer-rs` Cargo package
 built from `rust/crates/slophammer-cli`. Users install a release with
