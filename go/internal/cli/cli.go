@@ -225,7 +225,7 @@ func parseCheckArg(options *app.CheckOptions, args []string, index int, errOut i
 func parseOnlyRuleIDs(args []string, index int, errOut io.Writer) ([]string, bool) {
 	value, ok := nextArg(args, index)
 	if !ok {
-		_, _ = fmt.Fprintln(errOut, "--only requires a rule id")
+		_, _ = fmt.Fprintln(errOut, "--only requires a value")
 		return nil, false
 	}
 	var ruleIDs []string

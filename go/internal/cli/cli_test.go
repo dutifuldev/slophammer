@@ -282,7 +282,7 @@ func TestParseCheckArgsAllowsOnly(t *testing.T) {
 }
 
 func TestRunCheckRejectsMissingOnlyValue(t *testing.T) {
-	assertCLIError(t, []string{"check", ".", "--only"}, "--only requires a rule id")
+	assertCLIError(t, []string{"check", ".", "--only"}, "--only requires a value")
 }
 
 func TestRunCheckRejectsEmptyOnlyValue(t *testing.T) {

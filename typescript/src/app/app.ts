@@ -28,10 +28,10 @@ export async function check(
   runner: Runner = execRunner
 ): Promise<{ readonly code: number; readonly stdout: string; readonly stderr: string }> {
   try {
-    const snapshot = await scanRepo(options.root);
-    const cfg = loadConfig(snapshot);
     const onlyRuleIDs = options.onlyRuleIDs ?? [];
     validateOnlyRuleIDs(onlyRuleIDs);
+    const snapshot = await scanRepo(options.root);
+    const cfg = loadConfig(snapshot);
     const base = runRules(snapshot, cfg, { onlyRuleIDs });
     const findings =
       options.execute && shouldExecuteTypeScriptChecks(onlyRuleIDs)

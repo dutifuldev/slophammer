@@ -204,6 +204,31 @@ describe("loadConfig strict keys", () => {
         content: "rust:\n  coverage_threshold: 85\n",
         want: "rust.coverage_threshold"
       },
+      {
+        name: "scalar typescript complexity",
+        content: "typescript:\n  complexity: 8\n",
+        want: "typescript.complexity must be a mapping"
+      },
+      {
+        name: "scalar typescript coverage",
+        content: "typescript:\n  coverage: 85\n",
+        want: "typescript.coverage must be a mapping"
+      },
+      {
+        name: "scalar go coverage",
+        content: "go:\n  coverage: 85\n",
+        want: "go.coverage must be a mapping"
+      },
+      {
+        name: "scalar rust coverage",
+        content: "rust:\n  coverage: 85\n",
+        want: "rust.coverage must be a mapping"
+      },
+      {
+        name: "scalar typescript section",
+        content: "typescript: 8\n",
+        want: "typescript must be a mapping"
+      },
       { name: "ignored rust", content: "rust:\n  made_up: true\n", want: "rust.made_up" },
       {
         name: "ignored rust dry",

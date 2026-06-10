@@ -202,6 +202,50 @@ func TestCheckExecuteAddsToolFindings(t *testing.T) {
 	assertFinding(t, report, rules.GoMutationRequiredRuleID)
 }
 
+func TestCheckExecuteOnlyRunsSelectedToolChecks(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "README.md", "# Test\n")
+	writeFile(t, root, "AGENTS.md", "# Agents\n")
+	writeFile(t, root, ".github/workflows/ci.yml", "name: CI\n")
+	writeFile(t, root, "left.go", duplicateGoSource("Left"))
+	writeFile(t, root, "right.go", duplicateGoSource("Right"))
+	writeFile(t, root, "internal/example.go", "package internal\n")
+	writeFile(t, root, "slophammer.yml", strings.Join([]string{
+		"go:",
+		"  coverage:",
+		"    threshold: 85",
+		"  dry:",
+		"    max_findings: 0",
+		"  crap:",
+		"    max_score: 8",
+		"  mutation:",
+		"    targets:",
+		"      - internal/example.go",
+		"",
+	}, "\n"))
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	options := CheckOptions{
+		Root:        root,
+		Format:      "json",
+		Execute:     true,
+		OnlyRuleIDs: []string{rules.GoDryRequiredRuleID},
+	}
+	code := check(context.Background(), options, &out, &errOut, executeFakeRunner{})
+
+	if code != ExitFindings {
+		t.Fatalf("code = %d, want %d; stderr=%q", code, ExitFindings, errOut.String())
+	}
+	report := unmarshalReport(t, out.Bytes(), "execute only")
+	assertFinding(t, report, rules.GoDryRequiredRuleID)
+	for _, finding := range report.Findings {
+		if finding.RuleID != rules.GoDryRequiredRuleID {
+			t.Fatalf("unexpected finding %q in --only run", finding.RuleID)
+		}
+	}
+}
+
 func TestCheckExecuteReusesConfiguredCoverageProfile(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, "coverage.out", "mode: count\n"+

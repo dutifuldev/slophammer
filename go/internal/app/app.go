@@ -57,10 +57,9 @@ func check(ctx context.Context, options CheckOptions, out io.Writer, errOut io.W
 	}
 	ruleSet := filterRuleSet(rules.DefaultRules(), options.OnlyRuleIDs)
 	result := rules.RunWithConfig(ctx, snapshot, ruleSet, cfg)
-	if options.Execute && shouldExecuteGoChecks(options.OnlyRuleIDs) {
+	if options.Execute {
 		findings := append([]rules.Finding(nil), result.Findings...)
-		executed := executeGoChecks(ctx, snapshot, options, cfg, runner)
-		findings = append(findings, filterFindings(executed, options.OnlyRuleIDs)...)
+		findings = append(findings, executeGoChecks(ctx, snapshot, options, cfg, runner)...)
 		result = rules.NewReport(findings)
 	}
 	if err := writeReport(out, options.Format, result); err != nil {
@@ -115,37 +114,11 @@ func filterRuleSet(ruleSet []rules.Rule, onlyRuleIDs []string) []rules.Rule {
 	return filtered
 }
 
-func filterFindings(findings []rules.Finding, onlyRuleIDs []string) []rules.Finding {
-	if len(onlyRuleIDs) == 0 {
-		return findings
-	}
-	wanted := ruleIDSet(onlyRuleIDs)
-	filtered := make([]rules.Finding, 0, len(findings))
-	for _, finding := range findings {
-		if wanted[finding.RuleID] {
-			filtered = append(filtered, finding)
-		}
-	}
-	return filtered
-}
-
-var executableGoRuleIDs = map[string]bool{
-	rules.GoDryRequiredRuleID:      true,
-	rules.GoCoverageRequiredRuleID: true,
-	rules.GoCRAPRequiredRuleID:     true,
-	rules.GoMutationRequiredRuleID: true,
-}
-
-func shouldExecuteGoChecks(onlyRuleIDs []string) bool {
+func ruleSelected(onlyRuleIDs []string, ruleID string) bool {
 	if len(onlyRuleIDs) == 0 {
 		return true
 	}
-	for _, ruleID := range onlyRuleIDs {
-		if executableGoRuleIDs[ruleID] {
-			return true
-		}
-	}
-	return false
+	return ruleIDSet(onlyRuleIDs)[ruleID]
 }
 
 func Explain(ruleID string, out io.Writer, errOut io.Writer) int {
@@ -361,7 +334,7 @@ func executeGoChecks(ctx context.Context, snapshot repo.Snapshot, checkOptions C
 	if coverageProfile == "" {
 		coverageProfile = cfg.GoCoverageProfile()
 	}
-	if cfg.Go.DRYMaxCandidatesSet {
+	if ruleSelected(checkOptions.OnlyRuleIDs, rules.GoDryRequiredRuleID) && cfg.Go.DRYMaxCandidatesSet {
 		paths, exclude := cfg.GoDRYScope()
 		options := toolchecks.DryOptions{
 			Root:                root,
@@ -382,7 +355,7 @@ func executeGoChecks(ctx context.Context, snapshot repo.Snapshot, checkOptions C
 			return checkDryInModules(ctx, snapshot, options, out, errOut, runner)
 		})
 	}
-	if cfg.Go.CoverageThreshold > 0 {
+	if ruleSelected(checkOptions.OnlyRuleIDs, rules.GoCoverageRequiredRuleID) && cfg.Go.CoverageThreshold > 0 {
 		targets, exclude := cfg.GoScope()
 		options := toolchecks.CoverageOptions{
 			Root:            root,
@@ -396,7 +369,7 @@ func executeGoChecks(ctx context.Context, snapshot repo.Snapshot, checkOptions C
 			return checkCoverageInModules(ctx, snapshot, options, out, errOut, runner)
 		})
 	}
-	if cfg.Go.CRAPMaxScore > 0 {
+	if ruleSelected(checkOptions.OnlyRuleIDs, rules.GoCRAPRequiredRuleID) && cfg.Go.CRAPMaxScore > 0 {
 		targets, exclude := cfg.GoScope()
 		options := toolchecks.CRAPOptions{
 			Root:            root,
@@ -411,7 +384,7 @@ func executeGoChecks(ctx context.Context, snapshot repo.Snapshot, checkOptions C
 		})
 	}
 	targets, exclude := cfg.GoMutationScope()
-	if len(targets) > 0 {
+	if ruleSelected(checkOptions.OnlyRuleIDs, rules.GoMutationRequiredRuleID) && len(targets) > 0 {
 		options := toolchecks.MutationOptions{
 			Root:    root,
 			Targets: targets,

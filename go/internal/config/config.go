@@ -384,7 +384,7 @@ func validateTypeScriptKeys(node *yaml.Node) error {
 			case "complexity":
 				return validateMappingKeys(value, "typescript.complexity", set("max"), nil)
 			case "mutation":
-				return validateMappingKeys(value, "typescript.mutation", set("targets", "exclude"), nil)
+				return validateMappingKeys(value, "typescript.mutation", set("targets"), nil)
 			case "dry":
 				return validateMappingKeys(value, "typescript.dry", set("max_findings", "paths", "exclude", "copied_blocks"), func(key string, value *yaml.Node) error {
 					if key == "copied_blocks" {
