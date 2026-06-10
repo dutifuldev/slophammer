@@ -176,9 +176,12 @@ func TestCheckExecuteAddsToolFindings(t *testing.T) {
 	writeFile(t, root, "internal/example.go", "package internal\n")
 	writeFile(t, root, "slophammer.yml", strings.Join([]string{
 		"go:",
-		"  coverage_threshold: 85",
-		"  dry_max_candidates: 0",
-		"  crap_max_score: 8",
+		"  coverage:",
+		"    threshold: 85",
+		"  dry:",
+		"    max_findings: 0",
+		"  crap:",
+		"    max_score: 8",
 		"  mutation:",
 		"    targets:",
 		"      - internal/example.go",
@@ -549,7 +552,7 @@ func TestCheckMutationInModulesRebasesExcludesInSingleModuleFallback(t *testing.
 
 func TestRunWithCommandConfigLoadsRepoConfig(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, root, "slophammer.yml", "go:\n  crap_max_score: 8\n")
+	writeFile(t, root, "slophammer.yml", "go:\n  crap:\n    max_score: 8\n")
 
 	var errOut bytes.Buffer
 	code := runWithCommandConfig(root, &errOut, func(snapshot repo.Snapshot, cfg config.Config) int {

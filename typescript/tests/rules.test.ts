@@ -302,7 +302,7 @@ describe("TypeScript rule parsing", () => {
           content:
             'export default [{rules:{"@typescript-eslint/no-explicit-any":"error","@typescript-eslint/no-unsafe-assignment":"error","@typescript-eslint/no-unsafe-call":"error","@typescript-eslint/no-unsafe-member-access":"error","@typescript-eslint/no-unsafe-return":"error",complexity:["error",5]}}];'
         },
-        { path: "slophammer.yml", content: "typescript:\n  complexity_max: 5\n" }
+        { path: "slophammer.yml", content: "typescript:\n  complexity:\n    max: 5\n" }
       ]),
       {
         ...emptyConfig(),
@@ -548,7 +548,7 @@ describe("TypeScript coverage and config inheritance", () => {
         ...emptyConfig(),
         typescript: {
           ...emptyConfig().typescript,
-          coverageThreshold: 85
+          coverage: { threshold: 85, paths: [], exclude: [] }
         }
       }
     );
@@ -867,7 +867,7 @@ function configWithCoverageThreshold(threshold: number): ReturnType<typeof empty
     ...emptyConfig(),
     typescript: {
       ...emptyConfig().typescript,
-      coverageThreshold: threshold
+      coverage: { threshold, paths: [], exclude: [] }
     }
   };
 }

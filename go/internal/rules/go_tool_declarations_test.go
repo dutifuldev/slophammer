@@ -71,8 +71,10 @@ func TestGoToolRulesAcceptSlophammerGoCommands(t *testing.T) {
 		"slophammer.yml": {
 			Path: "slophammer.yml",
 			Content: `go:
-  coverage_threshold: 85
-  crap_max_score: 8
+  coverage:
+    threshold: 85
+  crap:
+    max_score: 8
   targets:
     - .
 `,
@@ -109,7 +111,8 @@ func TestGoToolRulesAcceptReleasedSlophammerGoCommands(t *testing.T) {
 		"slophammer.yml": {
 			Path: "slophammer.yml",
 			Content: `go:
-  crap_max_score: 8
+  crap:
+    max_score: 8
   targets:
     - .
   dry:
@@ -148,7 +151,8 @@ func TestGoToolRulesAcceptConfigBackedSlophammerGoCheckExecute(t *testing.T) {
 		"slophammer.yml": {
 			Path: "slophammer.yml",
 			Content: `go:
-  crap_max_score: 8
+  crap:
+    max_score: 8
   targets:
     - .
   dry:
@@ -187,7 +191,8 @@ func TestGoCRAPRuleAcceptsConfigBackedCommandWithCoverageProfileBeforePath(t *te
 		"slophammer.yml": {
 			Path: "slophammer.yml",
 			Content: `go:
-  crap_max_score: 8
+  crap:
+    max_score: 8
 `,
 		},
 		"go/scripts/check-crap.sh": {
@@ -267,7 +272,8 @@ func TestGoToolRulesAcceptConfigBackedSlophammerCommands(t *testing.T) {
 		"slophammer.yml": {
 			Path: "slophammer.yml",
 			Content: `go:
-  crap_max_score: 8
+  crap:
+    max_score: 8
   targets:
     - .
 `,
@@ -597,7 +603,8 @@ func TestGoMutationRuleResolvesModuleLocalConfigTargets(t *testing.T) {
 		"slophammer.yml": {
 			Path: "slophammer.yml",
 			Content: `go:
-  crap_max_score: 8
+  crap:
+    max_score: 8
 `,
 		},
 		"go/go.mod":              {Path: "go/go.mod"},
@@ -721,7 +728,8 @@ func TestGoToolRulesRejectConfigBackedNonRootParentPath(t *testing.T) {
 		"slophammer.yml": {
 			Path: "slophammer.yml",
 			Content: `go:
-  crap_max_score: 8
+  crap:
+    max_score: 8
   targets:
     - .
 `,
@@ -755,7 +763,8 @@ func TestGoToolRulesRequireConfigRootForDeepWorkingDirectory(t *testing.T) {
 		"slophammer.yml": {
 			Path: "slophammer.yml",
 			Content: `go:
-  crap_max_score: 8
+  crap:
+    max_score: 8
   targets:
     - .
 `,
@@ -888,7 +897,7 @@ func TestRepoRootConfiguredGoMutationScopeExcludesRoot(t *testing.T) {
 		{
 			name: "empty scope",
 			files: map[string]repo.File{
-				"slophammer.yml": {Path: "slophammer.yml", Content: "go:\n  crap_max_score: 8\n"},
+				"slophammer.yml": {Path: "slophammer.yml", Content: "go:\n  crap:\n    max_score: 8\n"},
 			},
 			root:  "go",
 			roots: []string{"go"},
@@ -910,7 +919,8 @@ func TestGoToolRulesAcceptConfigBackedRootSlophammerCommands(t *testing.T) {
 		"slophammer.yml": {
 			Path: "slophammer.yml",
 			Content: `go:
-  crap_max_score: 8
+  crap:
+    max_score: 8
   targets:
     - .
 `,
@@ -941,7 +951,8 @@ func TestGoToolRulesAcceptConfigBackedRootSlophammerCommandsWithDefaultPath(t *t
 		"slophammer.yml": {
 			Path: "slophammer.yml",
 			Content: `go:
-  crap_max_score: 8
+  crap:
+    max_score: 8
   targets:
     - .
 `,

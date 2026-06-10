@@ -457,8 +457,8 @@ Slophammer checks that the repo has a declared `slophammer-go dry` command in
 CI or a script. Existing `dry4go` and pre-rename `slophammer go dry`
 declarations remain accepted as legacy evidence, but the recommended command is
 the first-class Go implementation command. If
-`slophammer.yml` sets `go.dry.max_findings` or `go.dry_max_candidates`, that
-value is the default budget unless `--max-candidates` is passed.
+`slophammer.yml` sets `go.dry.max_findings`, that value is the default budget
+unless `--max-candidates` is passed.
 
 The production target is strict: production Go code should have a zero-candidate
 DRY budget. Tests should be reviewed separately, fixtures should be excluded,
@@ -481,7 +481,7 @@ Use `crap4go` for CRAP scoring.
 Slophammer checks that the repo has a declared CRAP command and a clear
 threshold. The first-class `slophammer-go crap` command runs `crap4go` directly,
 parses its report, and fails when a function exceeds the configured maximum. If
-`slophammer.yml` sets `go.crap_max_score`, that value is the default maximum
+`slophammer.yml` sets `go.crap.max_score`, that value is the default maximum
 unless `--max-score` is passed.
 
 Coverage and complexity already exist separately in Go tooling. CRAP is valuable

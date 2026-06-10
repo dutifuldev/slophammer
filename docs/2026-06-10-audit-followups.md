@@ -182,6 +182,10 @@ ship first because the repo's whole pitch is a trustworthy contract.
 
 11. [x] Decide the config-dialect question explicitly.
 
+    Resolved as a full cutover rather than a deferred decision: the flat Go
+    and TypeScript keys were removed and every config, fixture, and doc now
+    uses the nested shape. See the decision doc for the key mapping.
+
     `slophammer.yml` uses flat keys for Go and TypeScript
     (`coverage_threshold`, `complexity_max`, `crap_max_score`) and nested
     keys for Rust (`coverage.threshold`, `complexity.cognitive_max`,

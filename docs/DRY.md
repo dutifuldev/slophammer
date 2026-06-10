@@ -119,14 +119,15 @@ For Go projects, the intended Slophammer policy is:
 
 ```yaml
 go:
-  dry_max_candidates: 0
-  dry_paths:
-    - go/cmd
-    - go/internal
-  dry_exclude:
-    - "**/*_test.go"
-    - "fixtures/**"
-    - "templates/**"
+  dry:
+    max_findings: 0
+    paths:
+      - go/cmd
+      - go/internal
+    exclude:
+      - "**/*_test.go"
+      - "fixtures/**"
+      - "templates/**"
 ```
 
 That shape keeps the production code honest without turning test clarity or

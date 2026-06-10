@@ -521,9 +521,6 @@ function configuredCoverageThreshold(cfg: Config): number {
   if (cfg.typescript.coverage.threshold > 0) {
     return cfg.typescript.coverage.threshold;
   }
-  if (cfg.typescript.coverageThreshold > 0) {
-    return cfg.typescript.coverageThreshold;
-  }
   return minimumCoverageThreshold;
 }
 

@@ -11,8 +11,7 @@ config fails the check with exit code `2`.
 Config keys are strict. Unknown root, rule, language, DRY, copied-block, or
 dependency-boundary keys fail instead of being ignored.
 
-The Go and TypeScript sections use flat keys while the Rust section uses
-nested keys. The nested shape is the long-term target; see the
+Every language section uses the same nested key shape; see the
 [Config Dialect Decision](../docs/2026-06-10-config-dialect-decision.md).
 
 ## Shape
@@ -22,7 +21,8 @@ rules:
   go.crap-required:
     severity: warn
 go:
-  coverage_threshold: 85
+  coverage:
+    threshold: 85
   targets:
     - go
   exclude:
@@ -45,7 +45,8 @@ go:
     copied_blocks:
       enabled: true
       min_tokens: 100
-  crap_max_score: 8
+  crap:
+    max_score: 8
   mutation:
     targets:
       - go/internal/rules
@@ -60,8 +61,10 @@ go:
     - from: go/internal/repo
       allow: []
 typescript:
-  coverage_threshold: 85
-  complexity_max: 8
+  coverage:
+    threshold: 85
+  complexity:
+    max: 8
   dry:
     max_findings: 0
     paths:
@@ -75,8 +78,9 @@ typescript:
     copied_blocks:
       enabled: true
       min_tokens: 100
-  mutation_targets:
-    - typescript/src/rules/rules.ts
+  mutation:
+    targets:
+      - typescript/src/rules/rules.ts
   dependency_boundaries:
     - from: typescript/src/app
       allow:
@@ -143,15 +147,16 @@ reason and is not used by the current Go implementation to hide findings.
 
 ## Go Config
 
-`go.coverage_threshold`, `go.targets`, `go.exclude`, `go.dry`,
-`go.crap_max_score`, `go.mutation`, and `go.dependency_boundaries` are parsed
-as typed policy fields.
+`go.coverage`, `go.targets`, `go.exclude`, `go.dry`, `go.crap`, `go.mutation`,
+and `go.dependency_boundaries` are parsed as typed policy fields.
+`go.coverage` holds `threshold` and an optional `profile` path for a
+pre-generated coverage artifact. `go.crap` holds `max_score`.
 
 The Go policy values have hard recommended bounds. Slophammer rejects config
 that weakens them:
 
-- `go.coverage_threshold` must be at least `85`.
-- `go.crap_max_score` must be at most `8`.
+- `go.coverage.threshold` must be at least `85`.
+- `go.crap.max_score` must be at most `8`.
 
 Projects may choose stricter values, such as higher coverage or lower CRAP
 limits, but they cannot configure weaker values through `slophammer.yml`.
@@ -162,8 +167,7 @@ directory targets recursively, excludes test files and fixture directories by
 default, applies configured excludes, sorts the result, and fails commands that
 resolve to zero files.
 
-`go.dry_paths` and `go.dry_exclude` configure production-only DRY enforcement.
-The nested `go.dry` shape is the preferred spelling for new repos:
+`go.dry` configures production-only DRY enforcement:
 
 - `go.dry.max_findings` sets the finding budget.
 - `go.dry.paths` selects paths to scan.
@@ -172,13 +176,13 @@ The nested `go.dry` shape is the preferred spelling for new repos:
 - `go.dry.copied_blocks` configures CPD-style copied-block detection.
 
 Slophammer expands the configured paths to Go source files before running its
-native DRY engine. The old top-level fields remain accepted for compatibility.
+native DRY engine.
 
 The direct Go commands use these values as defaults:
 
-- `slophammer-go dry` uses `go.dry_max_candidates` unless
+- `slophammer-go dry` uses `go.dry.max_findings` unless
   `--max-candidates` is passed.
-- `slophammer-go crap` uses `go.crap_max_score` unless `--max-score` is
+- `slophammer-go crap` uses `go.crap.max_score` unless `--max-score` is
   passed.
 - `slophammer-go mutate` uses `go.mutation.targets` when present, otherwise
   `go.targets`, unless `--target` is passed.
@@ -204,22 +208,22 @@ External imports are ignored. Local imports are resolved through the nearest
 
 ## TypeScript Config
 
-`typescript.coverage_threshold`, `typescript.coverage`,
-`typescript.complexity_max`, `typescript.dry`, `typescript.mutation_targets`,
-and `typescript.dependency_boundaries` are parsed as typed policy fields.
+`typescript.coverage`, `typescript.complexity`, `typescript.dry`,
+`typescript.mutation`, and `typescript.dependency_boundaries` are parsed as
+typed policy fields. `typescript.complexity` holds `max`, and
+`typescript.mutation` holds `targets`.
 
 The TypeScript policy values have hard recommended bounds. Slophammer rejects
 config that weakens them:
 
-- `typescript.coverage_threshold` must be at least `85`.
 - `typescript.coverage.threshold` must be at least `85`.
-- `typescript.complexity_max` must be at most `8`.
+- `typescript.complexity.max` must be at most `8`.
 
 Projects may choose stricter values, such as higher coverage or lower
 complexity limits, but they cannot configure weaker values through
 `slophammer.yml`.
 
-The preferred TypeScript coverage shape keeps the threshold and scope together:
+`typescript.coverage` keeps the threshold and scope together:
 
 ```yaml
 typescript:
@@ -233,9 +237,7 @@ typescript:
       - "dist/**"
 ```
 
-`typescript.coverage_threshold` remains supported as a shorthand for a
-whole-project coverage threshold. Use `typescript.coverage` when the gate is
-intentionally scoped to specific production paths.
+Omit `paths` and `exclude` for a whole-project coverage threshold.
 
 The nested `typescript.dry` shape configures native copied-block duplicate
 detection:
@@ -260,16 +262,14 @@ importing source file.
 
 ## Rust Config
 
-`rust.coverage`, `rust.coverage_threshold`, `rust.complexity`, `rust.targets`,
-`rust.exclude`, `rust.dry`, `rust.unsafe`, `rust.mutation`, and
-`rust.dependency_boundaries` are parsed as typed policy fields by
-`slophammer-rs`.
+`rust.coverage`, `rust.complexity`, `rust.targets`, `rust.exclude`,
+`rust.dry`, `rust.unsafe`, `rust.mutation`, and `rust.dependency_boundaries`
+are parsed as typed policy fields by `slophammer-rs`.
 
 The Rust policy values have hard recommended bounds. Slophammer rejects config
 that weakens them:
 
 - `rust.coverage.threshold` must be at least `85`.
-- `rust.coverage_threshold` must be at least `85`.
 - `rust.complexity.cognitive_max` must be at most `8`.
 - `rust.dry.max_findings` must be `0` for production code.
 

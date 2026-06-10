@@ -58,7 +58,8 @@ func TestGoCoverageRuleAcceptsConfigBackedSlophammerGoCheckExecute(t *testing.T)
 		"slophammer.yml": {
 			Path: "slophammer.yml",
 			Content: `go:
-  coverage_threshold: 85
+  coverage:
+    threshold: 85
 `,
 		},
 		".github/workflows/ci.yml": {

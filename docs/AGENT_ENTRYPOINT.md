@@ -150,7 +150,8 @@ For Go projects, start with this policy:
 
 ```yaml
 go:
-  coverage_threshold: 85
+  coverage:
+    threshold: 85
   targets:
     - go
   exclude:
@@ -173,7 +174,8 @@ go:
     copied_blocks:
       enabled: true
       min_tokens: 100
-  crap_max_score: 8
+  crap:
+    max_score: 8
   mutation:
     targets:
       - go/internal/rules
