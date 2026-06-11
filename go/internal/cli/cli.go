@@ -181,7 +181,7 @@ func parseCheckArgs(args []string, errOut io.Writer) (app.CheckOptions, bool) {
 		i += advance
 	}
 	if options.Root == "" {
-		_, _ = fmt.Fprintln(errOut, "usage: slophammer-go check <path> [--format text|json|sarif] [--execute] [--only rule-id] [--coverage-profile file]")
+		_, _ = fmt.Fprintln(errOut, "usage: slophammer-go check <path> [--format text|json|sarif] [--execute] [--only rule-id] [--coverage-profile file] [--baseline | --baseline-write]")
 		return app.CheckOptions{}, false
 	}
 	return options, true
@@ -201,9 +201,22 @@ func parseCheckArg(options *app.CheckOptions, args []string, index int, errOut i
 		return parseCheckCoverageProfile(options, args, index, errOut)
 	case "--only":
 		return parseCheckOnly(options, args, index, errOut)
+	case "--baseline":
+		return parseCheckBaseline(options, app.BaselineCheck, errOut)
+	case "--baseline-write":
+		return parseCheckBaseline(options, app.BaselineWrite, errOut)
 	default:
 		return 0, parseCheckPath(options, args[index], errOut)
 	}
+}
+
+func parseCheckBaseline(options *app.CheckOptions, mode app.BaselineMode, errOut io.Writer) (int, bool) {
+	if options.Baseline != app.BaselineOff && options.Baseline != mode {
+		_, _ = fmt.Fprintln(errOut, "--baseline and --baseline-write are mutually exclusive")
+		return 0, false
+	}
+	options.Baseline = mode
+	return 0, true
 }
 
 func parseCheckFormat(options *app.CheckOptions, args []string, index int, errOut io.Writer) (int, bool) {
@@ -497,7 +510,7 @@ func parseSinglePathOption(currentRoot string, arg string, command string, errOu
 
 func printUsage(out io.Writer) {
 	_, _ = fmt.Fprintln(out, "usage:")
-	_, _ = fmt.Fprintln(out, "  slophammer-go check <path> [--format text|json|sarif] [--execute] [--only rule-id] [--coverage-profile file]")
+	_, _ = fmt.Fprintln(out, "  slophammer-go check <path> [--format text|json|sarif] [--execute] [--only rule-id] [--coverage-profile file] [--baseline | --baseline-write]")
 	_, _ = fmt.Fprintln(out, "  slophammer-go explain <rule-id>")
 	_, _ = fmt.Fprintln(out, "  slophammer-go rules [--format text|json]")
 	_, _ = fmt.Fprintln(out, "  slophammer-go dry [path] [--max-candidates n] [--show-report] [--format json|text]")

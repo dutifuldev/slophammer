@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import { emptyConfig } from "../src/config/config.js";
 import { newSnapshot } from "../src/repo/repo.js";
 import { runRules } from "../src/rules/rules.js";
-import { scopedRepoEvidenceBridge } from "./helpers.js";
 
 describe("TypeScript Oxlint project evidence", () => {
   it("preserves root Oxlint config for nested TypeScript packages", () => {
@@ -39,7 +38,6 @@ function nestedPackageWithRootOxlintConfig(): readonly {
     { path: "README.md", content: "# Repo\n" },
     { path: "AGENTS.md", content: "# Agents\n" },
     { path: ".github/workflows/ci.yml", content: nestedPackageOxlintWorkflow() },
-    scopedRepoEvidenceBridge("pkg"),
     { path: ".oxlintrc.json", content: oxlintConfig() },
     {
       path: "pkg/package.json",

@@ -197,13 +197,17 @@ func bindingTriggerEntry(name string, value *yaml.Node) bool {
 	}
 }
 
+var bindingTriggerNames = map[string]struct{}{
+	"push":                {},
+	"pull_request":        {},
+	"pull_request_target": {},
+	"merge_group":         {},
+	"schedule":            {},
+}
+
 func bindingTriggerName(name string) bool {
-	switch name {
-	case "push", "pull_request", "pull_request_target", "merge_group", "schedule":
-		return true
-	default:
-		return false
-	}
+	_, ok := bindingTriggerNames[name]
+	return ok
 }
 
 func bindingPushFilter(value *yaml.Node) bool {

@@ -4,7 +4,7 @@ import YAML from "yaml";
 import type { Config } from "../config/config.js";
 import { minimumCoverageThreshold } from "../config/config.js";
 import { ruleSeverity } from "../config/config.js";
-import { commandFiles, filesNamed, filesWithSuffix, type Snapshot } from "../repo/repo.js";
+import { commandFiles, filesNamed, filesWithSuffix, hasFile, type Snapshot } from "../repo/repo.js";
 import { dependencyBoundaryFindings } from "./dependency-boundaries.js";
 import { defaultDefinitions, ruleIDs } from "./definitions.js";
 import { complexityLimit, enforcedRuleValues, stripJavaScriptComments } from "./eslint-values.js";
@@ -15,6 +15,9 @@ import {
 } from "./oxlint-evidence.js";
 import { expandedPackageScriptSegments, packageScripts } from "./package-scripts.js";
 import { scopeSnapshot } from "./project-scope.js";
+import { scopeFindings } from "./scope.js";
+import { ignoredProjectDataPath, typeScriptSourcePath } from "./source-paths.js";
+import { suppressionFindings } from "./suppressions.js";
 import { compilerConfig, extendedConfigPaths } from "./typescript-config.js";
 import type { Definition, Finding, Metadata, Report } from "./types.js";
 
@@ -88,13 +91,59 @@ function checkDefinition(
     case ruleIDs.agentsRequired:
       return hasRootFileNamed(snapshot, "AGENTS.md") ? [] : [finding(definition)];
     case ruleIDs.ciRequired:
-      return filesWithSuffix(snapshot, ".yml").some(isWorkflow) ||
-        filesWithSuffix(snapshot, ".yaml").some(isWorkflow)
-        ? []
-        : [finding(definition)];
+      return hasWorkflowFile(snapshot) ? [] : [finding(definition)];
+    case ruleIDs.slophammerCiRequired:
+      return slophammerCiFindings(definition, snapshot);
     default:
       return checkTypeScriptDefinition(definition, snapshot, cfg);
   }
+}
+
+function hasWorkflowFile(snapshot: Snapshot): boolean {
+  return (
+    filesWithSuffix(snapshot, ".yml").some(isWorkflow) ||
+    filesWithSuffix(snapshot, ".yaml").some(isWorkflow)
+  );
+}
+
+// Config without enforcement is decoration: when slophammer.yml is present,
+// binding CI evidence must invoke a Slophammer checker.
+function slophammerCiFindings(definition: Definition, snapshot: Snapshot): readonly Finding[] {
+  const hasConfig = hasFile(snapshot, "slophammer.yml") || hasFile(snapshot, "slophammer.yaml");
+  if (!hasConfig || slophammerInvocation(commandText(snapshot))) {
+    return [];
+  }
+  return [finding(definition)];
+}
+
+function commandText(snapshot: Snapshot): string {
+  return commandFiles(snapshot)
+    .map((file) => file.content)
+    .join("\n");
+}
+
+function slophammerInvocation(evidence: string): boolean {
+  if (evidence.includes("uses: dutifuldev/slophammer@")) {
+    return true;
+  }
+  return ["slophammer-go", "slophammer-ts", "slophammer-rs", "slophammer-py"].some((binary) =>
+    invocationWithCheck(evidence, binary)
+  );
+}
+
+const checkInvocationWindow = 160;
+
+function invocationWithCheck(evidence: string, binary: string): boolean {
+  for (
+    let index = evidence.indexOf(binary);
+    index >= 0;
+    index = evidence.indexOf(binary, index + 1)
+  ) {
+    if (evidence.slice(index, index + checkInvocationWindow).includes(" check")) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function checkTypeScriptDefinition(
@@ -106,13 +155,21 @@ function checkTypeScriptDefinition(
   if (check === undefined) {
     return [];
   }
-  if (definition.id === ruleIDs.tsDependencyBoundariesRequired) {
+  if (fullSnapshotRuleIDs.has(definition.id)) {
     return isTypeScriptProject(snapshot) ? check(definition, snapshot, cfg) : [];
   }
   return typeScriptProjectScopes(snapshot).flatMap((scope) =>
     prefixScopeFindings(check(definition, scope.snapshot, cfg), scope.root)
   );
 }
+
+// These rules evaluate once against the full repository snapshot instead of
+// per project scope: their paths and config are repository-relative.
+const fullSnapshotRuleIDs: ReadonlySet<string> = new Set([
+  ruleIDs.tsDependencyBoundariesRequired,
+  ruleIDs.tsScopeIncomplete,
+  ruleIDs.tsSuppressionsJustified
+]);
 
 type TypeScriptCheck = (
   definition: Definition,
@@ -136,7 +193,10 @@ const typeScriptChecks: Readonly<Record<string, TypeScriptCheck>> = {
     hasCoverageGate(snapshot, cfg) ? [] : [finding(definition)],
   [ruleIDs.tsDryRequired]: predicateCheck(hasTypeScriptDryCommand),
   [ruleIDs.tsMutationRequired]: predicateCheck(hasTypeScriptMutationCommand),
-  [ruleIDs.tsDependencyBoundariesRequired]: dependencyBoundaryFindings
+  [ruleIDs.tsDependencyBoundariesRequired]: dependencyBoundaryFindings,
+  [ruleIDs.tsScopeIncomplete]: scopeFindings,
+  [ruleIDs.tsSuppressionsJustified]: (definition, snapshot) =>
+    suppressionFindings(definition, snapshot)
 };
 
 function requiredNamedFileCheck(fileName: string): TypeScriptCheck {
@@ -162,16 +222,6 @@ function isTypeScriptProject(snapshot: Snapshot): boolean {
     productionFilesNamed(snapshot, "tsconfig.json").length > 0 ||
     [...snapshot.files.keys()].some((filePath) => typeScriptSourcePath(filePath)) ||
     productionFilesNamed(snapshot, "package.json").some(packageHasTypeScriptSignal)
-  );
-}
-
-function typeScriptSourcePath(filePath: string): boolean {
-  return (
-    !ignoredProjectDataPath(filePath) &&
-    !testSourcePath(filePath) &&
-    !typeScriptDeclarationPath(filePath) &&
-    !typeScriptToolingConfigPath(filePath) &&
-    typeScriptSourceExtension(filePath)
   );
 }
 
@@ -789,10 +839,6 @@ function productionFilesNamed(
   return filesNamed(snapshot, ...names).filter((file) => !ignoredProjectDataPath(file.path));
 }
 
-function ignoredProjectDataPath(filePath: string): boolean {
-  return filePath.startsWith("fixtures/") || filePath.startsWith("templates/");
-}
-
 function effectiveCompilerOptions(
   snapshot: Snapshot,
   filePath: string,
@@ -826,33 +872,4 @@ function asRecord(value: unknown): Readonly<Record<string, unknown>> {
     return {};
   }
   return value as Readonly<Record<string, unknown>>;
-}
-
-function typeScriptSourceExtension(filePath: string): boolean {
-  return (
-    filePath.endsWith(".ts") ||
-    filePath.endsWith(".tsx") ||
-    filePath.endsWith(".mts") ||
-    filePath.endsWith(".cts")
-  );
-}
-
-function typeScriptDeclarationPath(filePath: string): boolean {
-  return filePath.endsWith(".d.ts") || filePath.endsWith(".d.mts") || filePath.endsWith(".d.cts");
-}
-
-function testSourcePath(filePath: string): boolean {
-  const baseName = path.posix.basename(filePath);
-  return (
-    filePath.startsWith("test/") ||
-    filePath.startsWith("tests/") ||
-    filePath.includes("/test/") ||
-    filePath.includes("/tests/") ||
-    baseName.includes(".test.") ||
-    baseName.includes(".spec.")
-  );
-}
-
-function typeScriptToolingConfigPath(filePath: string): boolean {
-  return path.posix.basename(filePath).includes(".config.");
 }

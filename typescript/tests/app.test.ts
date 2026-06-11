@@ -142,7 +142,7 @@ async function nestedTypeScriptRepo(): Promise<string> {
   await mkdir(path.join(root, "pkg", "src"), { recursive: true });
   await writeFile(path.join(root, "README.md"), "# Repo\n");
   await writeFile(path.join(root, "AGENTS.md"), "# Agents\n");
-  await writeFile(path.join(root, ".github", "workflows", "ci.yml"), "name: CI\n");
+  await writeFile(path.join(root, ".github", "workflows", "ci.yml"), rootCheckerWorkflow());
   await writeFile(
     path.join(root, "pkg", ".github", "workflows", "ci.yml"),
     nestedPackageWorkflow()
@@ -197,6 +197,20 @@ async function nestedTypeScriptRepoWithJavaScriptRoot(): Promise<string> {
     JSON.stringify({ scripts: { test: "node --test" } })
   );
   return root;
+}
+
+// rootCheckerWorkflow keeps repo.slophammer-ci-required satisfied for temp
+// repos that carry a slophammer.yml.
+function rootCheckerWorkflow(): string {
+  return [
+    "name: CI",
+    "on: [push]",
+    "jobs:",
+    "  slophammer:",
+    "    steps:",
+    "      - run: npx slophammer-ts check .",
+    ""
+  ].join("\n");
 }
 
 function nestedPackageWorkflow(): string {

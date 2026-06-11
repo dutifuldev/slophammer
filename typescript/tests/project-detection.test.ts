@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import { emptyConfig } from "../src/config/config.js";
 import { newSnapshot } from "../src/repo/repo.js";
 import { runRules } from "../src/rules/rules.js";
-import { scopedRepoEvidenceBridge } from "./helpers.js";
 
 describe("TypeScript project detection", () => {
   it("does not treat TypeScript-only tooling files as production TypeScript", () => {
@@ -397,7 +396,6 @@ function nestedPackageFiles(): readonly { readonly path: string; readonly conten
     { path: "README.md", content: "# Repo\n" },
     { path: "AGENTS.md", content: "# Agents\n" },
     { path: ".github/workflows/ci.yml", content: nestedPackageWorkflow() },
-    scopedRepoEvidenceBridge("pkg"),
     {
       path: "pkg/package.json",
       content: JSON.stringify({ devDependencies: { typescript: "^5.0.0" } })
@@ -638,7 +636,6 @@ function packageFilesWithTSConfig(
   tsconfig: string
 ): readonly { readonly path: string; readonly content: string }[] {
   return [
-    scopedRepoEvidenceBridge(root),
     {
       path: `${root}/package.json`,
       content: JSON.stringify({ devDependencies: { typescript: "^5.0.0" } })

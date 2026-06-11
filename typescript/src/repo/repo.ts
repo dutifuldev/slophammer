@@ -63,12 +63,28 @@ export function commandFiles(snapshot: Snapshot): readonly RepoFile[] {
   const workflows = workflowFiles(snapshot)
     .map(workflowCommandFile)
     .filter((file) => !ignoredEvidencePath(file.path) && file.content.trim() !== "");
-  const rootEvidence = joinedContents(workflows);
+  const synthetic = syntheticRepoEvidenceFiles(snapshot);
+  const rootEvidence = joinedContents([...workflows, ...synthetic]);
   const scripts = reachableScriptFiles(snapshot, rootEvidence);
   const packages = reachablePackageScriptFiles(snapshot, rootEvidence + joinedContents(scripts));
-  return [...workflows, ...scripts, ...packages].filter(
+  return [...workflows, ...synthetic, ...scripts, ...packages].filter(
     (file) => !ignoredEvidencePath(file.path) && file.content.trim() !== ""
   );
+}
+
+// Synthetic __repo_ evidence files are produced by scoping a real root
+// workflow or root package scripts into a project scope, so they are already
+// filtered binding evidence and stay credited without a referencing workflow.
+export const syntheticRepoEvidencePrefix = "scripts/__repo_";
+
+function syntheticRepoEvidencePath(filePath: string): boolean {
+  return filePath.startsWith(syntheticRepoEvidencePrefix);
+}
+
+function syntheticRepoEvidenceFiles(snapshot: Snapshot): readonly RepoFile[] {
+  return [...snapshot.files.values()]
+    .filter((file) => syntheticRepoEvidencePath(file.path))
+    .map(shellCommandFile);
 }
 
 function joinedContents(files: readonly RepoFile[]): string {
@@ -108,10 +124,7 @@ function wordCharacter(value: string): boolean {
 // reachablePackageScriptFiles credits package.json scripts only when binding
 // evidence invokes them by name, following one level of chained npm-run
 // references inside invoked scripts.
-function reachablePackageScriptFiles(
-  snapshot: Snapshot,
-  evidence: string
-): readonly RepoFile[] {
+function reachablePackageScriptFiles(snapshot: Snapshot, evidence: string): readonly RepoFile[] {
   return filesNamed(snapshot, "package.json")
     .map((file) => ({
       path: file.path,
@@ -122,9 +135,7 @@ function reachablePackageScriptFiles(
 
 function reachablePackageScriptContent(content: string, evidence: string): string {
   const scripts = parsedPackageScripts(content);
-  const invoked = new Set(
-    [...scripts.keys()].filter((name) => scriptInvoked(evidence, name))
-  );
+  const invoked = new Set([...scripts.keys()].filter((name) => scriptInvoked(evidence, name)));
   const chained = [...invoked].flatMap((name) =>
     [...scripts.keys()].filter((candidate) => scriptInvoked(scripts.get(name) ?? "", candidate))
   );
@@ -170,9 +181,10 @@ export function normalizePath(path: string): string {
 function scriptFiles(snapshot: Snapshot): readonly RepoFile[] {
   return [...snapshot.files.values()].filter(
     (file) =>
-      file.path.startsWith("scripts/") ||
-      file.path.includes("/scripts/") ||
-      file.path.endsWith(".sh")
+      !syntheticRepoEvidencePath(file.path) &&
+      (file.path.startsWith("scripts/") ||
+        file.path.includes("/scripts/") ||
+        file.path.endsWith(".sh"))
   );
 }
 
@@ -193,11 +205,12 @@ function shellCommandFile(file: RepoFile): RepoFile {
 function extractWorkflowRunContent(content: string): string {
   const workflow = workflowRecord(content);
   if (workflow !== undefined && Object.keys(asRecord(workflow["jobs"])).length > 0) {
-    if (!bindingWorkflowTriggers(workflow["on"])) {
-      return "";
-    }
-    return workflowCommands(workflow).join("\n");
+    return bindingWorkflowTriggers(workflow["on"]) ? workflowCommands(workflow).join("\n") : "";
   }
+  return lineBasedRunCommands(content).join("\n");
+}
+
+function lineBasedRunCommands(content: string): readonly string[] {
   const lines = content.replaceAll("\r\n", "\n").split("\n");
   const commands: string[] = [];
   for (let index = 0; index < lines.length; index += 1) {
@@ -216,7 +229,7 @@ function extractWorkflowRunContent(content: string): string {
       commands.push(command);
     }
   }
-  return commands.join("\n");
+  return commands;
 }
 
 const matrixCommandExpressionPattern = /\$\{\{\s*matrix\.command\s*\}\}/u;
@@ -279,7 +292,7 @@ function literalFalseExpression(condition: string): boolean {
 // bindingWorkflowTriggers reports whether a workflow can fire for
 // integration: pull requests, merge groups, schedules, or pushes whose
 // branch filter is absent, wildcarded, or names an integration branch.
-function bindingWorkflowTriggers(on: unknown): boolean {
+export function bindingWorkflowTriggers(on: unknown): boolean {
   if (typeof on === "string") {
     return bindingTriggerName(on);
   }

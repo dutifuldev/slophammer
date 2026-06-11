@@ -39,27 +39,6 @@ export function bindingScriptWorkflow(): string {
   ].join("\n");
 }
 
-// scopedRepoEvidenceBridge gives a nested package scope a binding workflow
-// that runs the synthetic scoped copy of the root workflow, so the scoped
-// root evidence stays reachable under the binding CI evidence rules.
-export function scopedRepoEvidenceBridge(root: string): {
-  readonly path: string;
-  readonly content: string;
-} {
-  return {
-    path: `${root}/.github/workflows/ci.yml`,
-    content: [
-      "name: package ci",
-      "on: [push]",
-      "jobs:",
-      "  evidence:",
-      "    steps:",
-      "      - run: bash scripts/__repo_workflow_github_workflows_ci_yml.sh",
-      ""
-    ].join("\n")
-  };
-}
-
 export function parseReport(content: string): Report {
   const parsed: unknown = JSON.parse(content);
   const root = asRecord(parsed);

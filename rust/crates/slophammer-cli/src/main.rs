@@ -1,4 +1,5 @@
 mod app;
+mod baseline;
 mod config;
 mod core;
 mod exec;
@@ -30,6 +31,10 @@ enum Command {
         execute: bool,
         #[arg(long = "only")]
         only_rule_ids: Vec<String>,
+        #[arg(long, conflicts_with = "baseline_write")]
+        baseline: bool,
+        #[arg(long = "baseline-write")]
+        baseline_write: bool,
     },
     Explain {
         rule_id: String,
@@ -79,11 +84,14 @@ fn run(command: Command) -> AppResult {
             format,
             execute,
             only_rule_ids,
+            baseline,
+            baseline_write,
         } => app::check(CheckOptions {
             root: path,
             format: format.into(),
             execute,
             only_rule_ids,
+            baseline: baseline_mode(baseline, baseline_write),
         }),
         Command::Explain { rule_id } => app::explain(&rule_id),
         Command::Rules { format } => app::rules(format.into()),
@@ -106,6 +114,16 @@ fn run(command: Command) -> AppResult {
             format: format.into(),
             max_findings: None,
         }),
+    }
+}
+
+fn baseline_mode(baseline: bool, baseline_write: bool) -> baseline::BaselineMode {
+    if baseline_write {
+        baseline::BaselineMode::Write
+    } else if baseline {
+        baseline::BaselineMode::Check
+    } else {
+        baseline::BaselineMode::Off
     }
 }
 

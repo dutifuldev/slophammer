@@ -25,6 +25,45 @@ describe("report writers", () => {
     );
   });
 
+  it("prints scope coverage in text reports", () => {
+    const clean = { ...newReport([]), scope: { scanned: 41, production_files: 45 } };
+    const failing = {
+      ...newReport([finding("repo.readme-required", "README.md")]),
+      scope: { scanned: 2, production_files: 3 }
+    };
+
+    expect(writeText(clean)).toBe("OK: no findings\nscope: scanned 41 of 45 production files\n");
+    expect(writeText(failing)).toContain("scope: scanned 2 of 3 production files\n");
+    expect(writeText(newReport([]))).not.toContain("scope:");
+  });
+
+  it("serializes baselined findings in JSON only when set", () => {
+    const report = newReport([
+      { ...finding("repo.readme-required", "README.md"), baselined: true },
+      finding("repo.agents-required", "AGENTS.md")
+    ]);
+
+    const serialized = writeJSON(report);
+
+    expect(serialized).toContain('"baselined": true');
+    expect(serialized.match(/"baselined"/gu)).toHaveLength(1);
+  });
+
+  it("maps baselined findings to SARIF suppressions", () => {
+    const content = writeSARIF(
+      newReport([
+        { ...finding("repo.readme-required", "README.md"), baselined: true },
+        finding("repo.agents-required", "AGENTS.md")
+      ])
+    );
+    const parsed = JSON.parse(content) as {
+      runs: readonly [{ results: readonly { suppressions?: unknown }[] }];
+    };
+
+    expect(parsed.runs[0].results[0]?.suppressions).toBeUndefined();
+    expect(parsed.runs[0].results[1]?.suppressions).toEqual([{ kind: "external" }]);
+  });
+
   it("writes SARIF for findings", () => {
     const content = writeSARIF(newReport([finding("repo.readme-required", "README.md", "warn")]));
     const parsed = JSON.parse(content) as {

@@ -103,6 +103,7 @@ func TestDefaultDefinitionsAreStable(t *testing.T) {
 		ReadmeRequiredRuleID,
 		AgentsRequiredRuleID,
 		CIRequiredRuleID,
+		SlophammerCIRequiredRuleID,
 		GoModuleRequiredRuleID,
 		GoTestsRequiredRuleID,
 		GoVetRequiredRuleID,
@@ -113,6 +114,8 @@ func TestDefaultDefinitionsAreStable(t *testing.T) {
 		GoCRAPRequiredRuleID,
 		GoMutationRequiredRuleID,
 		GoDependencyBoundariesRuleID,
+		GoScopeIncompleteRuleID,
+		GoSuppressionsJustifiedRuleID,
 	}
 	if len(definitions) != len(wantIDs) {
 		t.Fatalf("len(definitions) = %d, want %d", len(definitions), len(wantIDs))

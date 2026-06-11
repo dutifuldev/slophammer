@@ -32,18 +32,48 @@ type RuleConfig struct {
 }
 
 type GoConfig struct {
-	CoverageThreshold    float64              `yaml:"-"`
-	CoverageProfile      string               `yaml:"-"`
-	Targets              []string             `yaml:"targets"`
-	Exclude              []string             `yaml:"exclude"`
-	DRYMaxCandidates     int                  `yaml:"-"`
-	DRYMaxCandidatesSet  bool                 `yaml:"-"`
-	DRYPaths             []string             `yaml:"-"`
-	DRYExclude           []string             `yaml:"-"`
-	DRY                  DryConfig            `yaml:"dry"`
-	CRAPMaxScore         float64              `yaml:"-"`
-	Mutation             MutationConfig       `yaml:"mutation"`
-	DependencyBoundaries []DependencyBoundary `yaml:"dependency_boundaries"`
+	CoverageThreshold      float64              `yaml:"-"`
+	CoverageProfile        string               `yaml:"-"`
+	Targets                []string             `yaml:"targets"`
+	Exclude                []string             `yaml:"exclude"`
+	ExcludeEntries         []ExcludeEntry       `yaml:"-"`
+	DRYMaxCandidates       int                  `yaml:"-"`
+	DRYMaxCandidatesSet    bool                 `yaml:"-"`
+	DRYPaths               []string             `yaml:"-"`
+	DRYExclude             []string             `yaml:"-"`
+	DRYExcludeEntries      []ExcludeEntry       `yaml:"-"`
+	DRY                    DryConfig            `yaml:"dry"`
+	CRAPMaxScore           float64              `yaml:"-"`
+	Mutation               MutationConfig       `yaml:"mutation"`
+	MutationExcludeEntries []ExcludeEntry       `yaml:"-"`
+	DependencyBoundaries   []DependencyBoundary `yaml:"dependency_boundaries"`
+}
+
+// ExcludeEntry is one exclude list item: a plain pattern when it matches the
+// conventional non-production list, and a pattern with a reason when it
+// carves out production files.
+type ExcludeEntry struct {
+	Pattern  string
+	Reason   string
+	Reasoned bool
+}
+
+func (e *ExcludeEntry) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.ScalarNode {
+		e.Pattern = value.Value
+		return nil
+	}
+	var parsed struct {
+		Pattern string `yaml:"pattern"`
+		Reason  string `yaml:"reason"`
+	}
+	if err := value.Decode(&parsed); err != nil {
+		return err
+	}
+	e.Pattern = parsed.Pattern
+	e.Reason = parsed.Reason
+	e.Reasoned = true
+	return nil
 }
 
 type MutationConfig struct {
@@ -93,7 +123,7 @@ func (cfg *GoConfig) UnmarshalYAML(value *yaml.Node) error {
 	type dryConfig struct {
 		MaxFindings  *int                `yaml:"max_findings"`
 		Paths        []string            `yaml:"paths"`
-		Exclude      []string            `yaml:"exclude"`
+		Exclude      []ExcludeEntry      `yaml:"exclude"`
 		Structural   dryStructuralConfig `yaml:"structural"`
 		CopiedBlocks dryCopiedConfig     `yaml:"copied_blocks"`
 	}
@@ -104,13 +134,17 @@ func (cfg *GoConfig) UnmarshalYAML(value *yaml.Node) error {
 	type goCRAPConfig struct {
 		MaxScore float64 `yaml:"max_score"`
 	}
+	type mutationConfig struct {
+		Targets []string       `yaml:"targets"`
+		Exclude []ExcludeEntry `yaml:"exclude"`
+	}
 	type goConfig struct {
 		Coverage             goCoverageConfig     `yaml:"coverage"`
 		Targets              []string             `yaml:"targets"`
-		Exclude              []string             `yaml:"exclude"`
+		Exclude              []ExcludeEntry       `yaml:"exclude"`
 		DRY                  dryConfig            `yaml:"dry"`
 		CRAP                 goCRAPConfig         `yaml:"crap"`
-		Mutation             MutationConfig       `yaml:"mutation"`
+		Mutation             mutationConfig       `yaml:"mutation"`
 		DependencyBoundaries []DependencyBoundary `yaml:"dependency_boundaries"`
 	}
 	var parsed goConfig
@@ -120,7 +154,8 @@ func (cfg *GoConfig) UnmarshalYAML(value *yaml.Node) error {
 	cfg.CoverageThreshold = parsed.Coverage.Threshold
 	cfg.CoverageProfile = parsed.Coverage.Profile
 	cfg.Targets = parsed.Targets
-	cfg.Exclude = parsed.Exclude
+	cfg.ExcludeEntries = parsed.Exclude
+	cfg.Exclude = excludePatterns(parsed.Exclude)
 	if parsed.DRY.MaxFindings != nil {
 		cfg.DRY.MaxFindings = *parsed.DRY.MaxFindings
 		cfg.DRY.MaxFindingsSet = true
@@ -132,8 +167,9 @@ func (cfg *GoConfig) UnmarshalYAML(value *yaml.Node) error {
 		cfg.DRYPaths = parsed.DRY.Paths
 	}
 	if len(parsed.DRY.Exclude) > 0 {
-		cfg.DRY.Exclude = parsed.DRY.Exclude
-		cfg.DRYExclude = parsed.DRY.Exclude
+		cfg.DRYExcludeEntries = parsed.DRY.Exclude
+		cfg.DRY.Exclude = excludePatterns(parsed.DRY.Exclude)
+		cfg.DRYExclude = cfg.DRY.Exclude
 	}
 	cfg.DRY.Structural.Threshold = parsed.DRY.Structural.Threshold
 	cfg.DRY.Structural.MinLines = parsed.DRY.Structural.MinLines
@@ -148,9 +184,24 @@ func (cfg *GoConfig) UnmarshalYAML(value *yaml.Node) error {
 		cfg.DRY.CopiedBlocks.EnabledSet = true
 	}
 	cfg.CRAPMaxScore = parsed.CRAP.MaxScore
-	cfg.Mutation = parsed.Mutation
+	cfg.Mutation = MutationConfig{
+		Targets: parsed.Mutation.Targets,
+		Exclude: excludePatterns(parsed.Mutation.Exclude),
+	}
+	cfg.MutationExcludeEntries = parsed.Mutation.Exclude
 	cfg.DependencyBoundaries = parsed.DependencyBoundaries
 	return nil
+}
+
+func excludePatterns(entries []ExcludeEntry) []string {
+	if len(entries) == 0 {
+		return nil
+	}
+	patterns := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		patterns = append(patterns, entry.Pattern)
+	}
+	return patterns
 }
 
 func Load(snapshot repo.Snapshot) (Config, error) {
@@ -202,6 +253,20 @@ func (cfg Config) GoDRYScope() ([]string, []string) {
 
 func (cfg Config) GoScope() ([]string, []string) {
 	return scopedConfigPaths(cfg.SourceDir, cfg.Go.Targets), scopedConfigExcludePaths(cfg.SourceDir, cfg.Go.Exclude)
+}
+
+// GoScopeConfigured reports whether any Go check scope is configured, which
+// is what arms scope-completeness checking and coverage counts.
+func (cfg Config) GoScopeConfigured() bool {
+	return len(cfg.Go.Targets) > 0 || len(cfg.Go.DRYPaths) > 0
+}
+
+// GoScopeUnion returns the union of every configured Go scope and every
+// configured exclude pattern, for scope-completeness checking.
+func (cfg Config) GoScopeUnion() ([]string, []string) {
+	targets, exclude := cfg.GoScope()
+	dryPaths, dryExclude := cfg.GoDRYScope()
+	return append(targets, dryPaths...), append(exclude, dryExclude...)
 }
 
 func (cfg Config) GoCoverageProfile() string {
@@ -339,12 +404,14 @@ func validateGoKeys(node *yaml.Node) error {
 			switch key {
 			case "coverage":
 				return validateMappingKeys(value, "go.coverage", set("threshold", "profile"), nil)
+			case "exclude":
+				return validateExcludeEntryKeys(value, "go.exclude")
 			case "dry":
 				return validateGoDryKeys(value)
 			case "crap":
 				return validateMappingKeys(value, "go.crap", set("max_score"), nil)
 			case "mutation":
-				return validateMappingKeys(value, "go.mutation", set("targets", "exclude"), nil)
+				return validateGoMutationKeys(value)
 			case "dependency_boundaries":
 				return validateDependencyBoundaryKeys(value, "go.dependency_boundaries")
 			default:
@@ -354,6 +421,27 @@ func validateGoKeys(node *yaml.Node) error {
 	)
 }
 
+func validateGoMutationKeys(node *yaml.Node) error {
+	return validateSectionSequenceKey(node, "go.mutation", set("targets", "exclude"), "exclude", validateExcludeEntryKeys)
+}
+
+// validateSectionSequenceKey validates a mapping section whose keys are
+// limited to allowed and whose sequenceKey value gets its own validator.
+func validateSectionSequenceKey(
+	node *yaml.Node,
+	field string,
+	allowed map[string]struct{},
+	sequenceKey string,
+	validateSequence func(*yaml.Node, string) error,
+) error {
+	return validateMappingKeys(node, field, allowed, func(key string, value *yaml.Node) error {
+		if key == sequenceKey {
+			return validateSequence(value, field+"."+sequenceKey)
+		}
+		return nil
+	})
+}
+
 func validateGoDryKeys(node *yaml.Node) error {
 	return validateMappingKeys(
 		node,
@@ -361,6 +449,8 @@ func validateGoDryKeys(node *yaml.Node) error {
 		set("max_findings", "paths", "exclude", "structural", "copied_blocks"),
 		func(key string, value *yaml.Node) error {
 			switch key {
+			case "exclude":
+				return validateExcludeEntryKeys(value, "go.dry.exclude")
 			case "structural":
 				return validateMappingKeys(value, "go.dry.structural", set("enabled", "threshold", "min_lines", "min_nodes"), nil)
 			case "copied_blocks":
@@ -448,17 +538,7 @@ func validateRustKeys(node *yaml.Node) error {
 }
 
 func validateRustUnsafeKeys(node *yaml.Node) error {
-	return validateMappingKeys(
-		node,
-		"rust.unsafe",
-		set("policy", "allow"),
-		func(key string, value *yaml.Node) error {
-			if key == "allow" {
-				return validateUnsafeAllowKeys(value, "rust.unsafe.allow")
-			}
-			return nil
-		},
-	)
+	return validateSectionSequenceKey(node, "rust.unsafe", set("policy", "allow"), "allow", validateUnsafeAllowKeys)
 }
 
 func validateUnsafeAllowKeys(node *yaml.Node, field string) error {
@@ -470,6 +550,23 @@ func validateDependencyBoundaryKeys(node *yaml.Node, field string) error {
 }
 
 func validateMappingSequenceKeys(node *yaml.Node, field string, allowed map[string]struct{}) error {
+	return validateSequenceItems(node, field, func(item *yaml.Node, itemField string) error {
+		return validateMappingKeys(item, itemField, allowed, nil)
+	})
+}
+
+// validateExcludeEntryKeys accepts plain pattern strings and strict
+// {pattern, reason} mappings, the two exclude entry shapes.
+func validateExcludeEntryKeys(node *yaml.Node, field string) error {
+	return validateSequenceItems(node, field, func(item *yaml.Node, itemField string) error {
+		if item.Kind == yaml.ScalarNode {
+			return nil
+		}
+		return validateMappingKeys(item, itemField, set("pattern", "reason"), nil)
+	})
+}
+
+func validateSequenceItems(node *yaml.Node, field string, validateItem func(*yaml.Node, string) error) error {
 	if node.Kind == 0 || node.Tag == "!!null" {
 		return nil
 	}
@@ -477,7 +574,7 @@ func validateMappingSequenceKeys(node *yaml.Node, field string, allowed map[stri
 		return fmt.Errorf("%s must be a sequence", field)
 	}
 	for i, item := range node.Content {
-		if err := validateMappingKeys(item, fmt.Sprintf("%s[%d]", field, i), allowed, nil); err != nil {
+		if err := validateItem(item, fmt.Sprintf("%s[%d]", field, i)); err != nil {
 			return err
 		}
 	}
@@ -588,7 +685,71 @@ func validate(cfg Config) error {
 			return err
 		}
 	}
+	if err := validateGoExcludeReasons(cfg.Go); err != nil {
+		return err
+	}
 	return validateGoTargets(cfg.Go)
+}
+
+// validateGoExcludeReasons enforces the scope-completeness contract: a
+// string exclude may only name conventional non-production patterns, and
+// excludes that carve out production files must carry a non-empty reason.
+func validateGoExcludeReasons(cfg GoConfig) error {
+	sections := []struct {
+		name    string
+		entries []ExcludeEntry
+	}{
+		{"go.exclude", cfg.ExcludeEntries},
+		{"go.dry.exclude", cfg.DRYExcludeEntries},
+		{"go.mutation.exclude", cfg.MutationExcludeEntries},
+	}
+	for _, section := range sections {
+		if err := validateExcludeEntries(section.name, section.entries); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateExcludeEntries(section string, entries []ExcludeEntry) error {
+	for _, entry := range entries {
+		if !entry.Reasoned && !conventionalExcludePattern(entry.Pattern) {
+			return fmt.Errorf("%s requires a reason for production paths", section)
+		}
+		if entry.Reasoned && strings.TrimSpace(entry.Reason) == "" {
+			return fmt.Errorf("%s reasons must not be empty", section)
+		}
+	}
+	return nil
+}
+
+// conventionalExcludePattern reports whether a pattern names only the
+// conventional non-production list from specs/CONFIG.md, which scope may
+// exclude without a reason.
+func conventionalExcludePattern(pattern string) bool {
+	markers := []string{
+		"_test.",
+		".test.",
+		".spec.",
+		"tests/",
+		"fixtures/",
+		"templates/",
+		"testdata/",
+		"dist/",
+		"build/",
+		"coverage/",
+		"target/",
+		"node_modules/",
+		"vendor/",
+		"generated",
+		"scripts/",
+	}
+	for _, marker := range markers {
+		if strings.Contains(pattern, marker) {
+			return true
+		}
+	}
+	return false
 }
 
 func validateGoTargets(cfg GoConfig) error {

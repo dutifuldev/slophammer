@@ -1,4 +1,4 @@
-import type { RepoFile, Snapshot } from "../repo/repo.js";
+import { bindingWorkflowTriggers, type RepoFile, type Snapshot } from "../repo/repo.js";
 import { parse as parseYAML } from "yaml";
 
 const rootESLintConfigPaths = new Set([
@@ -39,6 +39,11 @@ const rootTestRunnerConfigPaths = new Set([
   "jest.config.cjs"
 ]);
 
+// repoEvidenceFiles synthesizes root evidence into a project scope. Scoped
+// command evidence is credited unconditionally downstream, so synthetics are
+// only emitted where the scope does not retain the original file: the root
+// scope keeps its own files and only needs replacements for the command
+// evidence that nested project roots displace.
 export function repoEvidenceFiles(
   snapshot: Snapshot,
   root: string,
@@ -52,6 +57,9 @@ function repoEvidenceFile(
   root: string,
   projectRoots: readonly string[]
 ): readonly RepoFile[] {
+  if (root === ".") {
+    return rootScopeEvidenceFile(file, root, projectRoots);
+  }
   if (file.path === "package.json") {
     return [
       {
@@ -73,6 +81,36 @@ function repoEvidenceFile(
           : file.content
     }
   ];
+}
+
+// The root scope retains its own package.json, configs, and — when no
+// nested project roots exist — its own workflows and scripts, so only the
+// displaced command evidence is re-synthesized in scoped form.
+function rootScopeEvidenceFile(
+  file: RepoFile,
+  root: string,
+  projectRoots: readonly string[]
+): readonly RepoFile[] {
+  if (nestedProjectRoots(root, projectRoots).length === 0) {
+    return [];
+  }
+  if (repoWorkflowPath(file.path)) {
+    return [
+      {
+        path: repoEvidencePath(file.path),
+        content: scopedWorkflowCommandContent(file.content, root, projectRoots)
+      }
+    ];
+  }
+  if (repoScriptPath(file.path)) {
+    return [
+      {
+        path: file.path,
+        content: scopedCommandContent(file.content, root, projectRoots)
+      }
+    ];
+  }
+  return [];
 }
 
 function repoEvidencePath(filePath: string): string {
@@ -143,6 +181,9 @@ function scopedWorkflowCommandContent(
   const workflow = workflowRecord(content);
   if (workflow === undefined) {
     return scopedCommandContent(content, root, projectRoots);
+  }
+  if (nonBindingWorkflow(workflow)) {
+    return "";
   }
   const commands = workflowCommands(workflow);
   if (root === ".") {
@@ -256,6 +297,15 @@ function workflowRecord(content: string): Readonly<Record<string, unknown>> | un
   } catch {
     return undefined;
   }
+}
+
+// nonBindingWorkflow mirrors the binding filter in repo.ts commandFiles:
+// scoped evidence is credited unconditionally downstream, so workflows that
+// cannot fire for integration must be dropped at the scoping step.
+function nonBindingWorkflow(workflow: Readonly<Record<string, unknown>>): boolean {
+  return (
+    Object.keys(asRecord(workflow["jobs"])).length > 0 && !bindingWorkflowTriggers(workflow["on"])
+  );
 }
 
 function mentionsRoot(content: string, root: string): boolean {

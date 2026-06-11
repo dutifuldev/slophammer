@@ -19,6 +19,7 @@ pub struct CheckOptions {
     pub format: OutputFormat,
     pub execute: bool,
     pub only_rule_ids: Vec<String>,
+    pub baseline: crate::baseline::BaselineMode,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -47,6 +48,8 @@ pub enum AppError {
     UnknownRule(String),
     #[error("--only requires a rule id")]
     EmptyOnlyRule,
+    #[error(transparent)]
+    Baseline(#[from] crate::baseline::BaselineError),
 }
 
 pub fn check(options: CheckOptions) -> AppResult {
@@ -135,8 +138,43 @@ fn check_inner(options: CheckOptions, runner: &impl Runner) -> Result<AppResult,
         ));
     }
     crate::config::apply_rule_config(&config, &mut findings);
-    let report = new_report(findings);
-    let stdout = render_report(options.format, &report)?;
+    let mut report = new_report(findings);
+    report.scope =
+        crate::rust_rules::scope_counts(&snapshot, &config).map(|(scanned, production_files)| {
+            crate::core::ScopeCoverage {
+                scanned,
+                production_files,
+            }
+        });
+    finish_check(options, &snapshot, report)
+}
+
+fn finish_check(
+    options: CheckOptions,
+    snapshot: &crate::scan::Snapshot,
+    mut report: Report,
+) -> Result<AppResult, AppError> {
+    use crate::baseline::BaselineMode;
+    let mut trailer = String::new();
+    match options.baseline {
+        BaselineMode::Off => {}
+        BaselineMode::Check => {
+            crate::baseline::apply_check(&snapshot.root, &mut report)?;
+            trailer = crate::baseline::debt_line(&report);
+        }
+        BaselineMode::Write => {
+            let summary = crate::baseline::write(&snapshot.root, &report)?;
+            return Ok(AppResult {
+                code: EXIT_OK,
+                stdout: summary,
+                stderr: String::new(),
+            });
+        }
+    }
+    let mut stdout = render_report(options.format, &report)?;
+    if options.format == OutputFormat::Text {
+        stdout.push_str(&trailer);
+    }
     Ok(AppResult {
         code: if report.ok { EXIT_OK } else { EXIT_FINDINGS },
         stdout,
@@ -264,6 +302,7 @@ mod tests {
             format: OutputFormat::Json,
             execute: false,
             only_rule_ids: vec!["missing.rule".to_owned(), "other.rule".to_owned()],
+            baseline: crate::baseline::BaselineMode::Off,
         });
         assert_eq!(result.code, EXIT_ERROR);
         assert!(
@@ -281,6 +320,7 @@ mod tests {
             format: OutputFormat::Json,
             execute: false,
             only_rule_ids: vec!["repo.readme-required, repo.agents-required".to_owned()],
+            baseline: crate::baseline::BaselineMode::Off,
         });
         assert_eq!(result.code, EXIT_OK, "{}", result.stderr);
     }
@@ -292,6 +332,7 @@ mod tests {
             format: OutputFormat::Json,
             execute: false,
             only_rule_ids: vec![" , ".to_owned()],
+            baseline: crate::baseline::BaselineMode::Off,
         });
         assert_eq!(result.code, EXIT_ERROR);
         assert!(result.stderr.contains("--only requires a rule id"));
@@ -305,6 +346,7 @@ mod tests {
             format: OutputFormat::Json,
             execute: false,
             only_rule_ids: Vec::new(),
+            baseline: crate::baseline::BaselineMode::Off,
         });
         assert_eq!(result.code, EXIT_OK);
         assert!(result.stdout.contains("\"ok\": true"));
@@ -331,6 +373,7 @@ mod tests {
                 format: OutputFormat::Json,
                 execute: false,
                 only_rule_ids: Vec::new(),
+                baseline: crate::baseline::BaselineMode::Off,
             });
             assert_eq!(result.code, EXIT_FINDINGS, "{fixture_name}");
             assert!(result.stdout.contains("\"ok\": false"), "{fixture_name}");
@@ -406,6 +449,7 @@ mod tests {
             format: OutputFormat::Json,
             execute: false,
             only_rule_ids: vec!["repo.readme-required".to_owned()],
+            baseline: crate::baseline::BaselineMode::Off,
         });
 
         assert_eq!(result.code, EXIT_FINDINGS);
@@ -426,6 +470,7 @@ mod tests {
                 format: OutputFormat::Json,
                 execute: false,
                 only_rule_ids: Vec::new(),
+                baseline: crate::baseline::BaselineMode::Off,
             });
             assert_eq!(result.code, EXIT_ERROR, "{fixture_name}");
             assert!(result.stderr.contains("config failed"), "{fixture_name}");

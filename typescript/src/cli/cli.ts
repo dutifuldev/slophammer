@@ -80,7 +80,13 @@ function runTypeScript(args: readonly string[]): Promise<Result> | Result {
 }
 
 function parseCheckArgs(args: readonly string[]): CheckOptions {
-  let options: CheckOptions = { root: "", format: "text", execute: false, onlyRuleIDs: [] };
+  let options: CheckOptions = {
+    root: "",
+    format: "text",
+    execute: false,
+    onlyRuleIDs: [],
+    baseline: "off"
+  };
   for (let index = 0; index < args.length; index++) {
     const parsed = parseCheckArg(options, args, index);
     options = parsed.options;
@@ -88,7 +94,7 @@ function parseCheckArgs(args: readonly string[]): CheckOptions {
   }
   if (options.root === "") {
     throw new Error(
-      "usage: slophammer-ts check <path> [--format text|json|sarif] [--execute] [--only rule-id]"
+      "usage: slophammer-ts check <path> [--format text|json|sarif] [--execute] [--only rule-id] [--baseline | --baseline-write]"
     );
   }
   return options;
@@ -96,6 +102,9 @@ function parseCheckArgs(args: readonly string[]): CheckOptions {
 
 function parseBoundaryArgs(args: readonly string[]): Omit<CheckOptions, "onlyRuleIDs"> {
   const parsed = parseCheckArgs(args);
+  if (parsed.baseline !== "off") {
+    throw new Error("usage: slophammer-ts boundaries <path> [--format text|json|sarif]");
+  }
   return { root: parsed.root, format: parsed.format, execute: parsed.execute };
 }
 
@@ -171,7 +180,23 @@ function parseCheckFlag(
       advance: 1
     };
   }
-  throw new Error(`unknown check option: ${arg ?? ""}`);
+  return { options: parseBaselineFlag(options, arg), advance: 0 };
+}
+
+const baselineFlagModes: Readonly<Record<string, "check" | "write">> = {
+  "--baseline": "check",
+  "--baseline-write": "write"
+};
+
+function parseBaselineFlag(options: CheckOptions, arg: string | undefined): CheckOptions {
+  const mode = arg === undefined ? undefined : baselineFlagModes[arg];
+  if (mode === undefined) {
+    throw new Error(`unknown check option: ${arg ?? ""}`);
+  }
+  if (options.baseline !== "off" && options.baseline !== mode) {
+    throw new Error("--baseline and --baseline-write are mutually exclusive");
+  }
+  return { ...options, baseline: mode };
 }
 
 function parseOnlyRuleIDs(value: string): readonly string[] {
@@ -307,7 +332,7 @@ function nextValue(args: readonly string[], index: number, flag: string): string
 function usage(): string {
   return `${[
     "usage:",
-    "  slophammer-ts check <path> [--format text|json|sarif] [--execute] [--only rule-id]",
+    "  slophammer-ts check <path> [--format text|json|sarif] [--execute] [--only rule-id] [--baseline | --baseline-write]",
     "  slophammer-ts boundaries <path> [--format text|json|sarif]",
     "  slophammer-ts explain <rule-id>",
     "  slophammer-ts rules [--format text|json]",

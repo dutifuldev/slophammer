@@ -9,8 +9,16 @@ import { scanRepo } from "../scan/scan.js";
 import { defaultDefinitions } from "../rules/definitions.js";
 import { ruleIDs } from "../rules/definitions.js";
 import { explain as explainRule, runRules } from "../rules/rules.js";
-import type { Finding } from "../rules/types.js";
+import { scopeCounts } from "../rules/scope.js";
+import {
+  testSourcePath,
+  typeScriptDeclarationPath,
+  typeScriptSourceExtension,
+  typeScriptToolingConfigPath
+} from "../rules/source-paths.js";
+import type { Finding, Report, ScopeCoverage } from "../rules/types.js";
 import { executeTypeScriptChecks, execRunner, type Runner } from "../toolchecks/toolchecks.js";
+import { applyBaselineCheck, debtLine, writeBaseline, type BaselineMode } from "./baseline.js";
 
 export const exitOK = 0;
 export const exitFindings = 1;
@@ -21,6 +29,7 @@ export type CheckOptions = {
   readonly format: "text" | "json" | "sarif";
   readonly execute: boolean;
   readonly onlyRuleIDs?: readonly string[];
+  readonly baseline?: BaselineMode;
 };
 
 export async function check(
@@ -43,15 +52,33 @@ export async function check(
             )
           ]
         : base.findings;
-    const report = newReport(findings);
-    return {
-      code: report.ok ? exitOK : exitFindings,
-      stdout: render(options.format, report),
-      stderr: ""
-    };
+    const report = withScope(newReport(findings), scopeCounts(snapshot, cfg));
+    return await finishCheck(options, snapshot.root, report);
   } catch (error) {
     return { code: exitError, stdout: "", stderr: `check failed: ${errorMessage(error)}\n` };
   }
+}
+
+function withScope(report: Report, scope: ScopeCoverage | undefined): Report {
+  return scope === undefined ? report : { ...report, scope };
+}
+
+async function finishCheck(
+  options: CheckOptions,
+  root: string,
+  report: Report
+): Promise<{ readonly code: number; readonly stdout: string; readonly stderr: string }> {
+  if (options.baseline === "write") {
+    return { code: exitOK, stdout: await writeBaseline(root, report), stderr: "" };
+  }
+  const checked = options.baseline === "check" ? await applyBaselineCheck(root, report) : report;
+  const trailer =
+    options.baseline === "check" && options.format === "text" ? debtLine(checked) : "";
+  return {
+    code: checked.ok ? exitOK : exitFindings,
+    stdout: render(options.format, checked) + trailer,
+    stderr: ""
+  };
 }
 
 export async function boundaries(
@@ -216,35 +243,6 @@ function typeScriptProductionSourcePath(filePath: string): boolean {
     !testSourcePath(filePath) &&
     !typeScriptToolingConfigPath(filePath)
   );
-}
-
-function typeScriptSourceExtension(filePath: string): boolean {
-  return (
-    filePath.endsWith(".ts") ||
-    filePath.endsWith(".tsx") ||
-    filePath.endsWith(".mts") ||
-    filePath.endsWith(".cts")
-  );
-}
-
-function typeScriptDeclarationPath(filePath: string): boolean {
-  return filePath.endsWith(".d.ts") || filePath.endsWith(".d.mts") || filePath.endsWith(".d.cts");
-}
-
-function testSourcePath(filePath: string): boolean {
-  const baseName = path.posix.basename(filePath);
-  return (
-    filePath.startsWith("test/") ||
-    filePath.startsWith("tests/") ||
-    filePath.includes("/test/") ||
-    filePath.includes("/tests/") ||
-    baseName.includes(".test.") ||
-    baseName.includes(".spec.")
-  );
-}
-
-function typeScriptToolingConfigPath(filePath: string): boolean {
-  return path.posix.basename(filePath).includes(".config.");
 }
 
 function asRecord(value: unknown): Readonly<Record<string, unknown>> {

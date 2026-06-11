@@ -13,6 +13,7 @@ use crate::scan::Snapshot;
 use definitions::definition;
 pub use definitions::{default_definitions, rule_ids};
 pub use dry::dry_findings;
+pub use scope::scope_counts;
 
 pub fn run_rules(snapshot: &Snapshot, config: &Config, only_rule_ids: &[String]) -> Vec<Finding> {
     let definitions = default_definitions();

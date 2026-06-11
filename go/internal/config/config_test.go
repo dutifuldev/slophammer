@@ -215,7 +215,8 @@ func TestGoMutationScopePreservesBasenameExcludesForConfigFile(t *testing.T) {
   targets:
     - internal
   exclude:
-    - "*.pb.go"
+    - pattern: "*.pb.go"
+      reason: protobuf bindings are machine written
 `,
 		},
 	}))
@@ -500,6 +501,202 @@ func TestLoadRejectsUnknownConfigKeys(t *testing.T) {
 				t.Fatalf("error = %v, want %q", err, tt.want)
 			}
 		})
+	}
+}
+
+func loadConfig(t *testing.T, content string) (Config, error) {
+	t.Helper()
+	return Load(repo.NewSnapshot("/repo", map[string]repo.File{
+		"slophammer.yml": {Path: "slophammer.yml", Content: content},
+	}))
+}
+
+func TestLoadAcceptsConventionalStringExcludes(t *testing.T) {
+	cfg, err := loadConfig(t, `go:
+  targets:
+    - go
+  exclude:
+    - "fixtures/**"
+    - "**/*_test.go"
+    - "go/generated/**"
+`)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if !reflect.DeepEqual(cfg.Go.Exclude, []string{"fixtures/**", "**/*_test.go", "go/generated/**"}) {
+		t.Fatalf("Exclude = %#v", cfg.Go.Exclude)
+	}
+}
+
+func TestLoadAcceptsReasonedExcludes(t *testing.T) {
+	cfg, err := loadConfig(t, `go:
+  targets:
+    - go
+  exclude:
+    - pattern: "go/internal/vendored_parser/**"
+      reason: vendored upstream code, synced verbatim
+  dry:
+    exclude:
+      - pattern: "go/internal/legacy/**"
+        reason: scheduled for deletion
+  mutation:
+    exclude:
+      - pattern: "go/internal/slow/**"
+        reason: mutation runtime is prohibitive
+`)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if !reflect.DeepEqual(cfg.Go.Exclude, []string{"go/internal/vendored_parser/**"}) {
+		t.Fatalf("Exclude = %#v", cfg.Go.Exclude)
+	}
+	if !reflect.DeepEqual(cfg.Go.DRYExclude, []string{"go/internal/legacy/**"}) {
+		t.Fatalf("DRYExclude = %#v", cfg.Go.DRYExclude)
+	}
+	if !reflect.DeepEqual(cfg.Go.Mutation.Exclude, []string{"go/internal/slow/**"}) {
+		t.Fatalf("Mutation.Exclude = %#v", cfg.Go.Mutation.Exclude)
+	}
+}
+
+func TestLoadRejectsProductionStringExcludes(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    string
+	}{
+		{
+			name:    "go exclude",
+			content: "go:\n  exclude:\n    - \"internal/secret/**\"\n",
+			want:    "go.exclude requires a reason for production paths",
+		},
+		{
+			name:    "dry exclude",
+			content: "go:\n  dry:\n    exclude:\n      - \"internal/secret/**\"\n",
+			want:    "go.dry.exclude requires a reason for production paths",
+		},
+		{
+			name:    "mutation exclude",
+			content: "go:\n  mutation:\n    exclude:\n      - \"internal/secret/**\"\n",
+			want:    "go.mutation.exclude requires a reason for production paths",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := loadConfig(t, tt.content)
+			if err == nil {
+				t.Fatal("Load returned nil error")
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("error = %v, want %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestLoadRejectsEmptyExcludeReasons(t *testing.T) {
+	_, err := loadConfig(t, "go:\n  exclude:\n    - pattern: \"internal/secret/**\"\n      reason: \"  \"\n")
+	if err == nil {
+		t.Fatal("Load returned nil error")
+	}
+	if !strings.Contains(err.Error(), "go.exclude reasons must not be empty") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestLoadRejectsMalformedExcludeEntries(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    string
+	}{
+		{
+			name:    "unknown key",
+			content: "go:\n  exclude:\n    - pattern: \"fixtures/**\"\n      surprise: true\n",
+			want:    "go.exclude[0].surprise is not supported",
+		},
+		{
+			name:    "dry unknown key",
+			content: "go:\n  dry:\n    exclude:\n      - pattern: \"fixtures/**\"\n        surprise: true\n",
+			want:    "go.dry.exclude[0].surprise is not supported",
+		},
+		{
+			name:    "mutation unknown key",
+			content: "go:\n  mutation:\n    exclude:\n      - pattern: \"fixtures/**\"\n        surprise: true\n",
+			want:    "go.mutation.exclude[0].surprise is not supported",
+		},
+		{
+			name:    "not a sequence",
+			content: "go:\n  exclude: true\n",
+			want:    "go.exclude must be a sequence",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := loadConfig(t, tt.content)
+			if err == nil {
+				t.Fatal("Load returned nil error")
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("error = %v, want %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestConventionalExcludePattern(t *testing.T) {
+	conventional := []string{
+		"**/*_test.go",
+		"**/*.test.ts",
+		"**/*.spec.ts",
+		"tests/**",
+		"fixtures/**",
+		"templates/**",
+		"testdata/**",
+		"dist/**",
+		"build/**",
+		"coverage/**",
+		"target/**",
+		"node_modules/**",
+		"vendor/**",
+		"go/generated/**",
+		"scripts/**",
+	}
+	for _, pattern := range conventional {
+		if !conventionalExcludePattern(pattern) {
+			t.Fatalf("conventionalExcludePattern(%q) = false", pattern)
+		}
+	}
+	if conventionalExcludePattern("internal/secret/**") {
+		t.Fatal("conventionalExcludePattern accepted a production pattern")
+	}
+}
+
+func TestGoScopeConfiguredAndUnion(t *testing.T) {
+	if (Config{}).GoScopeConfigured() {
+		t.Fatal("GoScopeConfigured = true for empty config")
+	}
+	cfg := Config{Go: GoConfig{
+		Targets:    []string{"go"},
+		Exclude:    []string{"fixtures/**"},
+		DRYPaths:   []string{"go/internal"},
+		DRYExclude: []string{"**/*_test.go"},
+	}}
+	if !cfg.GoScopeConfigured() {
+		t.Fatal("GoScopeConfigured = false with targets")
+	}
+	scopes, excludes := cfg.GoScopeUnion()
+	if !reflect.DeepEqual(scopes, []string{"go", "go/internal"}) {
+		t.Fatalf("scopes = %#v", scopes)
+	}
+	if !reflect.DeepEqual(excludes, []string{"fixtures/**", "**/*_test.go"}) {
+		t.Fatalf("excludes = %#v", excludes)
+	}
+
+	dryOnly := Config{Go: GoConfig{DRYPaths: []string{"go/cmd"}}}
+	if !dryOnly.GoScopeConfigured() {
+		t.Fatal("GoScopeConfigured = false with dry paths")
 	}
 }
 

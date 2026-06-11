@@ -514,14 +514,17 @@ func carriesRootCommandContext(filePath string) bool {
 	return strings.HasPrefix(filePath, "scripts/")
 }
 
+var embeddedFixtureSegments = map[string]struct{}{
+	"examples":  {},
+	"fixtures":  {},
+	"samples":   {},
+	"templates": {},
+	"testdata":  {},
+	"vendor":    {},
+}
+
 func isEmbeddedFixturePath(filePath string) bool {
-	for _, segment := range strings.Split(strings.ReplaceAll(filePath, "\\", "/"), "/") {
-		switch segment {
-		case "examples", "fixtures", "samples", "templates", "testdata", "vendor":
-			return true
-		}
-	}
-	return false
+	return pathHasAnySegment(filePath, embeddedFixtureSegments)
 }
 
 func hasCommand(snapshot repo.Snapshot, needles ...string) bool {

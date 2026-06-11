@@ -30,6 +30,7 @@ type CheckOptions struct {
 	Execute         bool
 	CoverageProfile string
 	OnlyRuleIDs     []string
+	Baseline        BaselineMode
 }
 
 type RulesOptions struct {
@@ -62,14 +63,49 @@ func check(ctx context.Context, options CheckOptions, out io.Writer, errOut io.W
 		findings = append(findings, executeGoChecks(ctx, snapshot, options, cfg, runner)...)
 		result = rules.NewReport(findings)
 	}
+	result.Scope = rules.GoScopeCoverage(snapshot, cfg)
+	return finishCheck(options, result, out, errOut)
+}
+
+// finishCheck applies the requested baseline mode and renders the report.
+// Baseline write mode replaces the report with a write summary; baseline
+// check mode marks matched findings and appends the debt to text output.
+func finishCheck(options CheckOptions, result rules.Report, out io.Writer, errOut io.Writer) int {
+	switch options.Baseline {
+	case BaselineWrite:
+		summary, err := writeBaselineFile(options.Root, result)
+		if err != nil {
+			_, _ = fmt.Fprintf(errOut, "check failed: %v\n", err)
+			return ExitError
+		}
+		_, _ = io.WriteString(out, summary)
+		return ExitOK
+	case BaselineCheck:
+		if err := applyBaselineCheck(options.Root, &result); err != nil {
+			_, _ = fmt.Fprintf(errOut, "check failed: %v\n", err)
+			return ExitError
+		}
+	case BaselineOff:
+	}
+	return renderCheckReport(options, result, out, errOut)
+}
+
+func renderCheckReport(options CheckOptions, result rules.Report, out io.Writer, errOut io.Writer) int {
 	if err := writeReport(out, options.Format, result); err != nil {
 		_, _ = fmt.Fprintf(errOut, "report failed: %v\n", err)
 		return ExitError
+	}
+	if options.Baseline == BaselineCheck && textFormat(options.Format) {
+		_, _ = io.WriteString(out, baselineDebtLine(result))
 	}
 	if result.OK {
 		return ExitOK
 	}
 	return ExitFindings
+}
+
+func textFormat(format string) bool {
+	return format == "" || format == "text"
 }
 
 func validateOnlyRuleIDs(onlyRuleIDs []string) error {

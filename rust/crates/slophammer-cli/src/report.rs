@@ -28,7 +28,7 @@ pub fn write_json(report: &Report) -> Result<String, ReportError> {
 
 pub fn write_text(report: &Report) -> String {
     if report.ok {
-        return "OK: no findings\n".to_owned();
+        return format!("OK: no findings\n{}", scope_line(report));
     }
     let mut output = String::new();
     for finding in &report.findings {
@@ -38,7 +38,18 @@ pub fn write_text(report: &Report) -> String {
         ));
     }
     output.push_str(&format!("\n{} finding(s)\n", report.findings.len()));
+    output.push_str(&scope_line(report));
     output
+}
+
+fn scope_line(report: &Report) -> String {
+    match report.scope {
+        Some(scope) => format!(
+            "scope: scanned {} of {} production files\n",
+            scope.scanned, scope.production_files
+        ),
+        None => String::new(),
+    }
 }
 
 pub fn write_sarif(report: &Report) -> Result<String, ReportError> {
@@ -89,6 +100,13 @@ struct SarifResult {
     message: SarifMessage,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     locations: Vec<SarifLocation>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    suppressions: Vec<SarifSuppression>,
+}
+
+#[derive(Serialize)]
+struct SarifSuppression {
+    kind: &'static str,
 }
 
 #[derive(Serialize)]
@@ -162,8 +180,17 @@ fn sarif_results(findings: &[Finding]) -> Vec<SarifResult> {
                 text: finding.message.clone(),
             },
             locations: sarif_locations(&finding.path),
+            suppressions: sarif_suppressions(finding),
         })
         .collect()
+}
+
+fn sarif_suppressions(finding: &Finding) -> Vec<SarifSuppression> {
+    if finding.baselined == Some(true) {
+        vec![SarifSuppression { kind: "external" }]
+    } else {
+        Vec::new()
+    }
 }
 
 fn sarif_level(severity: Severity) -> &'static str {

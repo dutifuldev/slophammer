@@ -103,6 +103,7 @@ jobs:
       - run: go run ./cmd/slophammer go dry ..
       - run: go run ./cmd/slophammer go crap ..
       - run: go run ./cmd/slophammer go mutate .. --scan
+      - run: go run ./cmd/slophammer-go check ..
 `,
 		},
 	})
@@ -147,6 +148,7 @@ jobs:
       - run: go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.1 dry .. --max-candidates 0
       - run: go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.1 crap ..
       - run: go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.1 mutate .. --scan
+      - run: go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.1 check ..
 `,
 		},
 	})
@@ -375,6 +377,7 @@ jobs:
       - run: ./scripts/check-dry.sh
       - run: ./scripts/check-crap.sh
       - run: go run ./cmd/slophammer go mutate .. --scan
+      - run: go run ./cmd/slophammer-go check ..
 `,
 		},
 	})

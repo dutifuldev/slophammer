@@ -725,6 +725,34 @@ jobs:
 	assertRuleIDs(t, report.Findings, []string{GoVetRequiredRuleID})
 }
 
+func TestBindingWorkflowTriggersGateCommandText(t *testing.T) {
+	tests := []struct {
+		name    string
+		on      string
+		binding bool
+	}{
+		{name: "push without filter", on: "on:\n  push:\n", binding: true},
+		{name: "push to main", on: "on:\n  push:\n    branches:\n      - main\n", binding: true},
+		{name: "push wildcard branch", on: "on:\n  push:\n    branches:\n      - \"release/*\"\n", binding: true},
+		{name: "push scalar branch", on: "on:\n  push:\n    branches: trunk\n", binding: true},
+		{name: "push to feature only", on: "on:\n  push:\n    branches:\n      - feature\n", binding: false},
+		{name: "push with tag filter only", on: "on:\n  push:\n    tags:\n      - \"v*\"\n", binding: true},
+		{name: "pull request entry", on: "on:\n  pull_request:\n", binding: true},
+		{name: "workflow dispatch only", on: "on:\n  workflow_dispatch:\n", binding: false},
+		{name: "scalar trigger", on: "on: push\n", binding: true},
+		{name: "non-binding scalar trigger", on: "on: workflow_call\n", binding: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := bindingWorkflowCommandText("name: CI\n" + tt.on + "jobs:\n  test:\n    steps:\n      - run: go test ./...\n")
+			if binding := strings.Contains(got, "go test ./..."); binding != tt.binding {
+				t.Fatalf("binding = %v, want %v; text = %q", binding, tt.binding, got)
+			}
+		})
+	}
+}
+
 func TestBindingWorkflowCommandTextIgnoresStepMetadata(t *testing.T) {
 	got := bindingWorkflowCommandText(`name: CI
 on: [push]

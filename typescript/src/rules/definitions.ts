@@ -4,6 +4,7 @@ export const ruleIDs = {
   readmeRequired: "repo.readme-required",
   agentsRequired: "repo.agents-required",
   ciRequired: "repo.ci-required",
+  slophammerCiRequired: "repo.slophammer-ci-required",
   tsPackageRequired: "ts.package-required",
   tsTypecheckRequired: "ts.typecheck-required",
   tsStrictRequired: "ts.strict-required",
@@ -16,7 +17,9 @@ export const ruleIDs = {
   tsComplexityRequired: "ts.complexity-required",
   tsDryRequired: "ts.dry-required",
   tsMutationRequired: "ts.mutation-required",
-  tsDependencyBoundariesRequired: "ts.dependency-boundaries-required"
+  tsDependencyBoundariesRequired: "ts.dependency-boundaries-required",
+  tsScopeIncomplete: "ts.scope-incomplete",
+  tsSuppressionsJustified: "ts.suppressions-justified"
 } as const;
 
 export const defaultDefinitions: readonly Definition[] = [
@@ -48,6 +51,17 @@ export const defaultDefinitions: readonly Definition[] = [
     path: ".github/workflows",
     message: ".github/workflows must contain at least one .yml or .yaml workflow",
     description: "The target repo should have a CI workflow under .github/workflows.",
+    status: "implemented"
+  },
+  {
+    id: ruleIDs.slophammerCiRequired,
+    title: "Slophammer enforcement required",
+    category: "repo",
+    severity: "error",
+    path: ".github/workflows",
+    message: "CI must run a Slophammer checker when slophammer.yml is present",
+    description:
+      "A repository that carries slophammer.yml must execute a Slophammer checker from binding CI evidence; config without enforcement is decoration.",
     status: "implemented"
   },
   {
@@ -197,6 +211,29 @@ export const defaultDefinitions: readonly Definition[] = [
     message: "TypeScript projects must respect configured dependency boundaries",
     description:
       "TypeScript projects should declare dependency boundaries in slophammer.yml and keep imports inside them.",
+    status: "implemented"
+  },
+  {
+    id: ruleIDs.tsScopeIncomplete,
+    title: "TypeScript scope completeness",
+    category: "typescript",
+    severity: "error",
+    path: "slophammer.yml",
+    message:
+      "Configured TypeScript scope must cover all production files or exclude them with reasons",
+    description:
+      "Every production TypeScript file must be in configured scope or covered by a conventional or reasoned exclude, so findings cannot be hidden by narrowing scope.",
+    status: "implemented"
+  },
+  {
+    id: ruleIDs.tsSuppressionsJustified,
+    title: "TypeScript suppressions justified",
+    category: "typescript",
+    severity: "error",
+    path: ".",
+    message: "lint and type suppressions in production TypeScript code must carry a description",
+    description:
+      "eslint-disable, @ts-ignore, @ts-expect-error, biome-ignore, and oxlint-disable directives in production scope must carry a description; bare suppressions accumulate silently.",
     status: "implemented"
   }
 ];
