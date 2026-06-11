@@ -7,5 +7,9 @@
       "path": ".github/workflows",
       "message": "TypeScript projects must declare a no-emit typecheck in CI or scripts"
     }
-  ]
+  ],
+  "scope": {
+    "scanned": 0,
+    "production_files": 0
+  }
 }

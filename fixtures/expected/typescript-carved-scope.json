@@ -1,0 +1,15 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "ts.scope-incomplete",
+      "severity": "error",
+      "path": "slophammer.yml",
+      "message": "Configured TypeScript scope must cover all production files or exclude them with reasons: src"
+    }
+  ],
+  "scope": {
+    "scanned": 1,
+    "production_files": 2
+  }
+}

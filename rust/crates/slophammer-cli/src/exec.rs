@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::core::{Finding, Severity};
 use crate::scan::Snapshot;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 use thiserror::Error;
 
@@ -141,12 +141,14 @@ fn run_check(
             severity: Severity::Error,
             path: prefixed_path(workspace_root, check.path),
             message: format!("{}: {}", check.message, compact_output(&output)),
+            baselined: None,
         }),
         Err(error) => Some(Finding {
             rule_id: check.rule_id.to_owned(),
             severity: Severity::Error,
             path: prefixed_path(workspace_root, check.path),
             message: format!("{}: {error}", check.message),
+            baselined: None,
         }),
     }
 }
@@ -207,16 +209,12 @@ struct ExecutableCheck<'a> {
     message: &'static str,
 }
 
-#[allow(dead_code)]
-fn _pathbuf_for_docs(path: &Path) -> PathBuf {
-    path.to_path_buf()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::scan::{RepoFile, Snapshot};
     use std::collections::BTreeMap;
+    use std::path::PathBuf;
 
     struct FailingRunner;
     struct PassingRunner;

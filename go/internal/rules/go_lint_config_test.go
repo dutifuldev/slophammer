@@ -51,6 +51,7 @@ func TestGoLintRuleRequiresRunCommand(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 defaults:
   run:
     working-directory: go
@@ -61,6 +62,9 @@ jobs:
       - run: go vet ./...
       - run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.0
       - run: ./scripts/check-go-coverage.sh
+      - run: ./scripts/check-dry.sh
+      - run: ./scripts/check-crap.sh
+      - run: ./scripts/check-mutation.sh
 `,
 		},
 		"go/scripts/check-go-coverage.sh": {

@@ -17,15 +17,24 @@ const (
 )
 
 type Finding struct {
-	RuleID   string   `json:"rule_id"`
-	Severity Severity `json:"severity"`
-	Path     string   `json:"path"`
-	Message  string   `json:"message"`
+	RuleID    string   `json:"rule_id"`
+	Severity  Severity `json:"severity"`
+	Path      string   `json:"path"`
+	Message   string   `json:"message"`
+	Baselined bool     `json:"baselined,omitempty"`
 }
 
 type Report struct {
-	OK       bool      `json:"ok"`
-	Findings []Finding `json:"findings"`
+	OK       bool           `json:"ok"`
+	Findings []Finding      `json:"findings"`
+	Scope    *ScopeCoverage `json:"scope,omitempty"`
+}
+
+// ScopeCoverage reports how much of the production surface the configured
+// scope covers, so a narrowed scope is visible instead of silent.
+type ScopeCoverage struct {
+	Scanned         int `json:"scanned"`
+	ProductionFiles int `json:"production_files"`
 }
 
 type Definition struct {
@@ -52,19 +61,22 @@ type Rule interface {
 }
 
 const (
-	ReadmeRequiredRuleID         = "repo.readme-required"
-	AgentsRequiredRuleID         = "repo.agents-required"
-	CIRequiredRuleID             = "repo.ci-required"
-	GoModuleRequiredRuleID       = "go.module-required"
-	GoTestsRequiredRuleID        = "go.tests-required"
-	GoVetRequiredRuleID          = "go.vet-required"
-	GoLintRequiredRuleID         = "go.lint-required"
-	GoCoverageRequiredRuleID     = "go.coverage-required"
-	GoComplexityRequiredRuleID   = "go.complexity-required"
-	GoDryRequiredRuleID          = "go.dry-required"
-	GoCRAPRequiredRuleID         = "go.crap-required"
-	GoMutationRequiredRuleID     = "go.mutation-required"
-	GoDependencyBoundariesRuleID = "go.dependency-boundaries-required"
+	ReadmeRequiredRuleID          = "repo.readme-required"
+	AgentsRequiredRuleID          = "repo.agents-required"
+	CIRequiredRuleID              = "repo.ci-required"
+	SlophammerCIRequiredRuleID    = "repo.slophammer-ci-required"
+	GoModuleRequiredRuleID        = "go.module-required"
+	GoTestsRequiredRuleID         = "go.tests-required"
+	GoVetRequiredRuleID           = "go.vet-required"
+	GoLintRequiredRuleID          = "go.lint-required"
+	GoCoverageRequiredRuleID      = "go.coverage-required"
+	GoComplexityRequiredRuleID    = "go.complexity-required"
+	GoDryRequiredRuleID           = "go.dry-required"
+	GoCRAPRequiredRuleID          = "go.crap-required"
+	GoMutationRequiredRuleID      = "go.mutation-required"
+	GoDependencyBoundariesRuleID  = "go.dependency-boundaries-required"
+	GoScopeIncompleteRuleID       = "go.scope-incomplete"
+	GoSuppressionsJustifiedRuleID = "go.suppressions-justified"
 )
 
 var defaultDefinitions = []Definition{
@@ -96,6 +108,16 @@ var defaultDefinitions = []Definition{
 		Path:        ".github/workflows",
 		Message:     ".github/workflows must contain at least one .yml or .yaml workflow",
 		Description: "The target repo should have a CI workflow under .github/workflows.",
+		Status:      "implemented",
+	},
+	{
+		ID:          SlophammerCIRequiredRuleID,
+		Title:       "Slophammer enforcement required",
+		Category:    "repo",
+		Severity:    SeverityError,
+		Path:        ".github/workflows",
+		Message:     "CI must run a Slophammer checker when slophammer.yml is present",
+		Description: "A repository that carries slophammer.yml must execute a Slophammer checker from binding CI evidence; config without enforcement is decoration.",
 		Status:      "implemented",
 	},
 	{
@@ -207,6 +229,26 @@ var defaultDefinitions = []Definition{
 		Description: "Go projects should keep imports inside the dependency boundaries declared in slophammer.yml.",
 		Status:      "implemented",
 	},
+	{
+		ID:          GoScopeIncompleteRuleID,
+		Title:       "Go scope completeness",
+		Category:    "go",
+		Severity:    SeverityError,
+		Path:        "slophammer.yml",
+		Message:     "Configured Go scope must cover all production files or exclude them with reasons",
+		Description: "Every production Go file must be in configured scope or covered by a conventional or reasoned exclude, so findings cannot be hidden by narrowing scope.",
+		Status:      "implemented",
+	},
+	{
+		ID:          GoSuppressionsJustifiedRuleID,
+		Title:       "Go suppressions justified",
+		Category:    "go",
+		Severity:    SeverityError,
+		Path:        ".",
+		Message:     "nolint directives in production Go code must carry a reason",
+		Description: "A //nolint directive in production scope must carry a trailing // reason comment; bare suppressions accumulate silently.",
+		Status:      "implemented",
+	},
 }
 
 func DefaultDefinitions() []Definition {
@@ -298,19 +340,22 @@ func ruleFromDefinition(definition Definition) Rule {
 type ruleFactory func(Definition) Rule
 
 var ruleFactories = map[string]ruleFactory{
-	ReadmeRequiredRuleID:         newRequiredFileRule,
-	AgentsRequiredRuleID:         newRequiredFileRule,
-	CIRequiredRuleID:             newCIRequiredRule,
-	GoModuleRequiredRuleID:       newGoModuleRule,
-	GoTestsRequiredRuleID:        newGoTestsRule,
-	GoVetRequiredRuleID:          newGoVetRule,
-	GoLintRequiredRuleID:         newGoLintRule,
-	GoCoverageRequiredRuleID:     newGoCoverageRule,
-	GoComplexityRequiredRuleID:   newGoComplexityRule,
-	GoDryRequiredRuleID:          newGoDryRule,
-	GoCRAPRequiredRuleID:         newGoCRAPRule,
-	GoMutationRequiredRuleID:     newGoMutationRule,
-	GoDependencyBoundariesRuleID: newGoDependencyBoundariesRule,
+	ReadmeRequiredRuleID:          newRequiredFileRule,
+	AgentsRequiredRuleID:          newRequiredFileRule,
+	CIRequiredRuleID:              newCIRequiredRule,
+	SlophammerCIRequiredRuleID:    newSlophammerCIRule,
+	GoModuleRequiredRuleID:        newGoModuleRule,
+	GoTestsRequiredRuleID:         newGoTestsRule,
+	GoVetRequiredRuleID:           newGoVetRule,
+	GoLintRequiredRuleID:          newGoLintRule,
+	GoCoverageRequiredRuleID:      newGoCoverageRule,
+	GoComplexityRequiredRuleID:    newGoComplexityRule,
+	GoDryRequiredRuleID:           newGoDryRule,
+	GoCRAPRequiredRuleID:          newGoCRAPRule,
+	GoMutationRequiredRuleID:      newGoMutationRule,
+	GoDependencyBoundariesRuleID:  newGoDependencyBoundariesRule,
+	GoScopeIncompleteRuleID:       newGoScopeRule,
+	GoSuppressionsJustifiedRuleID: newGoSuppressionsRule,
 }
 
 type requiredFileRule struct {

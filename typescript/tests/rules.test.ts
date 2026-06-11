@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { emptyConfig } from "../src/config/config.js";
 import { newSnapshot } from "../src/repo/repo.js";
 import { runRules } from "../src/rules/rules.js";
+import { bindingScriptWorkflow } from "./helpers.js";
 
 describe("TypeScript rules", () => {
   it("accepts case-insensitive shared repo filenames", () => {
@@ -178,7 +179,7 @@ describe("TypeScript command rules", () => {
         ...baseTypeScriptFiles(),
         {
           path: ".github/workflows/ci.yml",
-          content: "name: ci\njobs:\n  test:\n    steps:\n      - run: npm run dry\n"
+          content: "name: ci\non: [push]\njobs:\n  test:\n    steps:\n      - run: npm run dry\n"
         },
         packageWithScripts({ dry: "echo dry" }),
         enabledESLintConfig()
@@ -484,6 +485,7 @@ describe("TypeScript command parsing", () => {
           path: ".github/workflows/ci.yml",
           content: [
             "name: CI",
+            "on: [push]",
             "env:",
             "  NOTE: eslint tsc --noEmit slophammer typescript dry vitest run --coverage stryker",
             "jobs:",
@@ -812,7 +814,7 @@ function baseTypeScriptFiles(): readonly { readonly path: string; readonly conte
   return [
     { path: "README.md", content: "# Repo\n" },
     { path: "AGENTS.md", content: "# Agents\n" },
-    { path: ".github/workflows/ci.yml", content: "name: ci\n" },
+    { path: ".github/workflows/ci.yml", content: bindingScriptWorkflow() },
     {
       path: "tsconfig.json",
       content:

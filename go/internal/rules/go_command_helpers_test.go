@@ -6,6 +6,31 @@ import (
 	"github.com/dutifuldev/slophammer/go/internal/repo"
 )
 
+func TestContainsCommandWordRespectsWordBoundaries(t *testing.T) {
+	tests := []struct {
+		name     string
+		evidence string
+		word     string
+		want     bool
+	}{
+		{name: "exact word", evidence: "run make test", word: "make", want: true},
+		{name: "letter prefix", evidence: "run remake test", word: "make", want: false},
+		{name: "underscore suffix", evidence: "make_target", word: "make", want: false},
+		{name: "dash suffix", evidence: "make-target", word: "make", want: false},
+		{name: "digit suffix", evidence: "make4 things", word: "make", want: false},
+		{name: "later occurrence matches", evidence: "remake then make it", word: "make", want: true},
+		{name: "punctuation boundary", evidence: "(make)", word: "make", want: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := containsCommandWord(tt.evidence, tt.word); got != tt.want {
+				t.Fatalf("containsCommandWord(%q, %q) = %v, want %v", tt.evidence, tt.word, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestLineHasGoCommandSignal(t *testing.T) {
 	tests := []struct {
 		name string
@@ -120,6 +145,7 @@ func TestFileHasConfigBackedSlophammerGoCommand(t *testing.T) {
 			file: repo.File{
 				Path: ".github/workflows/ci.yml",
 				Content: `name: CI
+on: [push]
 jobs:
   test:
     steps:
@@ -136,6 +162,7 @@ jobs:
 			file: repo.File{
 				Path: ".github/workflows/ci.yml",
 				Content: `name: CI
+on: [push]
 jobs:
   test:
     steps:
@@ -205,6 +232,7 @@ func TestFileHasConfigBackedSlophammerGoCheckExecuteCommand(t *testing.T) {
 			file: repo.File{
 				Path: ".github/workflows/ci.yml",
 				Content: `name: CI
+on: [push]
 jobs:
   test:
     steps:
@@ -220,6 +248,7 @@ jobs:
 			file: repo.File{
 				Path: ".github/workflows/ci.yml",
 				Content: `name: CI
+on: [push]
 jobs:
   test:
     steps:

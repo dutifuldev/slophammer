@@ -11,3 +11,4 @@ jobs:
       - run: npx vitest run --coverage
       - run: npx slophammer-ts dry .
       - run: npx stryker run
+      - run: npx slophammer-ts check .

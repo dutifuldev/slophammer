@@ -65,6 +65,7 @@ func TestGoCoverageRuleAcceptsConfigBackedSlophammerGoCheckExecute(t *testing.T)
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 defaults:
   run:
     working-directory: go
@@ -75,6 +76,14 @@ jobs:
       - run: go vet ./...
       - run: golangci-lint run
       - run: go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.7 check .. --execute
+      - run: ./scripts/check-go-coverage.sh
+        working-directory: go
+      - run: ./scripts/check-dry.sh
+        working-directory: go
+      - run: ./scripts/check-crap.sh
+        working-directory: go
+      - run: ./scripts/check-mutation.sh
+        working-directory: go
 `,
 		},
 	})
@@ -107,6 +116,7 @@ func TestGoCoverageRuleRequiresThresholdInSameCheck(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 defaults:
   run:
     working-directory: go
@@ -119,7 +129,25 @@ jobs:
       - run: |
           go test -coverprofile=coverage.out ./...
           go tool cover -html=coverage.out > coverage.html
+      - run: ./scripts/check-go-coverage.sh
+        working-directory: go
+      - run: ./scripts/check-dry.sh
+        working-directory: go
+      - run: ./scripts/check-crap.sh
+        working-directory: go
+      - run: ./scripts/check-mutation.sh
+        working-directory: go
+`,
+		},
+		".github/workflows/node.yml": {
+			Path: ".github/workflows/node.yml",
+			Content: `name: Node
+on: [push]
+jobs:
+  node:
+    steps:
       - run: echo "minimum node version >= 20"
+        working-directory: go
 `,
 		},
 		"go/scripts/check-go-coverage.sh": {
@@ -140,6 +168,7 @@ func TestGoCoverageRuleRequiresEvidenceInSameCheck(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 defaults:
   run:
     working-directory: go
@@ -150,6 +179,9 @@ jobs:
       - run: go vet ./...
       - run: golangci-lint run
       - run: ./scripts/check-go-coverage.sh
+      - run: ./scripts/check-dry.sh
+      - run: ./scripts/check-crap.sh
+      - run: ./scripts/check-mutation.sh
       - run: echo "minimum node version >= 20"
 `,
 		},
@@ -171,6 +203,7 @@ func TestGoCoverageRuleAcceptsWorkflowGateSplitAcrossSteps(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 defaults:
   run:
     working-directory: go
@@ -183,6 +216,14 @@ jobs:
       - run: go test -coverprofile=coverage.out ./...
       - run: total="$(go tool cover -func=coverage.out | awk '/^total:/ {print substr($3, 1, length($3)-1)}')"
       - run: awk -v total="$total" -v minimum_coverage="80" 'BEGIN { exit !(total + 0 >= minimum_coverage + 0) }'
+      - run: ./scripts/check-go-coverage.sh
+        working-directory: go
+      - run: ./scripts/check-dry.sh
+        working-directory: go
+      - run: ./scripts/check-crap.sh
+        working-directory: go
+      - run: ./scripts/check-mutation.sh
+        working-directory: go
 `,
 		},
 		"go/scripts/check-go-coverage.sh": {

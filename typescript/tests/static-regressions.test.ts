@@ -4,6 +4,7 @@ import type { Config } from "../src/config/config.js";
 import { emptyConfig } from "../src/config/config.js";
 import { newSnapshot } from "../src/repo/repo.js";
 import { runRules } from "../src/rules/rules.js";
+import { bindingScriptWorkflow } from "./helpers.js";
 
 describe("TypeScript static rule regressions", () => {
   it("does not accept npm test wrappers without a real package test runner", () => {
@@ -12,7 +13,7 @@ describe("TypeScript static rule regressions", () => {
         ...baseTypeScriptFiles(),
         {
           path: ".github/workflows/ci.yml",
-          content: "name: ci\njobs:\n  test:\n    steps:\n      - run: npm test\n"
+          content: "name: ci\non: [push]\njobs:\n  test:\n    steps:\n      - run: npm test\n"
         },
         packageWithScripts({ test: "echo ok" }),
         enabledESLintConfig()
@@ -297,7 +298,7 @@ function baseTypeScriptFiles(): readonly { readonly path: string; readonly conte
   return [
     { path: "README.md", content: "# Repo\n" },
     { path: "AGENTS.md", content: "# Agents\n" },
-    { path: ".github/workflows/ci.yml", content: "name: ci\n" },
+    { path: ".github/workflows/ci.yml", content: bindingScriptWorkflow() },
     {
       path: "tsconfig.json",
       content:
@@ -426,6 +427,7 @@ function testOverrideOxlintConfig(): {
 function echoedMatrixWorkflow(): string {
   return [
     "name: CI",
+    "on: [push]",
     "jobs:",
     "  checks:",
     "    strategy:",
@@ -440,6 +442,7 @@ function echoedMatrixWorkflow(): string {
 function actionInputCommandWorkflow(): string {
   return [
     "name: CI",
+    "on: [push]",
     "jobs:",
     "  checks:",
     "    strategy:",
@@ -457,6 +460,7 @@ function actionInputCommandWorkflow(): string {
 function multiJobMatrixWorkflow(): string {
   return [
     "name: CI",
+    "on: [push]",
     "jobs:",
     "  typecheck-template:",
     "    strategy:",

@@ -69,7 +69,7 @@ func fileHasConfigBackedSlophammerGoCommand(file repo.File, subcommand string) b
 	if isWorkflowFilePath(file.Path) {
 		for _, block := range workflowCommandBlocks(file.Content) {
 			configRootPath := workflowBlockConfigRootPath(block)
-			if contentHasConfigBackedSlophammerGoCommand(workflowRunContent(block), subcommand, configRootPath) {
+			if contentHasConfigBackedSlophammerGoCommand(workflowBlockRunContent(block), subcommand, configRootPath) {
 				return true
 			}
 		}
@@ -87,7 +87,7 @@ func fileHasConfigBackedSlophammerGoCheckExecuteCommand(file repo.File) bool {
 	if isWorkflowFilePath(file.Path) {
 		for _, block := range workflowCommandBlocks(file.Content) {
 			configRootPath := workflowBlockConfigRootPath(block)
-			if contentHasConfigBackedSlophammerGoCheckExecuteCommand(workflowRunContent(block), configRootPath) {
+			if contentHasConfigBackedSlophammerGoCheckExecuteCommand(workflowBlockRunContent(block), configRootPath) {
 				return true
 			}
 		}

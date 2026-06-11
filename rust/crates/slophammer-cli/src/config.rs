@@ -46,13 +46,63 @@ pub struct RustConfig {
     #[serde(default)]
     pub targets: Vec<String>,
     #[serde(default)]
-    pub exclude: Vec<String>,
+    pub exclude: Vec<ExcludeEntry>,
     pub dry: Option<RustDry>,
     #[serde(rename = "unsafe")]
     pub unsafe_policy: Option<RustUnsafe>,
     pub mutation: Option<RustMutation>,
     #[serde(default)]
     pub dependency_boundaries: Vec<DependencyBoundary>,
+}
+
+/// An exclude entry is a plain pattern when it matches the conventional
+/// non-production list, and a pattern with a reason when it carves out
+/// production files.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(untagged)]
+pub enum ExcludeEntry {
+    Pattern(String),
+    Reasoned { pattern: String, reason: String },
+}
+
+impl ExcludeEntry {
+    pub fn pattern(&self) -> &str {
+        match self {
+            Self::Pattern(pattern) => pattern,
+            Self::Reasoned { pattern, .. } => pattern,
+        }
+    }
+
+    fn needs_reason(&self) -> bool {
+        matches!(self, Self::Pattern(pattern) if !conventional_exclude_pattern(pattern))
+    }
+
+    fn empty_reason(&self) -> bool {
+        matches!(self, Self::Reasoned { reason, .. } if reason.trim().is_empty())
+    }
+}
+
+/// The conventional non-production list from specs/CONFIG.md: patterns that
+/// scope may exclude without a reason.
+pub fn conventional_exclude_pattern(pattern: &str) -> bool {
+    const CONVENTIONAL: [&str; 15] = [
+        "_test.",
+        ".test.",
+        ".spec.",
+        "tests/",
+        "fixtures/",
+        "templates/",
+        "testdata/",
+        "dist/",
+        "build/",
+        "coverage/",
+        "target/",
+        "node_modules/",
+        "vendor/",
+        "generated",
+        "scripts/",
+    ];
+    CONVENTIONAL.iter().any(|marker| pattern.contains(marker))
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
@@ -62,7 +112,7 @@ pub struct RustCoverage {
     #[serde(default)]
     pub paths: Vec<String>,
     #[serde(default)]
-    pub exclude: Vec<String>,
+    pub exclude: Vec<ExcludeEntry>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
@@ -78,7 +128,7 @@ pub struct RustDry {
     #[serde(default)]
     pub paths: Vec<String>,
     #[serde(default)]
-    pub exclude: Vec<String>,
+    pub exclude: Vec<ExcludeEntry>,
     pub copied_blocks: Option<CopiedBlocks>,
 }
 
@@ -117,7 +167,7 @@ pub struct RustMutation {
     #[serde(default)]
     pub targets: Vec<String>,
     #[serde(default)]
-    pub exclude: Vec<String>,
+    pub exclude: Vec<ExcludeEntry>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
@@ -182,6 +232,7 @@ fn validate(config: &Config) -> Result<(), ConfigError> {
     let Some(rust) = &config.rust else {
         return Ok(());
     };
+    validate_excludes(rust)?;
     let coverage_threshold = rust.coverage.as_ref().map(|coverage| coverage.threshold);
     if let Some(threshold) = coverage_threshold {
         if threshold < 85 {
@@ -230,6 +281,46 @@ fn validate(config: &Config) -> Result<(), ConfigError> {
     Ok(())
 }
 
+/// A string exclude may only name conventional non-production patterns;
+/// excludes that carve out production files must carry a reason.
+fn validate_excludes(rust: &RustConfig) -> Result<(), ConfigError> {
+    let sections: [(&str, &[ExcludeEntry]); 4] = [
+        ("rust.exclude", &rust.exclude),
+        (
+            "rust.coverage.exclude",
+            rust.coverage.as_ref().map_or(&[], |c| &c.exclude),
+        ),
+        (
+            "rust.dry.exclude",
+            rust.dry.as_ref().map_or(&[], |d| &d.exclude),
+        ),
+        (
+            "rust.mutation.exclude",
+            rust.mutation.as_ref().map_or(&[], |m| &m.exclude),
+        ),
+    ];
+    for (section, entries) in sections {
+        validate_exclude_entries(section, entries)?;
+    }
+    Ok(())
+}
+
+fn validate_exclude_entries(section: &str, entries: &[ExcludeEntry]) -> Result<(), ConfigError> {
+    for entry in entries {
+        if entry.needs_reason() {
+            return Err(ConfigError::Validation(format!(
+                "{section} requires a reason for production paths"
+            )));
+        }
+        if entry.empty_reason() {
+            return Err(ConfigError::Validation(format!(
+                "{section} reasons must not be empty"
+            )));
+        }
+    }
+    Ok(())
+}
+
 pub fn apply_rule_config(config: &Config, findings: &mut [Finding]) {
     for finding in findings {
         if let Some(severity) = rule_severity(config, &finding.rule_id) {
@@ -260,8 +351,15 @@ pub fn rust_exclude(config: &Config) -> Vec<String> {
     config
         .rust
         .as_ref()
-        .map(|rust| rust.exclude.clone())
+        .map(|rust| exclude_patterns(&rust.exclude))
         .unwrap_or_default()
+}
+
+pub fn exclude_patterns(entries: &[ExcludeEntry]) -> Vec<String> {
+    entries
+        .iter()
+        .map(|entry| entry.pattern().to_owned())
+        .collect()
 }
 
 pub fn rust_coverage_threshold(config: &Config) -> u32 {
@@ -292,7 +390,7 @@ pub fn rust_dry_exclude(config: &Config) -> Vec<String> {
         .rust
         .as_ref()
         .and_then(|rust| rust.dry.as_ref())
-        .map(|dry| dry.exclude.clone())
+        .map(|dry| exclude_patterns(&dry.exclude))
         .unwrap_or_else(|| rust_exclude(config))
 }
 
@@ -444,6 +542,7 @@ rules:
             severity: Severity::Error,
             path: "README.md".to_owned(),
             message: "missing".to_owned(),
+            baselined: None,
         }];
 
         apply_rule_config(&config, &mut findings);

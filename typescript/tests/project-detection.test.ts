@@ -650,6 +650,7 @@ function packageFilesWithTSConfig(
 function packageAWorkflow(): string {
   return [
     "name: CI",
+    "on: [push]",
     "jobs:",
     "  a:",
     "    steps:",
@@ -666,6 +667,7 @@ function packageAWorkflow(): string {
 function mixedWorkflowBlock(): string {
   return [
     "name: CI",
+    "on: [push]",
     "jobs:",
     "  mixed:",
     "    steps:",
@@ -678,6 +680,7 @@ function mixedWorkflowBlock(): string {
 function packageDefaultWorkflow(): string {
   return [
     "name: CI",
+    "on: [push]",
     "jobs:",
     "  a:",
     "    defaults:",
@@ -709,6 +712,7 @@ function packageDefaultWorkflow(): string {
 function singlePackageDefaultWorkflow(root: string): string {
   return [
     "name: CI",
+    "on: [push]",
     "jobs:",
     "  package:",
     "    defaults:",
@@ -728,6 +732,7 @@ function singlePackageDefaultWorkflow(root: string): string {
 function workflowDefaultWorkflow(root: string): string {
   return [
     "name: CI",
+    "on: [push]",
     "defaults:",
     "  run:",
     `    working-directory: ${root}`,
@@ -756,6 +761,7 @@ function matrixCommandWorkflow(): string {
   ];
   return [
     "name: CI",
+    "on: [push]",
     "jobs:",
     "  checks:",
     "    strategy:",
@@ -781,6 +787,7 @@ function matrixWrapperWorkflow(): string {
   ];
   return [
     "name: CI",
+    "on: [push]",
     "jobs:",
     "  checks:",
     "    strategy:",
@@ -795,6 +802,7 @@ function matrixWrapperWorkflow(): string {
 function nestedPackageWorkflow(): string {
   return [
     "name: CI",
+    "on: [push]",
     "jobs:",
     "  ts:",
     "    runs-on: ubuntu-latest",

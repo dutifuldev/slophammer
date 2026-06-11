@@ -41,6 +41,38 @@ slophammer-go rules
 `check` exits `0` when the repo is clean, `1` when it has findings, and `2` on
 usage or runtime errors.
 
+### Pin the Version in CI
+
+Slophammer makes breaking releases deliberately and ships no compatibility
+shims; strict config validation fails loudly across breaking releases by
+design. Installing `@latest` in CI absorbs those breaks mid-pipeline. Pin an
+exact version, ideally behind one variable so upgrades are a single line:
+
+```sh
+go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.2.0 check .
+npx slophammer-ts@0.2.0 check .
+cargo install slophammer-rs --version 0.2.0 --locked
+```
+
+The simplest CI integration is the bundled GitHub Action, which requires an
+exact version by construction:
+
+```yaml
+- uses: dutifuldev/slophammer@main
+  with:
+    checker: go
+    version: 0.2.0
+```
+
+Pre-commit users can wire the hooks from `.pre-commit-hooks.yaml`
+(`slophammer-go-check`, `slophammer-ts-check`, `slophammer-rs-check`), which
+run the installed checkers.
+
+One boundary to be explicit about: Slophammer cannot defend against being
+removed from a repository. Branch protection and required status checks are
+the layer that makes the gate mandatory; the checker reports, your repository
+settings enforce.
+
 ## Quick Setup: Tell Your Agent About Slophammer
 
 If you are an agent applying Slophammer standards to an existing repository,
@@ -58,7 +90,8 @@ Attention agent: start with this file before changing code:
 https://raw.githubusercontent.com/dutifuldev/slophammer/refs/heads/main/docs/AGENT_ENTRYPOINT.md
 
 Follow it exactly. Detect the target repo's language, use the matching Slophammer
-implementation, and say clearly if no matching implementation exists.
+implementation, and say clearly if no matching implementation exists. Pin the
+exact checker version you verified against in CI; do not install latest.
 ```
 
 ## What This Is
@@ -177,6 +210,13 @@ but not weaker ones. This repo sets these targets for itself:
 | Go structural DRY     | `0.82` similarity, `4` lines, `20` nodes        |
 | Dependency rules      | declared in `go`, `typescript`, and `rust`      |
 
+Scope is validated like thresholds: excludes that carve out production code
+need a `pattern` plus `reason` object form, and configured scope must account
+for every production file or the check fails with `scope-incomplete`. For
+existing repositories, `check --baseline` grandfathers current findings into a
+checked-in, shrink-only `slophammer-baseline.json`; see
+[Baseline](specs/BASELINE.md).
+
 The intended DRY policy is production-only: implementation code should trend
 toward a zero-candidate budget, while tests are reviewed selectively, fixtures
 are excluded, and templates run their own checks. See [Config](specs/CONFIG.md)
@@ -184,8 +224,8 @@ for the full shape.
 
 ## Rule Set
 
-The shared registry contains 39 implemented rules: 3 repository rules, 10 Go
-rules, 13 TypeScript rules, and 13 Rust rules. Each executable prints the
+The shared registry contains 46 implemented rules: 4 repository rules, 12 Go
+rules, 15 TypeScript rules, and 15 Rust rules. Each executable prints the
 rules it implements: repo rules plus its native language rules.
 
 | Rule ID                             | Meaning                                                       |
@@ -193,6 +233,7 @@ rules it implements: repo rules plus its native language rules.
 | `repo.readme-required`              | The target repo should have a `README.md`.                    |
 | `repo.agents-required`              | The target repo should have an `AGENTS.md`.                   |
 | `repo.ci-required`                  | The target repo should have a CI workflow.                    |
+| `repo.slophammer-ci-required`       | Repos with slophammer.yml must run a checker in CI.           |
 | `go.module-required`                | Go projects should include a `go.mod`.                        |
 | `go.tests-required`                 | Go projects should run `go test ./...`.                       |
 | `go.vet-required`                   | Go projects should run `go vet ./...`.                        |
@@ -203,6 +244,8 @@ rules it implements: repo rules plus its native language rules.
 | `go.crap-required`                  | Go projects should gate `crap4go`.                            |
 | `go.mutation-required`              | Go projects should declare `mutate4go`.                       |
 | `go.dependency-boundaries-required` | Go projects should obey configured import boundaries.         |
+| `go.scope-incomplete`               | Configured Go scope must cover all production files.          |
+| `go.suppressions-justified`         | nolint directives in production Go code need a reason.        |
 | `ts.package-required`               | TypeScript projects should include `package.json`.            |
 | `ts.typecheck-required`             | TypeScript projects should run a no-emit typecheck.           |
 | `ts.strict-required`                | TypeScript projects should use strict mode.                   |
@@ -216,6 +259,8 @@ rules it implements: repo rules plus its native language rules.
 | `ts.dry-required`                   | TypeScript projects should run duplication detection.         |
 | `ts.mutation-required`              | TypeScript projects should declare mutation testing.          |
 | `ts.dependency-boundaries-required` | TypeScript projects should obey configured import boundaries. |
+| `ts.scope-incomplete`               | Configured TypeScript scope must cover all production files.  |
+| `ts.suppressions-justified`         | Lint and type suppressions need a description.                |
 | `rust.manifest-required`            | Rust projects should include `Cargo.toml`.                    |
 | `rust.msrv-required`                | Rust projects should declare an MSRV.                         |
 | `rust.check-required`               | Rust projects should run `cargo check`.                       |
@@ -229,6 +274,8 @@ rules it implements: repo rules plus its native language rules.
 | `rust.unsafe-policy-required`       | Rust projects should declare and respect unsafe policy.       |
 | `rust.dependency-audit-required`    | Rust projects should run dependency audit checks.             |
 | `rust.dependency-boundaries-required` | Rust projects should obey configured dependency boundaries. |
+| `rust.scope-incomplete`               | Configured Rust scope must cover all production files.      |
+| `rust.suppressions-justified`         | allow attributes in production Rust code need a reason.     |
 
 The TypeScript rules are tool-agnostic: they accept `tsc` or `tsgo` type
 checks, ESLint/Oxlint/Biome linting, Prettier/Oxfmt/Dprint/Biome formatting,

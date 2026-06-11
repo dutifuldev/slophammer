@@ -33,6 +33,7 @@ func TestGoCommandRulesAcceptShellContinuations(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 defaults:
   run:
     working-directory: go
@@ -48,6 +49,9 @@ jobs:
             ./...
       - run: golangci-lint run
       - run: ./scripts/check-go-coverage.sh
+      - run: ./scripts/check-dry.sh
+      - run: ./scripts/check-crap.sh
+      - run: ./scripts/check-mutation.sh
 `,
 		},
 		"go/scripts/check-go-coverage.sh": {
@@ -73,6 +77,7 @@ func TestGoCommandRulesIgnoreCommentedCommands(t *testing.T) {
 		{
 			name: "commented go test",
 			workflow: `name: CI
+on: [push]
 defaults:
   run:
     working-directory: go
@@ -83,6 +88,9 @@ jobs:
       - run: go vet ./...
       - run: golangci-lint run
       - run: ./scripts/check-go-coverage.sh
+      - run: ./scripts/check-dry.sh
+      - run: ./scripts/check-crap.sh
+      - run: ./scripts/check-mutation.sh
 `,
 			overrides: map[string]repo.File{
 				"go/scripts/check-go-coverage.sh": {
@@ -95,6 +103,7 @@ jobs:
 		{
 			name: "commented go vet",
 			workflow: `name: CI
+on: [push]
 defaults:
   run:
     working-directory: go
@@ -105,6 +114,9 @@ jobs:
       - run: "# go vet ./..."
       - run: golangci-lint run
       - run: ./scripts/check-go-coverage.sh
+      - run: ./scripts/check-dry.sh
+      - run: ./scripts/check-crap.sh
+      - run: ./scripts/check-mutation.sh
 `,
 			want: GoVetRequiredRuleID,
 		},
@@ -134,6 +146,7 @@ func TestGoRulesIgnoreNonGoCommandSubstrings(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 defaults:
   run:
     working-directory: go
@@ -159,6 +172,7 @@ func TestGoCommandRulesAcceptEnvPrefixedCommands(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 defaults:
   run:
     working-directory: go
@@ -169,6 +183,9 @@ jobs:
       - run: GOFLAGS=-mod=readonly go vet ./...
       - run: env GOLANGCI_LINT_CACHE=/tmp golangci-lint run
       - run: ./scripts/check-go-coverage.sh
+      - run: ./scripts/check-dry.sh
+      - run: ./scripts/check-crap.sh
+      - run: ./scripts/check-mutation.sh
 `,
 		},
 	})
@@ -185,6 +202,7 @@ func TestGoCommandRulesAcceptGoGlobalFlags(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 defaults:
   run:
     working-directory: go
@@ -195,6 +213,9 @@ jobs:
       - run: go -C=. vet ./...
       - run: golangci-lint run
       - run: ./scripts/check-go-coverage.sh
+      - run: ./scripts/check-dry.sh
+      - run: ./scripts/check-crap.sh
+      - run: ./scripts/check-mutation.sh
 `,
 		},
 		"go/scripts/check-go-coverage.sh": {
@@ -220,6 +241,7 @@ func TestGoCommandRulesIgnoreWorkflowStepMetadata(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 jobs:
   test:
     steps:
@@ -253,6 +275,7 @@ func TestGoCommandRulesIgnoreEchoedCommands(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 defaults:
   run:
     working-directory: go
@@ -263,6 +286,9 @@ jobs:
       - run: echo "go vet ./..."
       - run: echo "golangci-lint run"
       - run: ./scripts/check-go-coverage.sh
+      - run: ./scripts/check-dry.sh
+      - run: ./scripts/check-crap.sh
+      - run: ./scripts/check-mutation.sh
 `,
 		},
 		"go/scripts/check-go-coverage.sh": {
@@ -285,6 +311,7 @@ func TestGoCommandRulesIgnoreRunnerArguments(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 defaults:
   run:
     working-directory: go
@@ -295,6 +322,9 @@ jobs:
       - run: npm run go vet ./...
       - run: npm run golangci-lint run
       - run: ./scripts/check-go-coverage.sh
+      - run: ./scripts/check-dry.sh
+      - run: ./scripts/check-crap.sh
+      - run: ./scripts/check-mutation.sh
 `,
 		},
 		"go/scripts/check-go-coverage.sh": {

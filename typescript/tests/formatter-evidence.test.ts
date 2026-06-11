@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { emptyConfig } from "../src/config/config.js";
 import { newSnapshot } from "../src/repo/repo.js";
 import { runRules } from "../src/rules/rules.js";
+import { bindingScriptWorkflow } from "./helpers.js";
 
 describe("TypeScript formatter evidence", () => {
   it("rejects mutating Biome format commands", () => {
@@ -36,7 +37,7 @@ function baseTypeScriptFiles(): readonly { readonly path: string; readonly conte
   return [
     { path: "README.md", content: "# Repo\n" },
     { path: "AGENTS.md", content: "# Agents\n" },
-    { path: ".github/workflows/ci.yml", content: "name: ci\n" },
+    { path: ".github/workflows/ci.yml", content: bindingScriptWorkflow() },
     {
       path: "tsconfig.json",
       content: '{"compilerOptions":{"strict":true}}\n'

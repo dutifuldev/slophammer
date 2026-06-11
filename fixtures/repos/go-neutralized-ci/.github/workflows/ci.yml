@@ -1,0 +1,20 @@
+name: CI
+
+on:
+  push:
+
+jobs:
+  go:
+    if: false
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: go
+    steps:
+      - run: go test ./...
+      - run: go vet ./...
+      - run: go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.0 run
+      - run: ./scripts/check-go-coverage.sh
+      - run: slophammer go dry . --max-candidates 40
+      - run: slophammer go crap . --max-score 30
+      - run: slophammer go mutate . --target main.go --scan

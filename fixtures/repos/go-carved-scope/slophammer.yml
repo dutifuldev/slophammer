@@ -1,0 +1,5 @@
+go:
+  dry:
+    max_findings: 0
+    paths:
+      - go/corner

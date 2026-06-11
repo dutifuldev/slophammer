@@ -21,6 +21,17 @@ func WriteSARIF(out io.Writer, report rules.Report) error {
 }
 
 func WriteText(out io.Writer, report rules.Report) error {
+	if err := writeTextFindings(out, report); err != nil {
+		return err
+	}
+	if report.Scope == nil {
+		return nil
+	}
+	_, err := fmt.Fprintf(out, "scope: scanned %d of %d production files\n", report.Scope.Scanned, report.Scope.ProductionFiles)
+	return err
+}
+
+func writeTextFindings(out io.Writer, report rules.Report) error {
 	if report.OK {
 		_, err := fmt.Fprintln(out, "OK: no findings")
 		return err
@@ -60,10 +71,15 @@ type sarifRule struct {
 }
 
 type sarifResult struct {
-	RuleID    string          `json:"ruleId"`
-	Level     string          `json:"level"`
-	Message   sarifMessage    `json:"message"`
-	Locations []sarifLocation `json:"locations,omitempty"`
+	RuleID       string             `json:"ruleId"`
+	Level        string             `json:"level"`
+	Message      sarifMessage       `json:"message"`
+	Locations    []sarifLocation    `json:"locations,omitempty"`
+	Suppressions []sarifSuppression `json:"suppressions,omitempty"`
+}
+
+type sarifSuppression struct {
+	Kind string `json:"kind"`
 }
 
 type sarifMessage struct {
@@ -123,10 +139,11 @@ func sarifResults(findings []rules.Finding) []sarifResult {
 	results := make([]sarifResult, 0, len(findings))
 	for _, finding := range findings {
 		results = append(results, sarifResult{
-			RuleID:    finding.RuleID,
-			Level:     sarifLevel(finding.Severity),
-			Message:   sarifMessage{Text: finding.Message},
-			Locations: sarifLocations(finding.Path),
+			RuleID:       finding.RuleID,
+			Level:        sarifLevel(finding.Severity),
+			Message:      sarifMessage{Text: finding.Message},
+			Locations:    sarifLocations(finding.Path),
+			Suppressions: sarifSuppressions(finding.Baselined),
 		})
 	}
 	return results
@@ -139,6 +156,15 @@ func sarifLevel(severity rules.Severity) string {
 	default:
 		return "error"
 	}
+}
+
+// sarifSuppressions maps baselined findings to SARIF suppressions, which
+// code scanning understands natively.
+func sarifSuppressions(baselined bool) []sarifSuppression {
+	if !baselined {
+		return nil
+	}
+	return []sarifSuppression{{Kind: "external"}}
 }
 
 func sarifLocations(filePath string) []sarifLocation {

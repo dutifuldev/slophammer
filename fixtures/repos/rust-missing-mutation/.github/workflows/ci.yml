@@ -12,3 +12,4 @@ jobs:
       - run: cargo audit
       - run: slophammer-rs dry .
 
+      - run: slophammer-rs check .

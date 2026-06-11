@@ -2,7 +2,6 @@ package rules
 
 import (
 	"context"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -23,12 +22,17 @@ func TestGoRulesScopeGoCFlagCommandsToNestedModule(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 jobs:
   test:
     steps:
       - run: go -C go test ./...
       - run: go -C=go vet ./...
       - run: go -C go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.0 run
+      - run: go/scripts/check-go-coverage.sh
+      - run: go/scripts/check-dry.sh
+      - run: go/scripts/check-crap.sh
+      - run: go/scripts/check-mutation.sh
 `,
 		},
 	})
@@ -61,12 +65,23 @@ func TestGoRulesScopeWorkflowEvidenceToModuleRoots(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 jobs:
   api:
     steps:
       - run: cd services/api && go test ./...
       - run: cd services/api && go vet ./...
       - run: cd services/api && golangci-lint run
+      - run: services/api/scripts/check-go-coverage.sh
+      - run: services/api/scripts/check-dry.sh
+      - run: services/api/scripts/check-crap.sh
+      - run: services/api/scripts/check-mutation.sh
+  worker:
+    steps:
+      - run: services/worker/scripts/check-go-coverage.sh
+      - run: services/worker/scripts/check-dry.sh
+      - run: services/worker/scripts/check-crap.sh
+      - run: services/worker/scripts/check-mutation.sh
 `,
 		},
 	})
@@ -100,17 +115,26 @@ func TestGoRulesAcceptDotSlashWorkflowModuleRoots(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 jobs:
   api:
     steps:
       - run: cd ./services/api && go test ./...
       - run: cd ./services/api && go vet ./...
       - run: cd ./services/api && golangci-lint run
+      - run: ./services/api/scripts/check-go-coverage.sh
+      - run: ./services/api/scripts/check-dry.sh
+      - run: ./services/api/scripts/check-crap.sh
+      - run: ./services/api/scripts/check-mutation.sh
   worker:
     steps:
       - run: cd ./services/worker && go test ./...
       - run: cd ./services/worker && go vet ./...
       - run: cd ./services/worker && golangci-lint run
+      - run: ./services/worker/scripts/check-go-coverage.sh
+      - run: ./services/worker/scripts/check-dry.sh
+      - run: ./services/worker/scripts/check-crap.sh
+      - run: ./services/worker/scripts/check-mutation.sh
 `,
 		},
 	})
@@ -143,6 +167,7 @@ func TestGoRulesFilterWorkflowCommandsPerModule(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 jobs:
   api:
     steps:
@@ -153,6 +178,14 @@ jobs:
     steps:
       - run: cd services/worker && golangci-lint run
       - run: echo services/worker
+      - run: services/api/scripts/check-go-coverage.sh
+      - run: services/api/scripts/check-dry.sh
+      - run: services/api/scripts/check-crap.sh
+      - run: services/api/scripts/check-mutation.sh
+      - run: services/worker/scripts/check-go-coverage.sh
+      - run: services/worker/scripts/check-dry.sh
+      - run: services/worker/scripts/check-crap.sh
+      - run: services/worker/scripts/check-mutation.sh
 `,
 		},
 	})
@@ -193,6 +226,7 @@ func TestScopedWorkflowStepBlockFiltersMixedModuleCommands(t *testing.T) {
 
 func TestGoRulesAcceptChompedMixedModuleWorkflowRunBlocks(t *testing.T) {
 	workflow := `name: CI
+on: [push]
 jobs:
   all:
     steps:
@@ -201,10 +235,18 @@ jobs:
           go test ./...
           go vet ./...
           golangci-lint run
+          ./scripts/check-go-coverage.sh
+          ./scripts/check-dry.sh
+          ./scripts/check-crap.sh
+          ./scripts/check-mutation.sh
           cd services/worker
           go test ./...
           go vet ./...
           golangci-lint run
+          ./scripts/check-go-coverage.sh
+          ./scripts/check-dry.sh
+          ./scripts/check-crap.sh
+          ./scripts/check-mutation.sh
 `
 	snapshot := repo.NewSnapshot("/repo", cleanTwoModuleGoGuardrailFiles(workflow))
 
@@ -236,17 +278,26 @@ func TestGoRulesKeepRootWorkflowStepsWithNestedModules(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 jobs:
   root:
     steps:
       - run: go test ./...
       - run: go vet ./...
       - run: golangci-lint run
+      - run: ./scripts/check-go-coverage.sh
+      - run: ./scripts/check-dry.sh
+      - run: ./scripts/check-crap.sh
+      - run: ./scripts/check-mutation.sh
   api:
     steps:
       - run: cd services/api && go test ./...
       - run: cd services/api && go vet ./...
       - run: cd services/api && golangci-lint run
+      - run: services/api/scripts/check-go-coverage.sh
+      - run: services/api/scripts/check-dry.sh
+      - run: services/api/scripts/check-crap.sh
+      - run: services/api/scripts/check-mutation.sh
 `,
 		},
 	}
@@ -279,6 +330,7 @@ func TestGoRulesKeepWholeWorkflowStepForModule(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 jobs:
   go:
     steps:
@@ -296,6 +348,22 @@ jobs:
       - uses: golangci/golangci-lint-action@v8
         with:
           working-directory: services/worker
+      - run: ./scripts/check-go-coverage.sh
+        working-directory: services/api
+      - run: ./scripts/check-dry.sh
+        working-directory: services/api
+      - run: ./scripts/check-crap.sh
+        working-directory: services/api
+      - run: ./scripts/check-mutation.sh
+        working-directory: services/api
+      - run: ./scripts/check-go-coverage.sh
+        working-directory: services/worker
+      - run: ./scripts/check-dry.sh
+        working-directory: services/worker
+      - run: ./scripts/check-crap.sh
+        working-directory: services/worker
+      - run: ./scripts/check-mutation.sh
+        working-directory: services/worker
 `,
 		},
 	})
@@ -328,12 +396,23 @@ func TestGoRulesMatchNestedModuleWorkflowRootsOnBoundaries(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 jobs:
   api:
     steps:
       - run: cd services/api && go test ./...
       - run: cd services/api && go vet ./...
       - run: cd services/api && golangci-lint run
+      - run: services/api/scripts/check-coverage.sh
+      - run: services/api/scripts/check-dry.sh
+      - run: services/api/scripts/check-crap.sh
+      - run: services/api/scripts/check-mutation.sh
+  services:
+    steps:
+      - run: services/scripts/check-go-coverage.sh
+      - run: services/scripts/check-dry.sh
+      - run: services/scripts/check-crap.sh
+      - run: services/scripts/check-mutation.sh
 `,
 		},
 	})
@@ -367,6 +446,7 @@ func TestGoRulesKeepJobDefaultWorkingDirectoryWithWorkflowSteps(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 jobs:
   api:
     defaults:
@@ -376,6 +456,14 @@ jobs:
       - run: go test ./...
       - run: go vet ./...
       - run: golangci-lint run
+      - run: ./scripts/check-go-coverage.sh
+        working-directory: services/api
+      - run: ./scripts/check-dry.sh
+        working-directory: services/api
+      - run: ./scripts/check-crap.sh
+        working-directory: services/api
+      - run: ./scripts/check-mutation.sh
+        working-directory: services/api
   worker:
     defaults:
       run:
@@ -384,6 +472,14 @@ jobs:
       - run: go test ./...
       - run: go vet ./...
       - run: golangci-lint run
+      - run: ./scripts/check-go-coverage.sh
+        working-directory: services/worker
+      - run: ./scripts/check-dry.sh
+        working-directory: services/worker
+      - run: ./scripts/check-crap.sh
+        working-directory: services/worker
+      - run: ./scripts/check-mutation.sh
+        working-directory: services/worker
 `,
 		},
 	})
@@ -397,6 +493,7 @@ jobs:
 
 func TestGoRulesIgnoreWorkflowListsBeforeSteps(t *testing.T) {
 	blocks := workflowStepBlocks(`name: CI
+on: [push]
 jobs:
   go:
     strategy:
@@ -439,6 +536,7 @@ func TestGoRulesKeepTopLevelDefaultWorkingDirectoryWithWorkflowSteps(t *testing.
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 defaults:
   run:
     working-directory: go
@@ -448,6 +546,14 @@ jobs:
       - run: go test ./...
       - run: go vet ./...
       - run: golangci-lint run
+      - run: ./scripts/check-go-coverage.sh
+        working-directory: go
+      - run: ./scripts/check-dry.sh
+        working-directory: go
+      - run: ./scripts/check-crap.sh
+        working-directory: go
+      - run: ./scripts/check-mutation.sh
+        working-directory: go
 `,
 		},
 	})
@@ -464,6 +570,7 @@ func TestGoRulesDoNotApplyRunDefaultsToActionSteps(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 jobs:
   test:
     defaults:
@@ -473,6 +580,14 @@ jobs:
       - run: go test ./...
       - run: go vet ./...
       - uses: golangci/golangci-lint-action@v8
+      - run: ./scripts/check-go-coverage.sh
+        working-directory: go
+      - run: ./scripts/check-dry.sh
+        working-directory: go
+      - run: ./scripts/check-crap.sh
+        working-directory: go
+      - run: ./scripts/check-mutation.sh
+        working-directory: go
 `,
 		},
 	})
@@ -509,6 +624,14 @@ jobs:
       - run: go test ./...
       - run: go vet ./...
       - run: golangci-lint run
+      - run: ./scripts/check-go-coverage.sh
+        working-directory: go
+      - run: ./scripts/check-dry.sh
+        working-directory: go
+      - run: ./scripts/check-crap.sh
+        working-directory: go
+      - run: ./scripts/check-mutation.sh
+        working-directory: go
 `,
 		},
 	})
@@ -525,12 +648,17 @@ func TestGoRulesScopeSingleNestedModuleWorkflowEvidence(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 jobs:
   test:
     steps:
       - run: go test ./...
       - run: go vet ./...
       - run: golangci-lint run
+      - run: go/scripts/check-go-coverage.sh
+      - run: go/scripts/check-dry.sh
+      - run: go/scripts/check-crap.sh
+      - run: go/scripts/check-mutation.sh
 `,
 		},
 	})
@@ -564,6 +692,7 @@ func TestGoRulesKeepNamedWorkflowStepsForModule(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 jobs:
   api:
     steps:
@@ -579,6 +708,14 @@ jobs:
         run: cd services/worker && golangci-lint run
       - name: marker
         run: echo services/worker
+      - run: services/api/scripts/check-go-coverage.sh
+      - run: services/api/scripts/check-dry.sh
+      - run: services/api/scripts/check-crap.sh
+      - run: services/api/scripts/check-mutation.sh
+      - run: services/worker/scripts/check-go-coverage.sh
+      - run: services/worker/scripts/check-dry.sh
+      - run: services/worker/scripts/check-crap.sh
+      - run: services/worker/scripts/check-mutation.sh
 `,
 		},
 	})
@@ -588,10 +725,37 @@ jobs:
 	assertRuleIDs(t, report.Findings, []string{GoVetRequiredRuleID})
 }
 
-func TestWorkflowCommandSectionsIgnoreStepMetadata(t *testing.T) {
-	sections := commandSections(repo.File{
-		Path: ".github/workflows/ci.yml",
-		Content: `name: CI
+func TestBindingWorkflowTriggersGateCommandText(t *testing.T) {
+	tests := []struct {
+		name    string
+		on      string
+		binding bool
+	}{
+		{name: "push without filter", on: "on:\n  push:\n", binding: true},
+		{name: "push to main", on: "on:\n  push:\n    branches:\n      - main\n", binding: true},
+		{name: "push wildcard branch", on: "on:\n  push:\n    branches:\n      - \"release/*\"\n", binding: true},
+		{name: "push scalar branch", on: "on:\n  push:\n    branches: trunk\n", binding: true},
+		{name: "push to feature only", on: "on:\n  push:\n    branches:\n      - feature\n", binding: false},
+		{name: "push with tag filter only", on: "on:\n  push:\n    tags:\n      - \"v*\"\n", binding: true},
+		{name: "pull request entry", on: "on:\n  pull_request:\n", binding: true},
+		{name: "workflow dispatch only", on: "on:\n  workflow_dispatch:\n", binding: false},
+		{name: "scalar trigger", on: "on: push\n", binding: true},
+		{name: "non-binding scalar trigger", on: "on: workflow_call\n", binding: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := bindingWorkflowCommandText("name: CI\n" + tt.on + "jobs:\n  test:\n    steps:\n      - run: go test ./...\n")
+			if binding := strings.Contains(got, "go test ./..."); binding != tt.binding {
+				t.Fatalf("binding = %v, want %v; text = %q", binding, tt.binding, got)
+			}
+		})
+	}
+}
+
+func TestBindingWorkflowCommandTextIgnoresStepMetadata(t *testing.T) {
+	got := bindingWorkflowCommandText(`name: CI
+on: [push]
 jobs:
   test:
     steps:
@@ -600,40 +764,35 @@ jobs:
       - name: go vet ./...
         run: |
           echo still ok
-`,
-	})
+`)
 
-	joined := strings.Join(sections, "\n")
-	if strings.Contains(joined, "go test ./...") || strings.Contains(joined, "go vet ./...") {
-		t.Fatalf("workflow metadata leaked into command sections: %q", joined)
+	if strings.Contains(got, "go test ./...") || strings.Contains(got, "go vet ./...") {
+		t.Fatalf("workflow metadata leaked into command text: %q", got)
 	}
-	if !strings.Contains(joined, "echo ok") || !strings.Contains(joined, "echo still ok") {
-		t.Fatalf("workflow run content missing from command sections: %q", joined)
+	if !strings.Contains(got, "echo ok") || !strings.Contains(got, "echo still ok") {
+		t.Fatalf("workflow run content missing from command text: %q", got)
 	}
 }
 
-func TestWorkflowCommandSectionsFoldRunBlocks(t *testing.T) {
-	sections := commandSections(repo.File{
-		Path: ".github/workflows/ci.yml",
-		Content: `name: CI
+func TestBindingWorkflowCommandTextFoldsRunBlocks(t *testing.T) {
+	got := bindingWorkflowCommandText(`name: CI
+on: [push]
 jobs:
   test:
     steps:
       - run: >
           go vet
           ./...
-`,
-	})
+`)
 
-	if len(sections) != 1 || sections[0] != "go vet ./..." {
-		t.Fatalf("workflow folded run sections = %#v", sections)
+	if strings.TrimSpace(got) != "go vet ./..." {
+		t.Fatalf("workflow folded run command text = %q", got)
 	}
 }
 
-func TestWorkflowCommandSectionsAcceptChompedRunBlocks(t *testing.T) {
-	sections := commandSections(repo.File{
-		Path: ".github/workflows/ci.yml",
-		Content: `name: CI
+func TestBindingWorkflowCommandTextAcceptsChompedRunBlocks(t *testing.T) {
+	got := bindingWorkflowCommandText(`name: CI
+on: [push]
 jobs:
   test:
     steps:
@@ -642,19 +801,17 @@ jobs:
       - run: >-
           go vet
           ./...
-`,
-	})
+`)
 
-	want := []string{"go test ./...", "go vet ./..."}
-	if !reflect.DeepEqual(sections, want) {
-		t.Fatalf("workflow chomped run sections = %#v, want %#v", sections, want)
+	want := "go test ./..." + workflowStepBoundary + "go vet ./..."
+	if got != want {
+		t.Fatalf("workflow chomped run command text = %q, want %q", got, want)
 	}
 }
 
-func TestWorkflowCommandSectionsIgnorePostRunYamlBlocks(t *testing.T) {
-	sections := commandSections(repo.File{
-		Path: ".github/workflows/ci.yml",
-		Content: `name: CI
+func TestBindingWorkflowCommandTextIgnoresPostRunYamlBlocks(t *testing.T) {
+	got := bindingWorkflowCommandText(`name: CI
+on: [push]
 jobs:
   test:
     steps:
@@ -664,11 +821,12 @@ jobs:
           SCRIPT: |
             go test ./...
             go vet ./...
-`,
-	})
+`)
 
-	want := []string{"echo noop"}
-	if !reflect.DeepEqual(sections, want) {
-		t.Fatalf("workflow run sections = %#v, want %#v", sections, want)
+	if strings.Contains(got, "go test ./...") || strings.Contains(got, "go vet ./...") {
+		t.Fatalf("post-run yaml leaked into command text: %q", got)
+	}
+	if strings.TrimSpace(got) != "echo noop" {
+		t.Fatalf("workflow run command text = %q", got)
 	}
 }

@@ -5,3 +5,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: npm run dry
+      - run: npx slophammer-ts check .

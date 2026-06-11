@@ -62,6 +62,68 @@ func TestParseCheckArgsAllowsExecute(t *testing.T) {
 	}
 }
 
+func TestParseCheckArgsAllowsJSONShorthand(t *testing.T) {
+	var errOut bytes.Buffer
+	options, ok := parseCheckArgs([]string{"/repo", "--json"}, &errOut)
+
+	if !ok {
+		t.Fatalf("ok = false; stderr=%q", errOut.String())
+	}
+	if options.Format != "json" {
+		t.Fatalf("options.Format = %q, want json", options.Format)
+	}
+}
+
+func TestParseCheckArgsParsesBaselineModes(t *testing.T) {
+	tests := []struct {
+		name string
+		flag string
+		want app.BaselineMode
+	}{
+		{name: "check", flag: "--baseline", want: app.BaselineCheck},
+		{name: "write", flag: "--baseline-write", want: app.BaselineWrite},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var errOut bytes.Buffer
+			options, ok := parseCheckArgs([]string{"/repo", tt.flag}, &errOut)
+
+			if !ok {
+				t.Fatalf("ok = false; stderr=%q", errOut.String())
+			}
+			if options.Baseline != tt.want {
+				t.Fatalf("options.Baseline = %v, want %v", options.Baseline, tt.want)
+			}
+		})
+	}
+}
+
+func TestParseCheckArgsRejectsCombinedBaselineFlags(t *testing.T) {
+	assertCLIError(t, []string{"check", ".", "--baseline", "--baseline-write"}, "mutually exclusive")
+	assertCLIError(t, []string{"check", ".", "--baseline-write", "--baseline"}, "mutually exclusive")
+}
+
+func TestRunCheckBaselineWriteRoundTrip(t *testing.T) {
+	root := t.TempDir()
+
+	written := runCLI(t, "check", root, "--baseline-write")
+	if written.code != app.ExitOK {
+		t.Fatalf("code = %d, want %d; stderr=%q", written.code, app.ExitOK, written.stderr)
+	}
+	if !strings.Contains(written.stdout, "baseline written: 3 finding(s)") {
+		t.Fatalf("stdout = %q", written.stdout)
+	}
+
+	checked := runCLI(t, "check", root, "--baseline")
+	if checked.code != app.ExitOK {
+		t.Fatalf("code = %d, want %d; stderr=%q", checked.code, app.ExitOK, checked.stderr)
+	}
+	if !strings.Contains(checked.stdout, "3 findings baselined; 0 new") {
+		t.Fatalf("stdout = %q", checked.stdout)
+	}
+}
+
 func TestRunExplain(t *testing.T) {
 	result := runCLI(t, "explain", "repo.ci-required")
 

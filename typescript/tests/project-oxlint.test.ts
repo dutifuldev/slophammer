@@ -74,6 +74,7 @@ function nestedPackageWithLocalOxlintConfig(): readonly {
 function nestedPackageOxlintWorkflow(): string {
   return [
     "name: CI",
+    "on: [push]",
     "jobs:",
     "  ts:",
     "    runs-on: ubuntu-latest",

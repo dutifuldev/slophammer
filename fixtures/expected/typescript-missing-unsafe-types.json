@@ -7,5 +7,9 @@
       "path": "eslint.config.mjs",
       "message": "TypeScript projects must reject unsafe type operations"
     }
-  ]
+  ],
+  "scope": {
+    "scanned": 0,
+    "production_files": 0
+  }
 }

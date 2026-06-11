@@ -60,11 +60,118 @@ export function workflowFiles(snapshot: Snapshot): readonly RepoFile[] {
 }
 
 export function commandFiles(snapshot: Snapshot): readonly RepoFile[] {
-  return [
-    ...workflowFiles(snapshot).map(workflowCommandFile),
-    ...scriptFiles(snapshot).map(shellCommandFile),
-    ...packageScriptFiles(snapshot).map(shellCommandFile)
-  ].filter((file) => !ignoredEvidencePath(file.path) && file.content.trim() !== "");
+  const workflows = workflowFiles(snapshot)
+    .map(workflowCommandFile)
+    .filter((file) => !ignoredEvidencePath(file.path) && file.content.trim() !== "");
+  const synthetic = syntheticRepoEvidenceFiles(snapshot);
+  const rootEvidence = joinedContents([...workflows, ...synthetic]);
+  const scripts = reachableScriptFiles(snapshot, rootEvidence);
+  const packages = reachablePackageScriptFiles(snapshot, rootEvidence + joinedContents(scripts));
+  return [...workflows, ...synthetic, ...scripts, ...packages].filter(
+    (file) => !ignoredEvidencePath(file.path) && file.content.trim() !== ""
+  );
+}
+
+// Synthetic __repo_ evidence files are produced by scoping a real root
+// workflow or root package scripts into a project scope, so they are already
+// filtered binding evidence and stay credited without a referencing workflow.
+export const syntheticRepoEvidencePrefix = "scripts/__repo_";
+
+function syntheticRepoEvidencePath(filePath: string): boolean {
+  return filePath.startsWith(syntheticRepoEvidencePrefix);
+}
+
+function syntheticRepoEvidenceFiles(snapshot: Snapshot): readonly RepoFile[] {
+  return [...snapshot.files.values()]
+    .filter((file) => syntheticRepoEvidencePath(file.path))
+    .map(shellCommandFile);
+}
+
+function joinedContents(files: readonly RepoFile[]): string {
+  return files.map((file) => file.content).join("\n") + "\n";
+}
+
+// reachableScriptFiles credits scripts only when binding workflow evidence
+// references them, following script-to-script references one level deep.
+function reachableScriptFiles(snapshot: Snapshot, rootEvidence: string): readonly RepoFile[] {
+  const candidates = scriptFiles(snapshot).map(shellCommandFile);
+  const firstHop = candidates.filter((file) => referencesFile(rootEvidence, file.path));
+  const extended = rootEvidence + joinedContents(firstHop);
+  return candidates.filter((file) => referencesFile(extended, file.path));
+}
+
+function referencesFile(evidence: string, filePath: string): boolean {
+  const parts = filePath.split("/");
+  const baseName = parts[parts.length - 1] ?? filePath;
+  return containsWord(evidence, baseName);
+}
+
+function containsWord(evidence: string, word: string): boolean {
+  for (let index = evidence.indexOf(word); index >= 0; index = evidence.indexOf(word, index + 1)) {
+    const before = index === 0 ? "" : (evidence[index - 1] ?? "");
+    const after = evidence[index + word.length] ?? "";
+    if (!wordCharacter(before) && !wordCharacter(after)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function wordCharacter(value: string): boolean {
+  return /^[A-Za-z0-9_-]$/u.test(value);
+}
+
+// reachablePackageScriptFiles credits package.json scripts only when binding
+// evidence invokes them by name, following one level of chained npm-run
+// references inside invoked scripts.
+function reachablePackageScriptFiles(snapshot: Snapshot, evidence: string): readonly RepoFile[] {
+  return filesNamed(snapshot, "package.json")
+    .map((file) => ({
+      path: file.path,
+      content: reachablePackageScriptContent(file.content, evidence)
+    }))
+    .map(shellCommandFile);
+}
+
+function reachablePackageScriptContent(content: string, evidence: string): string {
+  const scripts = parsedPackageScripts(content);
+  const invoked = new Set([...scripts.keys()].filter((name) => scriptInvoked(evidence, name)));
+  const chained = [...invoked].flatMap((name) =>
+    [...scripts.keys()].filter((candidate) => scriptInvoked(scripts.get(name) ?? "", candidate))
+  );
+  for (const name of chained) {
+    invoked.add(name);
+  }
+  return [...scripts.entries()]
+    .filter(([name]) => invoked.has(name))
+    .map(([name, value]) => `${name}: ${value}`)
+    .join("\n");
+}
+
+function parsedPackageScripts(content: string): ReadonlyMap<string, string> {
+  try {
+    const parsed: unknown = JSON.parse(content);
+    const scripts = asRecord(asRecord(parsed)["scripts"]);
+    return new Map(
+      Object.entries(scripts).filter(
+        (entry): entry is [string, string] => typeof entry[1] === "string"
+      )
+    );
+  } catch {
+    return new Map();
+  }
+}
+
+function scriptInvoked(evidence: string, name: string): boolean {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  const runner = new RegExp(
+    `\\b(?:npm|pnpm|yarn|bun)(?:\\s+run)?\\s+(?:-[\\w-]+\\s+)*${escaped}(?![\\w-])`,
+    "u"
+  );
+  if (runner.test(evidence)) {
+    return true;
+  }
+  return name === "test" && /\b(?:npm|pnpm|yarn|bun)\s+test\b/u.test(evidence);
 }
 
 export function normalizePath(path: string): string {
@@ -74,30 +181,11 @@ export function normalizePath(path: string): string {
 function scriptFiles(snapshot: Snapshot): readonly RepoFile[] {
   return [...snapshot.files.values()].filter(
     (file) =>
-      file.path.startsWith("scripts/") ||
-      file.path.includes("/scripts/") ||
-      file.path.endsWith(".sh")
+      !syntheticRepoEvidencePath(file.path) &&
+      (file.path.startsWith("scripts/") ||
+        file.path.includes("/scripts/") ||
+        file.path.endsWith(".sh"))
   );
-}
-
-function packageScriptFiles(snapshot: Snapshot): readonly RepoFile[] {
-  return filesNamed(snapshot, "package.json").map((file) => ({
-    path: file.path,
-    content: packageScriptContent(file.content)
-  }));
-}
-
-function packageScriptContent(content: string): string {
-  try {
-    const parsed: unknown = JSON.parse(content);
-    const scripts = asRecord(asRecord(parsed)["scripts"]);
-    return Object.entries(scripts)
-      .filter((entry): entry is [string, string] => typeof entry[1] === "string")
-      .map(([name, value]) => `${name}: ${value}`)
-      .join("\n");
-  } catch {
-    return "";
-  }
 }
 
 function workflowCommandFile(file: RepoFile): RepoFile {
@@ -116,9 +204,13 @@ function shellCommandFile(file: RepoFile): RepoFile {
 
 function extractWorkflowRunContent(content: string): string {
   const workflow = workflowRecord(content);
-  if (workflow !== undefined) {
-    return workflowCommands(workflow).join("\n");
+  if (workflow !== undefined && Object.keys(asRecord(workflow["jobs"])).length > 0) {
+    return bindingWorkflowTriggers(workflow["on"]) ? workflowCommands(workflow).join("\n") : "";
   }
+  return lineBasedRunCommands(content).join("\n");
+}
+
+function lineBasedRunCommands(content: string): readonly string[] {
   const lines = content.replaceAll("\r\n", "\n").split("\n");
   const commands: string[] = [];
   for (let index = 0; index < lines.length; index += 1) {
@@ -137,7 +229,7 @@ function extractWorkflowRunContent(content: string): string {
       commands.push(command);
     }
   }
-  return commands.join("\n");
+  return commands;
 }
 
 const matrixCommandExpressionPattern = /\$\{\{\s*matrix\.command\s*\}\}/u;
@@ -148,19 +240,94 @@ function workflowCommands(workflow: Readonly<Record<string, unknown>>): readonly
 
 function jobWorkflowCommands(job: unknown): readonly string[] {
   const record = asRecord(job);
+  if (neutralizedEntry(record)) {
+    return [];
+  }
   const matrixCommands = jobMatrixCommands(record);
   return arrayValues(record["steps"]).flatMap((step) => stepWorkflowCommands(step, matrixCommands));
 }
 
 function stepWorkflowCommands(step: unknown, matrixCommands: readonly string[]): readonly string[] {
-  const command = stringValue(asRecord(step)["run"]);
-  if (command === "") {
+  const record = asRecord(step);
+  if (neutralizedEntry(record)) {
     return [];
   }
-  if (!directMatrixCommand(command) || matrixCommands.length === 0) {
-    return [command];
+  const evidence: string[] = [];
+  const uses = stringValue(record["uses"]);
+  if (uses !== "") {
+    evidence.push(`uses: ${uses}`);
   }
-  return matrixCommands;
+  const command = stringValue(record["run"]);
+  if (command === "") {
+    return evidence;
+  }
+  if (!directMatrixCommand(command) || matrixCommands.length === 0) {
+    return [...evidence, command];
+  }
+  return [...evidence, ...matrixCommands];
+}
+
+// neutralizedEntry reports whether a job or step cannot run or cannot fail:
+// a literal-false if condition or a literal continue-on-error. Non-literal
+// expressions stay credited.
+function neutralizedEntry(record: Readonly<Record<string, unknown>>): boolean {
+  const continueOnError = record["continue-on-error"];
+  if (continueOnError === true || literalExpressionValue(stringValue(continueOnError)) === "true") {
+    return true;
+  }
+  const condition = record["if"];
+  if (condition === false) {
+    return true;
+  }
+  return literalExpressionValue(stringValue(condition)) === "false";
+}
+
+function literalExpressionValue(value: string): string {
+  let trimmed = value.trim();
+  if (trimmed.startsWith("${{") && trimmed.endsWith("}}")) {
+    trimmed = trimmed.slice(3, -2).trim();
+  }
+  return trimmed;
+}
+
+// bindingWorkflowTriggers reports whether a workflow can fire for
+// integration: pull requests, merge groups, schedules, or pushes whose
+// branch filter is absent, wildcarded, or names an integration branch.
+export function bindingWorkflowTriggers(on: unknown): boolean {
+  if (typeof on === "string") {
+    return bindingTriggerName(on);
+  }
+  if (Array.isArray(on)) {
+    return on.some((name) => bindingTriggerName(stringValue(name)));
+  }
+  const record = asRecord(on);
+  return Object.entries(record).some(([name, value]) => bindingTriggerEntry(name, value));
+}
+
+function bindingTriggerName(name: string): boolean {
+  return ["push", "pull_request", "pull_request_target", "merge_group", "schedule"].includes(name);
+}
+
+function bindingTriggerEntry(name: string, value: unknown): boolean {
+  if (["pull_request", "pull_request_target", "merge_group", "schedule"].includes(name)) {
+    return true;
+  }
+  if (name !== "push") {
+    return false;
+  }
+  const branches = asRecord(value)["branches"];
+  if (branches === undefined) {
+    return true;
+  }
+  const patterns = Array.isArray(branches) ? branches.map(stringValue) : [stringValue(branches)];
+  return patterns.some(integrationBranchPattern);
+}
+
+function integrationBranchPattern(pattern: string): boolean {
+  if (pattern.includes("*")) {
+    return true;
+  }
+  return ["main", "master", "trunk", "develop"].includes(pattern);
 }
 
 function directMatrixCommand(command: string): boolean {

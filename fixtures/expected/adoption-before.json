@@ -78,6 +78,12 @@
       "severity": "error",
       "path": ".github/workflows",
       "message": "TypeScript projects must declare tests in CI or scripts"
+    },
+    {
+      "rule_id": "ts.typecheck-required",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "TypeScript projects must declare a no-emit typecheck in CI or scripts"
     }
   ]
 }

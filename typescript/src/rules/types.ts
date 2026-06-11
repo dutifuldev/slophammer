@@ -5,11 +5,20 @@ export type Finding = {
   readonly severity: Severity;
   readonly path: string;
   readonly message: string;
+  readonly baselined?: true;
 };
 
 export type Report = {
   readonly ok: boolean;
   readonly findings: readonly Finding[];
+  readonly scope?: ScopeCoverage;
+};
+
+// Coverage of configured scope over the production TypeScript files,
+// reported so a narrowed scope is visible instead of silent.
+export type ScopeCoverage = {
+  readonly scanned: number;
+  readonly production_files: number;
 };
 
 export type Definition = {

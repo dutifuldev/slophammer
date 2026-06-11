@@ -103,6 +103,7 @@ func TestDefaultDefinitionsAreStable(t *testing.T) {
 		ReadmeRequiredRuleID,
 		AgentsRequiredRuleID,
 		CIRequiredRuleID,
+		SlophammerCIRequiredRuleID,
 		GoModuleRequiredRuleID,
 		GoTestsRequiredRuleID,
 		GoVetRequiredRuleID,
@@ -113,6 +114,8 @@ func TestDefaultDefinitionsAreStable(t *testing.T) {
 		GoCRAPRequiredRuleID,
 		GoMutationRequiredRuleID,
 		GoDependencyBoundariesRuleID,
+		GoScopeIncompleteRuleID,
+		GoSuppressionsJustifiedRuleID,
 	}
 	if len(definitions) != len(wantIDs) {
 		t.Fatalf("len(definitions) = %d, want %d", len(definitions), len(wantIDs))
@@ -282,6 +285,7 @@ awk -v total="$total" -v minimum="$minimum_coverage" 'BEGIN { exit !(total + 0 >
 `
 
 const goCleanWorkflow = `name: CI
+on: [push]
 
 defaults:
   run:
@@ -294,9 +298,13 @@ jobs:
       - run: go vet ./...
       - run: go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.0 run
       - run: ./scripts/check-go-coverage.sh
+      - run: ./scripts/check-dry.sh
+      - run: ./scripts/check-crap.sh
+      - run: ./scripts/check-mutation.sh
 `
 
 const nestedGoWorkflow = `name: CI
+on: [push]
 
 jobs:
   test:

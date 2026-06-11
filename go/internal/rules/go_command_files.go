@@ -12,24 +12,139 @@ func commandFiles(snapshot repo.Snapshot) []repo.File {
 
 func commandFileMap(snapshot repo.Snapshot) map[string]repo.File {
 	filesByPath := map[string]repo.File{}
+	evidence := addBindingWorkflowFiles(snapshot, filesByPath)
+	addReachableCommandFiles(snapshot, filesByPath, evidence)
+	return filesByPath
+}
+
+// addBindingWorkflowFiles adds the binding command content of each workflow
+// and returns the combined text used as the reachability root.
+func addBindingWorkflowFiles(snapshot repo.Snapshot, filesByPath map[string]repo.File) string {
+	var evidence strings.Builder
 	for _, file := range snapshot.WorkflowFiles() {
+		content := bindingWorkflowCommandText(file.Content)
+		if strings.TrimSpace(content) == "" {
+			continue
+		}
+		filesByPath[file.Path] = repo.File{Path: file.Path, Content: content}
+		evidence.WriteString(content)
+		evidence.WriteString("\n")
+	}
+	return evidence.String()
+}
+
+// addReachableCommandFiles credits scripts, Makefiles, Taskfiles, and
+// justfiles only when binding workflow evidence invokes them, following
+// script-to-script references one level deep.
+func addReachableCommandFiles(snapshot repo.Snapshot, filesByPath map[string]repo.File, evidence string) {
+	candidates := commandFileCandidates(snapshot)
+	firstHop := reachableCandidates(candidates, evidence)
+	extended := evidence + joinedContents(firstHop)
+	for _, file := range reachableCandidates(candidates, extended) {
 		filesByPath[file.Path] = file
 	}
+}
+
+func commandFileCandidates(snapshot repo.Snapshot) map[string]repo.File {
+	candidates := map[string]repo.File{}
 	for _, file := range snapshot.FilesNamedFold("Makefile", "Taskfile.yml", "Taskfile.yaml", "justfile") {
-		filesByPath[file.Path] = file
+		candidates[file.Path] = file
 	}
 	for _, file := range snapshot.FilesUnder("scripts") {
-		filesByPath[file.Path] = file
+		candidates[file.Path] = file
 	}
 	for _, file := range snapshot.FilesUnder("go/scripts") {
-		filesByPath[file.Path] = file
+		candidates[file.Path] = file
 	}
 	for path, file := range snapshot.Files {
 		if isScriptPath(path) {
-			filesByPath[file.Path] = file
+			candidates[file.Path] = file
 		}
 	}
-	return filesByPath
+	return candidates
+}
+
+func reachableCandidates(candidates map[string]repo.File, evidence string) []repo.File {
+	reachable := make([]repo.File, 0, len(candidates))
+	for _, file := range candidates {
+		if commandFileReachable(file.Path, evidence) {
+			reachable = append(reachable, file)
+		}
+	}
+	return reachable
+}
+
+func commandFileReachable(filePath string, evidence string) bool {
+	reference, ok := runnerReference(filePath)
+	if !ok {
+		reference = pathBaseName(filePath)
+	}
+	return containsCommandWord(evidence, reference)
+}
+
+// runnerReference maps runner-driven command files to the command that
+// invokes them, since workflows reference the runner rather than the file.
+func runnerReference(filePath string) (string, bool) {
+	switch strings.ToLower(pathBaseName(filePath)) {
+	case "makefile":
+		return "make", true
+	case "taskfile.yml", "taskfile.yaml":
+		return "task", true
+	case "justfile":
+		return "just", true
+	default:
+		return "", false
+	}
+}
+
+func pathBaseName(filePath string) string {
+	normalized := strings.ReplaceAll(filePath, "\\", "/")
+	if index := strings.LastIndex(normalized, "/"); index >= 0 {
+		return normalized[index+1:]
+	}
+	return normalized
+}
+
+func containsCommandWord(evidence string, word string) bool {
+	for index := strings.Index(evidence, word); index >= 0; {
+		if commandWordBoundary(evidence, index, len(word)) {
+			return true
+		}
+		next := strings.Index(evidence[index+1:], word)
+		if next < 0 {
+			return false
+		}
+		index += 1 + next
+	}
+	return false
+}
+
+func commandWordBoundary(evidence string, index int, length int) bool {
+	if index > 0 && isCommandWordByte(evidence[index-1]) {
+		return false
+	}
+	end := index + length
+	return end >= len(evidence) || !isCommandWordByte(evidence[end])
+}
+
+func isCommandWordByte(value byte) bool {
+	switch {
+	case value >= 'a' && value <= 'z', value >= 'A' && value <= 'Z', value >= '0' && value <= '9':
+		return true
+	case value == '_', value == '-':
+		return true
+	default:
+		return false
+	}
+}
+
+func joinedContents(files []repo.File) string {
+	var joined strings.Builder
+	for _, file := range files {
+		joined.WriteString(file.Content)
+		joined.WriteString("\n")
+	}
+	return joined.String()
 }
 
 func preparedCommandFiles(filesByPath map[string]repo.File) []repo.File {
@@ -44,11 +159,30 @@ func preparedCommandFiles(filesByPath map[string]repo.File) []repo.File {
 	return files
 }
 
+// commandSections returns a file's command content. Workflow files are
+// already reduced to their binding run scripts during preparation.
 func commandSections(file repo.File) []string {
-	if isWorkflowFilePath(file.Path) {
-		return workflowCommandSections(file.Content)
-	}
 	return []string{file.Content}
+}
+
+// workflowBlockRunContent extracts a workflow block's run scripts. Blocks
+// from parsed workflows are already bare run text with no run: markers and
+// pass through with their context lines stripped; scoped step fragments
+// still need extraction.
+func workflowBlockRunContent(block string) string {
+	if strings.Contains(block, "run:") {
+		return workflowRunContent(block)
+	}
+	lines := strings.Split(block, "\n")
+	kept := make([]string, 0, len(lines))
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "working-directory:") || strings.HasPrefix(trimmed, "uses: ") {
+			continue
+		}
+		kept = append(kept, line)
+	}
+	return strings.Join(kept, "\n")
 }
 
 func workflowCommandSections(content string) []string {

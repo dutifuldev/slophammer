@@ -13,3 +13,4 @@ jobs:
       - run: slophammer-rs dry .
       - run: cargo mutants --workspace
 
+      - run: slophammer-rs check .

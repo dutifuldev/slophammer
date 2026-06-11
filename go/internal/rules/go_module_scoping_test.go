@@ -126,16 +126,24 @@ awk -v score="0" -v maximum="$maximum_crap_score" 'BEGIN { exit !(score + 0 <= m
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 jobs:
   test:
     steps:
       - run: make test
+        working-directory: go
       - run: make vet
+        working-directory: go
       - run: make lint
+        working-directory: go
       - run: scripts/check-go-coverage.sh
+        working-directory: go
       - run: scripts/check-dry.sh
+        working-directory: go
       - run: scripts/check-crap.sh
+        working-directory: go
       - run: scripts/check-mutation.sh
+        working-directory: go
 `,
 		},
 	})
@@ -191,12 +199,24 @@ awk -v score="0" -v maximum="$maximum_crap_score" 'BEGIN { exit !(score + 0 <= m
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 jobs:
   test:
     steps:
       - run: make test
+        working-directory: go
       - run: make vet
+        working-directory: go
       - run: make lint
+        working-directory: go
+      - run: scripts/check-go-coverage.sh
+        working-directory: go
+      - run: scripts/check-dry.sh
+        working-directory: go
+      - run: scripts/check-crap.sh
+        working-directory: go
+      - run: scripts/check-mutation.sh
+        working-directory: go
 `,
 		},
 	})
@@ -252,13 +272,26 @@ worker-lint:
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 jobs:
   test:
     steps:
       - run: make api-test
+        working-directory: services/api
       - run: make api-lint
+        working-directory: services/api
       - run: make worker-vet
+        working-directory: services/worker
       - run: make worker-lint
+        working-directory: services/worker
+      - run: services/api/scripts/check-coverage.sh
+      - run: services/api/scripts/check-dry.sh
+      - run: services/api/scripts/check-crap.sh
+      - run: services/api/scripts/check-mutation.sh
+      - run: services/worker/scripts/check-coverage.sh
+      - run: services/worker/scripts/check-dry.sh
+      - run: services/worker/scripts/check-crap.sh
+      - run: services/worker/scripts/check-mutation.sh
 `,
 		},
 	})
@@ -313,12 +346,23 @@ func TestGoRulesDoNotTreatGoCommandAsGoModuleRoot(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 jobs:
   api:
     steps:
       - run: cd api && go test ./...
       - run: cd api && go vet ./...
       - run: cd api && golangci-lint run
+      - run: api/scripts/check-go-coverage.sh
+      - run: api/scripts/check-dry.sh
+      - run: api/scripts/check-crap.sh
+      - run: api/scripts/check-mutation.sh
+  go:
+    steps:
+      - run: go/scripts/check-go-coverage.sh
+      - run: go/scripts/check-dry.sh
+      - run: go/scripts/check-crap.sh
+      - run: go/scripts/check-mutation.sh
 `,
 		},
 	})

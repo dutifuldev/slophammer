@@ -1,0 +1,23 @@
+rust:
+  coverage:
+    threshold: 85
+  complexity:
+    cognitive_max: 8
+  targets:
+    - src
+  dry:
+    max_findings: 0
+    paths:
+      - src
+    copied_blocks:
+      enabled: true
+      min_tokens: 100
+  unsafe:
+    policy: forbid
+  mutation:
+    targets:
+      - src
+  dependency_boundaries:
+    - from: .
+      allow: []
+

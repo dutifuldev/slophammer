@@ -17,6 +17,28 @@ export async function expectedReport(name: string): Promise<Report> {
   return parseReport(content);
 }
 
+// bindingScriptWorkflow returns a CI workflow with binding triggers that
+// invokes the conventional package scripts, so package.json script evidence
+// stays reachable under the binding CI evidence rules.
+export function bindingScriptWorkflow(): string {
+  return [
+    "name: ci",
+    "on: [push]",
+    "jobs:",
+    "  check:",
+    "    steps:",
+    "      - run: npm run format",
+    "      - run: npm run lint",
+    "      - run: npm run typecheck",
+    "      - run: npm test",
+    "      - run: npm run test:unit",
+    "      - run: npm run coverage",
+    "      - run: npm run dry",
+    "      - run: npm run mutate",
+    ""
+  ].join("\n");
+}
+
 export function parseReport(content: string): Report {
   const parsed: unknown = JSON.parse(content);
   const root = asRecord(parsed);

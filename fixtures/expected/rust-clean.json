@@ -1,5 +1,8 @@
 {
   "ok": true,
-  "findings": []
+  "findings": [],
+  "scope": {
+    "scanned": 1,
+    "production_files": 1
+  }
 }
-

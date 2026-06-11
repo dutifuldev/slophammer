@@ -84,7 +84,16 @@ function baseTypeScriptFiles(): readonly { readonly path: string; readonly conte
 function matrixWorkflow(): string {
   return [
     "name: CI",
+    "on: [push]",
     "jobs:",
+    "  scripts:",
+    "    steps:",
+    "      - run: npm run format",
+    "      - run: npm run lint",
+    "      - run: npm run typecheck",
+    "      - run: npm test",
+    "      - run: npm run coverage",
+    "      - run: npm run mutate",
     "  checks:",
     "    strategy:",
     "      matrix:",

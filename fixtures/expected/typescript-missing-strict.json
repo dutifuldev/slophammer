@@ -7,5 +7,9 @@
       "path": "tsconfig.json",
       "message": "TypeScript projects must enable strict mode"
     }
-  ]
+  ],
+  "scope": {
+    "scanned": 0,
+    "production_files": 0
+  }
 }

@@ -1,4 +1,15 @@
 {
-  "ok": true,
-  "findings": []
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "ts.mutation-required",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "TypeScript projects must declare mutation testing"
+    }
+  ],
+  "scope": {
+    "scanned": 1,
+    "production_files": 1
+  }
 }

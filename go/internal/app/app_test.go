@@ -65,6 +65,50 @@ func TestCheckMatchesSharedFixtures(t *testing.T) {
 	}
 }
 
+func TestCheckReportsScopeCoverageWhenScopeConfigured(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "README.md", "# Test\n")
+	writeFile(t, root, "AGENTS.md", "# Agents\n")
+	writeFile(t, root, ".github/workflows/ci.yml", "name: CI\non: [push]\njobs:\n  ci:\n    steps:\n      - run: slophammer-go check .\n")
+	writeFile(t, root, "internal/app.go", "package app\n")
+	writeFile(t, root, "tools/extra.go", "package tools\n")
+	writeFile(t, root, "slophammer.yml", "go:\n  targets:\n    - internal\n")
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	code := Check(context.Background(), CheckOptions{Root: root, Format: "json"}, &out, &errOut)
+
+	if code != ExitFindings {
+		t.Fatalf("code = %d, want %d; stderr=%q", code, ExitFindings, errOut.String())
+	}
+	report := unmarshalReport(t, out.Bytes(), "scope")
+	if report.Scope == nil || report.Scope.Scanned != 1 || report.Scope.ProductionFiles != 2 {
+		t.Fatalf("scope = %#v", report.Scope)
+	}
+	assertFinding(t, report, rules.GoScopeIncompleteRuleID)
+
+	var text bytes.Buffer
+	if code := Check(context.Background(), CheckOptions{Root: root, Format: "text"}, &text, &errOut); code != ExitFindings {
+		t.Fatalf("text code = %d, want %d; stderr=%q", code, ExitFindings, errOut.String())
+	}
+	if !strings.Contains(text.String(), "scope: scanned 1 of 2 production files\n") {
+		t.Fatalf("text output = %q", text.String())
+	}
+}
+
+func TestCheckOmitsScopeCoverageWithoutConfiguredScope(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	code := Check(context.Background(), CheckOptions{Root: t.TempDir(), Format: "json"}, &out, &errOut)
+
+	if code != ExitFindings {
+		t.Fatalf("code = %d, want %d; stderr=%q", code, ExitFindings, errOut.String())
+	}
+	if strings.Contains(out.String(), `"scope"`) {
+		t.Fatalf("json output = %q", out.String())
+	}
+}
+
 func TestCheckReturnsFindingsForMissingFiles(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer

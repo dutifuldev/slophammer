@@ -18,6 +18,7 @@ pub fn new_report(mut findings: Vec<Finding>) -> Report {
     Report {
         ok: findings.is_empty(),
         findings,
+        scope: None,
     }
 }
 
@@ -27,7 +28,7 @@ pub fn write_json(report: &Report) -> Result<String, ReportError> {
 
 pub fn write_text(report: &Report) -> String {
     if report.ok {
-        return "OK: no findings\n".to_owned();
+        return format!("OK: no findings\n{}", scope_line(report));
     }
     let mut output = String::new();
     for finding in &report.findings {
@@ -37,7 +38,18 @@ pub fn write_text(report: &Report) -> String {
         ));
     }
     output.push_str(&format!("\n{} finding(s)\n", report.findings.len()));
+    output.push_str(&scope_line(report));
     output
+}
+
+fn scope_line(report: &Report) -> String {
+    match report.scope {
+        Some(scope) => format!(
+            "scope: scanned {} of {} production files\n",
+            scope.scanned, scope.production_files
+        ),
+        None => String::new(),
+    }
 }
 
 pub fn write_sarif(report: &Report) -> Result<String, ReportError> {
@@ -88,6 +100,13 @@ struct SarifResult {
     message: SarifMessage,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     locations: Vec<SarifLocation>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    suppressions: Vec<SarifSuppression>,
+}
+
+#[derive(Serialize)]
+struct SarifSuppression {
+    kind: &'static str,
 }
 
 #[derive(Serialize)]
@@ -161,8 +180,17 @@ fn sarif_results(findings: &[Finding]) -> Vec<SarifResult> {
                 text: finding.message.clone(),
             },
             locations: sarif_locations(&finding.path),
+            suppressions: sarif_suppressions(finding),
         })
         .collect()
+}
+
+fn sarif_suppressions(finding: &Finding) -> Vec<SarifSuppression> {
+    if finding.baselined == Some(true) {
+        vec![SarifSuppression { kind: "external" }]
+    } else {
+        Vec::new()
+    }
 }
 
 fn sarif_level(severity: Severity) -> &'static str {
@@ -199,12 +227,14 @@ mod tests {
                 severity: Severity::Error,
                 path: "b".to_owned(),
                 message: "b".to_owned(),
+                baselined: None,
             },
             Finding {
                 rule_id: "repo.readme-required".to_owned(),
                 severity: Severity::Error,
                 path: "a".to_owned(),
                 message: "a".to_owned(),
+                baselined: None,
             },
         ]);
         assert_eq!(report.findings[0].rule_id, "repo.readme-required");
@@ -218,6 +248,7 @@ mod tests {
             severity: Severity::Error,
             path: ".github/workflows".to_owned(),
             message: "missing".to_owned(),
+            baselined: None,
         }]);
         let text = write_text(&report);
         assert!(text.contains("error rust.check-required .github/workflows: missing"));
@@ -231,6 +262,7 @@ mod tests {
             severity: Severity::Error,
             path: ".github/workflows".to_owned(),
             message: "missing".to_owned(),
+            baselined: None,
         }]);
         let json = write_json(&report).expect("json report");
         assert!(json.contains("\"ok\": false"));
@@ -245,12 +277,14 @@ mod tests {
                 severity: Severity::Error,
                 path: ".github/workflows".to_owned(),
                 message: "missing".to_owned(),
+                baselined: None,
             },
             Finding {
                 rule_id: "rust.warn-example".to_owned(),
                 severity: Severity::Warn,
                 path: String::new(),
                 message: "warning".to_owned(),
+                baselined: None,
             },
         ]);
         let sarif = write_sarif(&report).expect("sarif report");

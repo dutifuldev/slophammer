@@ -135,14 +135,14 @@ function parseTypeScriptConfig(root: Readonly<Record<string, unknown>>): TypeScr
     coverage: {
       threshold: optionalNumber(coverage["threshold"], "typescript.coverage.threshold"),
       paths: optionalStringArray(coverage["paths"], "typescript.coverage.paths"),
-      exclude: optionalStringArray(coverage["exclude"], "typescript.coverage.exclude")
+      exclude: excludePatterns(coverage["exclude"], "typescript.coverage")
     },
     complexityMax: optionalNumber(complexity["max"], "typescript.complexity.max"),
     dry: {
       maxFindings: optionalNumber(dry["max_findings"], "typescript.dry.max_findings"),
       maxFindingsSet: dry["max_findings"] !== undefined,
       paths: optionalStringArray(dry["paths"], "typescript.dry.paths"),
-      exclude: optionalStringArray(dry["exclude"], "typescript.dry.exclude"),
+      exclude: excludePatterns(dry["exclude"], "typescript.dry"),
       copiedBlocks: {
         enabled: optionalBoolean(copiedBlocks["enabled"], "typescript.dry.copied_blocks.enabled"),
         enabledSet: copiedBlocks["enabled"] !== undefined,
@@ -155,6 +155,63 @@ function parseTypeScriptConfig(root: Readonly<Record<string, unknown>>): TypeScr
     mutationTargets: optionalStringArray(mutation["targets"], "typescript.mutation.targets"),
     dependencyBoundaries: asDependencyBoundaries(root["dependency_boundaries"])
   };
+}
+
+// An exclude entry is a plain pattern when it matches the conventional
+// non-production list, and a pattern with a reason when it carves out
+// production files.
+function excludePatterns(value: unknown, section: string): readonly string[] {
+  if (value === undefined) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    throw new Error(`${section}.exclude must be a list`);
+  }
+  return value.map((item, index) => excludeEntryPattern(item, section, index));
+}
+
+function excludeEntryPattern(item: unknown, section: string, index: number): string {
+  if (typeof item === "string") {
+    if (!conventionalExcludePattern(item)) {
+      throw new Error(`${section}.exclude requires a reason for production paths`);
+    }
+    return item;
+  }
+  const field = `${section}.exclude[${String(index)}]`;
+  const entry = asBoundaryRecord(item, field);
+  assertKnownKeys(entry, field, ["pattern", "reason"]);
+  const pattern = asString(entry["pattern"]);
+  if (pattern === undefined) {
+    throw new Error(`${field}.pattern must be a string`);
+  }
+  if ((asString(entry["reason"]) ?? "").trim() === "") {
+    throw new Error(`${section}.exclude reasons must not be empty`);
+  }
+  return pattern;
+}
+
+// The conventional non-production list from specs/CONFIG.md: patterns that
+// scope may exclude without a reason.
+const conventionalExcludeMarkers = [
+  "_test.",
+  ".test.",
+  ".spec.",
+  "tests/",
+  "fixtures/",
+  "templates/",
+  "testdata/",
+  "dist/",
+  "build/",
+  "coverage/",
+  "target/",
+  "node_modules/",
+  "vendor/",
+  "generated",
+  "scripts/"
+] as const;
+
+export function conventionalExcludePattern(pattern: string): boolean {
+  return conventionalExcludeMarkers.some((marker) => pattern.includes(marker));
 }
 
 function validateConfig(cfg: Config, filePath: string): void {
@@ -258,10 +315,8 @@ function validateIgnoredGoConfig(value: unknown): void {
     "profile"
   ]);
   assertKnownKeys(asSection(root["crap"], "go.crap"), "go.crap", ["max_score"]);
-  assertKnownKeys(asSection(root["mutation"], "go.mutation"), "go.mutation", [
-    "targets",
-    "exclude"
-  ]);
+  const mutation = asSection(root["mutation"], "go.mutation");
+  assertKnownKeys(mutation, "go.mutation", ["targets", "exclude"]);
   const dry = asSection(root["dry"], "go.dry");
   assertKnownKeys(dry, "go.dry", [
     "max_findings",
@@ -270,6 +325,9 @@ function validateIgnoredGoConfig(value: unknown): void {
     "structural",
     "copied_blocks"
   ]);
+  validateIgnoredExcludeEntries(root["exclude"], "go");
+  validateIgnoredExcludeEntries(mutation["exclude"], "go.mutation");
+  validateIgnoredExcludeEntries(dry["exclude"], "go.dry");
   assertKnownKeys(asSection(dry["structural"], "go.dry.structural"), "go.dry.structural", [
     "enabled",
     "threshold",
@@ -295,11 +353,8 @@ function validateIgnoredRustConfig(value: unknown): void {
     "mutation",
     "dependency_boundaries"
   ]);
-  assertKnownKeys(asSection(root["coverage"], "rust.coverage"), "rust.coverage", [
-    "threshold",
-    "paths",
-    "exclude"
-  ]);
+  const coverage = asSection(root["coverage"], "rust.coverage");
+  assertKnownKeys(coverage, "rust.coverage", ["threshold", "paths", "exclude"]);
   assertKnownKeys(asSection(root["complexity"], "rust.complexity"), "rust.complexity", [
     "cognitive_max"
   ]);
@@ -313,14 +368,35 @@ function validateIgnoredRustConfig(value: unknown): void {
   const unsafePolicy = asSection(root["unsafe"], "rust.unsafe");
   assertKnownKeys(unsafePolicy, "rust.unsafe", ["policy", "allow"]);
   validateIgnoredUnsafeAllowKeys(unsafePolicy["allow"], "rust.unsafe.allow");
-  assertKnownKeys(asSection(root["mutation"], "rust.mutation"), "rust.mutation", [
-    "targets",
-    "exclude"
-  ]);
+  const mutation = asSection(root["mutation"], "rust.mutation");
+  assertKnownKeys(mutation, "rust.mutation", ["targets", "exclude"]);
+  validateIgnoredExcludeEntries(root["exclude"], "rust");
+  validateIgnoredExcludeEntries(coverage["exclude"], "rust.coverage");
+  validateIgnoredExcludeEntries(dry["exclude"], "rust.dry");
+  validateIgnoredExcludeEntries(mutation["exclude"], "rust.mutation");
   validateIgnoredDependencyBoundaryKeys(
     root["dependency_boundaries"],
     "rust.dependency_boundaries"
   );
+}
+
+// Exclude entries in cross-language sections are not enforced here, but
+// they must keep the shared shape: a plain pattern string or a strict
+// pattern-plus-reason object.
+function validateIgnoredExcludeEntries(value: unknown, section: string): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!Array.isArray(value)) {
+    throw new Error(`${section}.exclude must be a list`);
+  }
+  for (const [index, item] of value.entries()) {
+    if (typeof item === "string") {
+      continue;
+    }
+    const field = `${section}.exclude[${String(index)}]`;
+    assertKnownKeys(asBoundaryRecord(item, field), field, ["pattern", "reason"]);
+  }
 }
 
 function validateIgnoredUnsafeAllowKeys(value: unknown, field: string): void {

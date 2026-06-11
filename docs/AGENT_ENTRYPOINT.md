@@ -58,6 +58,20 @@ Use this selection model:
 | Rust                 | `slophammer-rs`    | Available from crates.io and this repo's Rust implementation |
 | Python               | `slophammer-py`    | Not implemented yet                                                              |
 
+Pin the exact checker version you verify against. Local one-off runs may use
+`@latest`, but anything you write into the target repository's CI must pin an
+exact version, ideally behind one variable so upgrades are a single line.
+Slophammer makes breaking releases deliberately, and an unpinned CI install
+absorbs them mid-pipeline. The simplest CI integration is the bundled GitHub
+Action, which requires an exact version:
+
+```yaml
+- uses: dutifuldev/slophammer@main
+  with:
+    checker: go
+    version: 0.2.0
+```
+
 For a Go target outside this source tree, install the current released checker:
 
 ```sh

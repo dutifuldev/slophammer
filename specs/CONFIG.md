@@ -14,6 +14,41 @@ dependency-boundary keys fail instead of being ignored.
 Every language section uses the same nested key shape; see the
 [Config Dialect Decision](../docs/2026-06-10-config-dialect-decision.md).
 
+## Scope Completeness
+
+Thresholds are validated, and scope is too: findings must not be hideable by
+retargeting `paths`, `targets`, or `exclude` instead of weakening thresholds.
+
+The conventional non-production list classifies files that scope may exclude
+freely: test files (`*_test.go`, `*.test.ts`, `*.spec.ts`, `*_test.rs`,
+`tests/` directories), and paths under `fixtures/`, `templates/`,
+`testdata/`, `dist/`, `build/`, `coverage/`, `target/`, `node_modules/`,
+`vendor/`, `scripts/`, or containing a `generated` segment. Everything else
+is production.
+
+`exclude` entries are plain strings when they match the conventional list.
+An exclude that matches production files must use the object form with a
+reason, following the `rust.unsafe.allow` precedent:
+
+```yaml
+dry:
+  paths:
+    - src
+  exclude:
+    - "**/*.test.ts"
+    - pattern: "src/vendored_parser/**"
+      reason: vendored upstream code, synced verbatim
+```
+
+Strict validation rejects a production-matching string exclude with
+`<section>.exclude requires a reason for production paths`.
+
+After expansion, every production file must be either in configured scope or
+covered by a conventional or reasoned exclude. Uncovered production files
+produce a `<lang>.scope-incomplete` finding naming the uncovered directories,
+and scoped checks report `scope` coverage counts per
+[Report Format](REPORT_FORMAT.md).
+
 ## Shape
 
 ```yaml

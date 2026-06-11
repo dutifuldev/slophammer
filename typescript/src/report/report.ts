@@ -16,6 +16,10 @@ export function writeJSON(report: Report): string {
 }
 
 export function writeText(report: Report): string {
+  return `${reportBody(report)}${scopeLine(report)}`;
+}
+
+function reportBody(report: Report): string {
   if (report.ok) {
     return "OK: no findings\n";
   }
@@ -23,6 +27,14 @@ export function writeText(report: Report): string {
     (finding) => `${finding.severity} ${finding.rule_id} ${finding.path}: ${finding.message}`
   );
   return `${lines.join("\n")}\n\n${String(report.findings.length)} finding(s)\n`;
+}
+
+function scopeLine(report: Report): string {
+  if (report.scope === undefined) {
+    return "";
+  }
+  const { scanned, production_files: productionFiles } = report.scope;
+  return `scope: scanned ${String(scanned)} of ${String(productionFiles)} production files\n`;
 }
 
 export function writeSARIF(report: Report): string {
@@ -55,6 +67,11 @@ type SarifResult = {
   readonly level: string;
   readonly message: { readonly text: string };
   readonly locations?: readonly SarifLocation[] | undefined;
+  readonly suppressions?: readonly SarifSuppression[];
+};
+
+type SarifSuppression = {
+  readonly kind: "external";
 };
 
 type SarifLocation = {
@@ -94,7 +111,8 @@ function sarifResults(findings: readonly Finding[]): readonly SarifResult[] {
     ruleId: finding.rule_id,
     level: sarifLevel(finding.severity),
     message: { text: finding.message },
-    locations: sarifLocations(finding.path)
+    locations: sarifLocations(finding.path),
+    ...(finding.baselined === true ? { suppressions: [{ kind: "external" as const }] } : {})
   }));
 }
 
