@@ -36,12 +36,13 @@ fn collect_job_evidence(job: &Value, evidence: &mut Vec<String>) {
     let Some(steps) = job.get("steps").and_then(Value::as_sequence) else {
         return;
     };
+    let matrix_commands = job_matrix_commands(job);
     for step in steps {
-        collect_step_evidence(step, evidence);
+        collect_step_evidence(step, &matrix_commands, evidence);
     }
 }
 
-fn collect_step_evidence(step: &Value, evidence: &mut Vec<String>) {
+fn collect_step_evidence(step: &Value, matrix_commands: &[String], evidence: &mut Vec<String>) {
     if neutralized(step) {
         return;
     }
@@ -50,11 +51,61 @@ fn collect_step_evidence(step: &Value, evidence: &mut Vec<String>) {
             evidence.push(format!("uses: {uses}"));
         }
     }
-    if let Some(run) = step.get("run").and_then(Value::as_str) {
-        if !run.trim().is_empty() {
-            evidence.push(run.to_owned());
-        }
+    let Some(run) = step.get("run").and_then(Value::as_str) else {
+        return;
+    };
+    if run.trim().is_empty() {
+        return;
     }
+    if direct_matrix_command(run) && !matrix_commands.is_empty() {
+        evidence.extend(matrix_commands.iter().cloned());
+        return;
+    }
+    evidence.push(run.to_owned());
+}
+
+/// A run consisting solely of the matrix.command expression expands to the
+/// job's matrix command values, mirroring the raw-text evidence that the
+/// structural filter would otherwise drop.
+fn direct_matrix_command(run: &str) -> bool {
+    let trimmed = run.trim();
+    trimmed
+        .strip_prefix("${{")
+        .and_then(|rest| rest.strip_suffix("}}"))
+        .is_some_and(|inner| inner.trim() == "matrix.command")
+}
+
+fn job_matrix_commands(job: &Value) -> Vec<String> {
+    let Some(matrix) = job
+        .get("strategy")
+        .and_then(|strategy| strategy.get("matrix"))
+    else {
+        return Vec::new();
+    };
+    let mut commands = sequence_strings(matrix.get("command"));
+    if let Some(include) = matrix.get("include").and_then(Value::as_sequence) {
+        commands.extend(
+            include
+                .iter()
+                .filter_map(|item| item.get("command"))
+                .filter_map(Value::as_str)
+                .map(str::to_owned),
+        );
+    }
+    commands
+}
+
+fn sequence_strings(value: Option<&Value>) -> Vec<String> {
+    value
+        .and_then(Value::as_sequence)
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(Value::as_str)
+                .map(str::to_owned)
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// A job or step is neutralized when it cannot run or cannot fail: a literal
@@ -205,6 +256,26 @@ jobs:
 "#;
         let text = binding_workflow_text(workflow).expect("binding text");
         assert!(text.contains("cargo test --workspace"));
+    }
+
+    #[test]
+    fn matrix_commands_expand_into_evidence() {
+        let workflow = r#"
+on: [push]
+jobs:
+  ci:
+    strategy:
+      matrix:
+        command: [cargo test --workspace]
+        include:
+          - command: cargo audit
+    steps:
+      - run: ${{ matrix.command }}
+"#;
+        let text = binding_workflow_text(workflow).expect("binding text");
+        assert!(text.contains("cargo test --workspace"));
+        assert!(text.contains("cargo audit"));
+        assert!(!text.contains("matrix.command"));
     }
 
     #[test]
