@@ -31,6 +31,16 @@
       "status": "implemented"
     },
     {
+      "id": "repo.slophammer-ci-required",
+      "title": "Slophammer enforcement required",
+      "category": "repo",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "CI must run a Slophammer checker when slophammer.yml is present",
+      "description": "A repository that carries slophammer.yml must execute a Slophammer checker from binding CI evidence; config without enforcement is decoration.",
+      "status": "implemented"
+    },
+    {
       "id": "go.module-required",
       "title": "Go module required",
       "category": "go",
@@ -137,6 +147,26 @@
       "path": "slophammer.yml",
       "message": "Go projects must respect configured dependency boundaries",
       "description": "Go projects should keep imports inside the dependency boundaries declared in slophammer.yml.",
+      "status": "implemented"
+    },
+    {
+      "id": "go.scope-incomplete",
+      "title": "Go scope completeness",
+      "category": "go",
+      "severity": "error",
+      "path": "slophammer.yml",
+      "message": "Configured Go scope must cover all production files or exclude them with reasons",
+      "description": "Every production Go file must be in configured scope or covered by a conventional or reasoned exclude, so findings cannot be hidden by narrowing scope.",
+      "status": "implemented"
+    },
+    {
+      "id": "go.suppressions-justified",
+      "title": "Go suppressions justified",
+      "category": "go",
+      "severity": "error",
+      "path": ".",
+      "message": "nolint directives in production Go code must carry a reason",
+      "description": "A //nolint directive in production scope must carry a trailing // reason comment; bare suppressions accumulate silently.",
       "status": "implemented"
     },
     {
@@ -281,6 +311,26 @@
       "status": "implemented"
     },
     {
+      "id": "ts.scope-incomplete",
+      "title": "TypeScript scope completeness",
+      "category": "typescript",
+      "severity": "error",
+      "path": "slophammer.yml",
+      "message": "Configured TypeScript scope must cover all production files or exclude them with reasons",
+      "description": "Every production TypeScript file must be in configured scope or covered by a conventional or reasoned exclude, so findings cannot be hidden by narrowing scope.",
+      "status": "implemented"
+    },
+    {
+      "id": "ts.suppressions-justified",
+      "title": "TypeScript suppressions justified",
+      "category": "typescript",
+      "severity": "error",
+      "path": ".",
+      "message": "lint and type suppressions in production TypeScript code must carry a description",
+      "description": "eslint-disable, @ts-ignore, @ts-expect-error, biome-ignore, and oxlint-disable directives in production scope must carry a description; bare suppressions accumulate silently.",
+      "status": "implemented"
+    },
+    {
       "id": "rust.manifest-required",
       "title": "Rust manifest required",
       "category": "rust",
@@ -419,6 +469,26 @@
       "path": "slophammer.yml",
       "message": "Rust projects must respect configured dependency boundaries",
       "description": "Rust projects should declare dependency boundaries in slophammer.yml and keep local dependencies inside them.",
+      "status": "implemented"
+    },
+    {
+      "id": "rust.scope-incomplete",
+      "title": "Rust scope completeness",
+      "category": "rust",
+      "severity": "error",
+      "path": "slophammer.yml",
+      "message": "Configured Rust scope must cover all production files or exclude them with reasons",
+      "description": "Every production Rust file must be in configured scope or covered by a conventional or reasoned exclude, so findings cannot be hidden by narrowing scope.",
+      "status": "implemented"
+    },
+    {
+      "id": "rust.suppressions-justified",
+      "title": "Rust suppressions justified",
+      "category": "rust",
+      "severity": "error",
+      "path": ".",
+      "message": "allow attributes in production Rust code must carry a reason",
+      "description": "An #[allow(...)] attribute in production scope must carry an adjacent // reason comment or use #[expect(..., reason = \"...\")]; bare suppressions accumulate silently.",
       "status": "implemented"
     }
   ]

@@ -11,6 +11,30 @@ rules.
 | `repo.readme-required` | `error`  | `README.md`         | `README.md is required`                                              |
 | `repo.agents-required` | `error`  | `AGENTS.md`         | `AGENTS.md is required`                                              |
 | `repo.ci-required`     | `error`  | `.github/workflows` | `.github/workflows must contain at least one .yml or .yaml workflow` |
+| `repo.slophammer-ci-required` | `error` | `.github/workflows` | `CI must run a Slophammer checker when slophammer.yml is present` |
+
+## Binding Evidence
+
+Command-presence rules accept evidence only from steps that can run and can
+fail. Workflow YAML is parsed structurally: steps and jobs with a literal
+`continue-on-error: true` or a literal-false `if:` condition contribute
+nothing, and a workflow contributes nothing unless its triggers can fire for
+integration — `pull_request`, `pull_request_target`, `merge_group`,
+`schedule`, or `push` whose branch filter is absent, wildcarded, or names an
+integration branch (`main`, `master`, `trunk`, `develop`). Surviving steps
+contribute their `run` script and their `uses:` action reference.
+
+Scripts, Makefiles, Taskfiles, and justfiles count as evidence only when
+binding workflow evidence invokes them (a script by name; runner files
+through `make`, `task`, or `just`), following script-to-script references one
+level deep. `package.json` scripts count only when invoked by name from
+binding evidence, with one level of chained run-script references.
+
+Accepted limitations: expressions are only neutralizing when literal — the
+checkers ship no expression evaluator, so a non-literal always-false
+condition stays credited. Reusable workflows (`uses:` at the job level) stay
+credited without following the reference. Unparseable workflow YAML stays
+credited as raw text, so structural filtering can only remove false passes.
 
 ## Go Rules
 
@@ -30,6 +54,8 @@ commands.
 | `go.crap-required`                  | `error`  | `.github/workflows`            | `Go projects must declare crap4go with a threshold`            |
 | `go.mutation-required`              | `error`  | `.github/workflows`            | `Go projects must declare mutate4go`                           |
 | `go.dependency-boundaries-required` | `error`  | `slophammer.yml`               | `Go projects must respect configured dependency boundaries`    |
+| `go.scope-incomplete`               | `error`  | `slophammer.yml`               | `Configured Go scope must cover all production files or exclude them with reasons` |
+| `go.suppressions-justified`         | `error`  | `.`                            | `nolint directives in production Go code must carry a reason`  |
 
 ## TypeScript Rules
 
@@ -55,6 +81,8 @@ TypeScript project.
 | `ts.dry-required`                     | `error`  | `.github/workflows` | `TypeScript projects must declare a DRY check`                 |
 | `ts.mutation-required`                | `error`  | `.github/workflows` | `TypeScript projects must declare mutation testing`            |
 | `ts.dependency-boundaries-required`   | `error`  | `slophammer.yml`    | `TypeScript projects must respect configured dependency boundaries` |
+| `ts.scope-incomplete`                 | `error`  | `slophammer.yml`    | `Configured TypeScript scope must cover all production files or exclude them with reasons` |
+| `ts.suppressions-justified`           | `error`  | `.`                 | `lint and type suppressions in production TypeScript code must carry a description` |
 
 ## Rust Rules
 
@@ -77,6 +105,8 @@ source, or inspectable Cargo commands.
 | `rust.unsafe-policy-required`         | `error`  | `slophammer.yml`    | `Rust projects must declare and respect an unsafe-code policy` |
 | `rust.dependency-audit-required`      | `error`  | `.github/workflows` | `Rust projects must declare dependency audit checks`           |
 | `rust.dependency-boundaries-required` | `error`  | `slophammer.yml`    | `Rust projects must respect configured dependency boundaries`  |
+| `rust.scope-incomplete`               | `error`  | `slophammer.yml`    | `Configured Rust scope must cover all production files or exclude them with reasons` |
+| `rust.suppressions-justified`         | `error`  | `.`                 | `allow attributes in production Rust code must carry a reason` |
 
 ## Rule Descriptions
 

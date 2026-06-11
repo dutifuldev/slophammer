@@ -30,14 +30,34 @@ exists.
 
 Each finding contains:
 
-| Field      | Meaning                                       |
-| ---------- | --------------------------------------------- |
-| `rule_id`  | Stable public rule identifier.                |
-| `severity` | Rule severity. Current shared value: `error`. |
-| `path`     | Repository-relative path for the finding.     |
-| `message`  | Human-readable finding summary.               |
+| Field       | Meaning                                                        |
+| ----------- | -------------------------------------------------------------- |
+| `rule_id`   | Stable public rule identifier.                                 |
+| `severity`  | Rule severity. Current shared value: `error`.                  |
+| `path`      | Repository-relative path for the finding.                      |
+| `message`   | Human-readable finding summary.                                |
+| `baselined` | Optional. `true` when `check --baseline` matched the finding against the checked-in baseline. Absent otherwise. |
 
 Findings are sorted by `rule_id`, then by `path`.
+
+## Scope
+
+When configured scope restricts a native check (DRY paths, coverage paths, or
+targets), the report carries an additive top-level `scope` block:
+
+```json
+"scope": { "scanned": 42, "production_files": 45 }
+```
+
+`production_files` counts the ecosystem's source files after the conventional
+non-production list defined in [Config](CONFIG.md); `scanned` counts the files
+the configured scope actually covers. The text renderer prints the same
+numbers. Reports without configured scope omit the block, and consumers must
+treat it as optional.
+
+When `check --baseline` is used, `ok` reflects only non-baselined findings,
+and the text renderer always prints the baselined debt count. See
+[Baseline](BASELINE.md).
 
 ## SARIF
 
