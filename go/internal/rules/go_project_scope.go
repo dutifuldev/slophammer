@@ -173,7 +173,17 @@ func isUnderOtherGoRoot(filePath, root string, roots []string) bool {
 	return false
 }
 
+// scopedWorkflowContent drops neutralized workflow evidence before scoping it
+// per module root, so structural neutralization (continue-on-error,
+// literal-false conditions, non-integration triggers) cannot be bypassed
+// through the module-scoping path.
 func scopedWorkflowContent(content, root string, roots []string) (string, bool) {
+	if filtered, ok := bindingFilteredWorkflow(content); ok {
+		content = filtered
+	}
+	if strings.TrimSpace(content) == "" {
+		return "", true
+	}
 	if onlyGoRoot(root, roots) {
 		return content, true
 	}

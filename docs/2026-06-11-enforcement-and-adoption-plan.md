@@ -27,7 +27,7 @@ checker and the multi-language dispatcher — comes later.
 
 ## Phase 1: Enforcement, Adoption, and Distribution
 
-1. [ ] Credit only CI evidence that can run and can fail.
+1. [x] Credit only CI evidence that can run and can fail.
 
    Every `*-required` command rule accepts any command-file text containing
    the right command. Evidence collection lives in
@@ -90,7 +90,7 @@ checker and the multi-language dispatcher — comes later.
    produce findings in every implementation, the fixtures lock the behavior
    into conformance, and the clean fixtures still pass unchanged.
 
-2. [ ] Add a rule that the checker itself must run in CI.
+2. [x] Add a rule that the checker itself must run in CI.
 
    A repository can carry `slophammer.yml` and `AGENTS.md` while no CI step
    ever executes a Slophammer checker; the config is decoration and nothing
@@ -124,7 +124,7 @@ checker and the multi-language dispatcher — comes later.
    `repo.slophammer-ci-required` across all implementations and conformance
    passes with the regenerated expected reports.
 
-3. [ ] Enforce scope completeness so carve-outs cannot hide code.
+3. [x] Enforce scope completeness so carve-outs cannot hide code.
 
    Config can restrict `paths`, `targets`, and `exclude` without limit, so
    findings can be hidden by retargeting scope instead of weakening
@@ -185,7 +185,7 @@ checker and the multi-language dispatcher — comes later.
    every implementation, the reasoned variant passes, and conformance covers
    the object-form exclude, the new rule, and the `scope` report field.
 
-4. [ ] Add a baseline ratchet mode for existing repositories.
+4. [x] Add a baseline ratchet mode for existing repositories.
 
    Thresholds are absolute and weakening is forbidden, so a repository that
    is not already clean has no incremental path in: surveyed non-adopted
@@ -250,7 +250,7 @@ checker and the multi-language dispatcher — comes later.
    format is specified well enough that a baseline written by one checker is
    readable by the others.
 
-5. [ ] Add suppression-discipline rules.
+5. [x] Add suppression-discipline rules.
 
    Generated code accumulates lint and type suppressions, and nothing
    counts them: an agent silencing a linter with `eslint-disable`,
@@ -290,7 +290,7 @@ checker and the multi-language dispatcher — comes later.
    Done when: a bare suppression in production code fails in every
    implementation and a justified one passes.
 
-6. [ ] Ship the distribution surface: GitHub Action and pre-commit hook.
+6. [x] Ship the distribution surface: GitHub Action and pre-commit hook.
 
    Today the only adoption path is a human pasting a prompt block; the
    checkers reach CI only when someone hand-writes the workflow steps.
@@ -313,7 +313,7 @@ checker and the multi-language dispatcher — comes later.
    the action, this repo's CI exercises the action, and the pre-commit
    hooks run against a fixture in CI.
 
-7. [ ] Document version pinning as the supported consumption pattern.
+7. [x] Document version pinning as the supported consumption pattern.
 
    Slophammer makes breaking releases deliberately and ships no
    compatibility shims, but neither the README nor the Agent Entrypoint says

@@ -1,0 +1,9 @@
+[package]
+name = "rust-clean-fixture"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.86"
+
+[lib]
+path = "src/lib.rs"
+

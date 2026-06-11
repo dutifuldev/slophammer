@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "go.suppressions-justified",
+      "severity": "error",
+      "path": "go/lib.go",
+      "message": "nolint directives in production Go code must carry a reason (line 3)"
+    }
+  ]
+}

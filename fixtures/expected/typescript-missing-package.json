@@ -7,5 +7,9 @@
       "path": "package.json",
       "message": "TypeScript projects must include package.json"
     }
-  ]
+  ],
+  "scope": {
+    "scanned": 0,
+    "production_files": 0
+  }
 }

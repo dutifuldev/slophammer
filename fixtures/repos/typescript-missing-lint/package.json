@@ -9,6 +9,6 @@
     "coverage": "vitest run --coverage",
     "dry": "slophammer-ts dry .",
     "mutate": "stryker run",
-    "check": "npm run format && npm run typecheck && npm test && npm run coverage && npm run dry"
+    "check": "npm run format && npm run typecheck && npm test && npm run coverage && npm run dry && npm run mutate"
   }
 }

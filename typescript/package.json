@@ -44,6 +44,7 @@
     "dry": "node dist/src/cli/main.js dry ..",
     "bin-check": "node dist/scripts/check-package-bin.js",
     "mutate": "stryker run",
+    "mutate:scan": "stryker run --dryRunOnly",
     "self-check": "node dist/src/cli/main.js check ..",
     "verify:equivalence": "vitest run tests/equivalence.test.ts",
     "check": "npm run format && npm run lint && npm run typecheck && npm test && npm run coverage && npm run build && npm run bin-check && npm run dry && npm run self-check && npm run verify:equivalence"

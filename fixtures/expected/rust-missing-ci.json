@@ -8,6 +8,12 @@
       "message": ".github/workflows must contain at least one .yml or .yaml workflow"
     },
     {
+      "rule_id": "repo.slophammer-ci-required",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "CI must run a Slophammer checker when slophammer.yml is present"
+    },
+    {
       "rule_id": "rust.check-required",
       "severity": "error",
       "path": ".github/workflows",
@@ -57,4 +63,3 @@
     }
   ]
 }
-

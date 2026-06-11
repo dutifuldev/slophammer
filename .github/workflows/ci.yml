@@ -163,6 +163,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: npm ci
       - run: npm run check
+      - run: npm run mutate:scan
       - run: node ../scripts/check-conformance.mjs
 
   rust-implementation:

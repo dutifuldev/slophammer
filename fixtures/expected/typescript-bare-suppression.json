@@ -1,0 +1,15 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "ts.suppressions-justified",
+      "severity": "error",
+      "path": "src/sup.ts",
+      "message": "lint and type suppressions in production TypeScript code must carry a description (line 1)"
+    }
+  ],
+  "scope": {
+    "scanned": 1,
+    "production_files": 1
+  }
+}

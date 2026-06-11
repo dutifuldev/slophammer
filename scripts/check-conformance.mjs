@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -11,11 +12,14 @@ const repoFixtures = [
   "missing-agents",
   "missing-ci",
   "missing-readme",
+  "unenforced-config",
 ];
 const goFixtures = [
   ...repoFixtures,
   "go-clean",
   "go-bad-dependency",
+  "go-bare-suppression",
+  "go-carved-scope",
   "go-missing-complexity",
   "go-missing-coverage",
   "go-missing-crap",
@@ -25,11 +29,15 @@ const goFixtures = [
   "go-missing-mutation",
   "go-missing-tests",
   "go-missing-vet",
+  "go-neutralized-ci",
+  "go-unreachable-script",
 ];
 const typeScriptFixtures = [
   ...repoFixtures,
   "typescript-clean",
   "typescript-bad-dependency",
+  "typescript-bare-suppression",
+  "typescript-carved-scope",
   "typescript-duplicate-blocks",
   "typescript-missing-any-rule",
   "typescript-missing-complexity",
@@ -43,6 +51,8 @@ const typeScriptFixtures = [
   "typescript-missing-tests",
   "typescript-missing-typecheck",
   "typescript-missing-unsafe-types",
+  "typescript-neutralized-ci",
+  "typescript-unreachable-script",
   "adoption-before",
   "adoption-after",
 ];
@@ -50,6 +60,8 @@ const rustFixtures = [
   ...repoFixtures,
   "rust-clean",
   "rust-bad-dependency",
+  "rust-bare-suppression",
+  "rust-carved-scope",
   "rust-missing-audit",
   "rust-missing-ci",
   "rust-missing-clippy",
@@ -60,8 +72,15 @@ const rustFixtures = [
   "rust-missing-mutation",
   "rust-missing-tests",
   "rust-unsafe",
+  "rust-neutralized-ci",
+  "rust-unreachable-script",
 ];
 const rustErrorFixtures = ["rust-invalid-config", "rust-unknown-config"];
+const baselineFixtures = [
+  { fixture: "adoption-baseline", code: 0 },
+  { fixture: "adoption-baseline-regression", code: 1 },
+  { fixture: "adoption-baseline-stale", code: 2 },
+];
 
 run("npm", ["run", "build"], path.join(root, "typescript"), [0]);
 
@@ -137,8 +156,37 @@ for (const fixture of rustErrorFixtures) {
   );
 }
 
+// go run reports every child failure as exit 1, so baseline exit codes need
+// a real binary.
+const goBinary = path.join(os.tmpdir(), "slophammer-go-conformance");
+run("go", ["build", "-o", goBinary, "./cmd/slophammer-go"], path.join(root, "go"), [0]);
+for (const { fixture, code } of baselineFixtures) {
+  run(goBinary, ["check", fixturePath(fixture), "--baseline"], path.join(root, "go"), [code]);
+  run(
+    "node",
+    ["dist/src/cli/main.js", "check", fixturePath(fixture), "--baseline"],
+    path.join(root, "typescript"),
+    [code],
+  );
+  run(
+    "cargo",
+    [
+      "run",
+      "-q",
+      "-p",
+      "slophammer-rs",
+      "--",
+      "check",
+      fixturePath(fixture),
+      "--baseline",
+    ],
+    path.join(root, "rust"),
+    [code],
+  );
+}
+
 console.log(
-  `Conformance passed: ${String(goFixtures.length)} Go fixtures, ${String(typeScriptFixtures.length)} TypeScript fixtures, ${String(rustFixtures.length)} Rust fixtures, ${String(rustErrorFixtures.length)} Rust error fixtures`,
+  `Conformance passed: ${String(goFixtures.length)} Go fixtures, ${String(typeScriptFixtures.length)} TypeScript fixtures, ${String(rustFixtures.length)} Rust fixtures, ${String(rustErrorFixtures.length)} Rust error fixtures, ${String(baselineFixtures.length)} baseline cases`,
 );
 
 function assertFixture({ implementation, fixture, command, args, cwd }) {

@@ -7,5 +7,9 @@
       "path": "src/rules/rules.ts",
       "message": "Import src/app/app.js is outside allowed dependencies for src/rules"
     }
-  ]
+  ],
+  "scope": {
+    "scanned": 3,
+    "production_files": 3
+  }
 }

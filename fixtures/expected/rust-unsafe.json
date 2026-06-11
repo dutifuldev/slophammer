@@ -7,6 +7,9 @@
       "path": "src/lib.rs",
       "message": "Rust projects must declare and respect an unsafe-code policy"
     }
-  ]
+  ],
+  "scope": {
+    "scanned": 1,
+    "production_files": 1
+  }
 }
-
