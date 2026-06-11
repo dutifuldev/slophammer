@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::core::{Finding, Severity};
 use crate::scan::Snapshot;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 use thiserror::Error;
 
@@ -209,10 +209,6 @@ struct ExecutableCheck<'a> {
     message: &'static str,
 }
 
-#[allow(dead_code)]
-fn _pathbuf_for_docs(path: &Path) -> PathBuf {
-    path.to_path_buf()
-}
 
 #[cfg(test)]
 mod tests {
