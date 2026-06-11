@@ -46,8 +46,13 @@ export function scopeCounts(snapshot: Snapshot, cfg: Config): ScopeCoverage | un
   };
 }
 
+// Mutation targets participate so narrowing mutation scope stays visible.
 function configuredScopePaths(cfg: Config): readonly string[] {
-  return [...cfg.typescript.dry.paths, ...cfg.typescript.coverage.paths];
+  return [
+    ...cfg.typescript.dry.paths,
+    ...cfg.typescript.coverage.paths,
+    ...cfg.typescript.mutationTargets
+  ];
 }
 
 function uncoveredProductionDirs(

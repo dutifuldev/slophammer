@@ -16,7 +16,7 @@ rust:
     policy: forbid
   mutation:
     targets:
-      - src
+      - corner
   dependency_boundaries:
     - from: .
       allow: []

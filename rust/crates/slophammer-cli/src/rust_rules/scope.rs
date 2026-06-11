@@ -45,6 +45,7 @@ pub fn scope_counts(snapshot: &Snapshot, config: &Config) -> Option<(usize, usiz
     Some((scanned, production.len()))
 }
 
+/// Mutation targets participate so narrowing mutation scope stays visible.
 fn configured_scopes(rust: &RustConfig) -> Vec<String> {
     let mut scopes = rust.targets.clone();
     if let Some(dry) = &rust.dry {
@@ -52,6 +53,9 @@ fn configured_scopes(rust: &RustConfig) -> Vec<String> {
     }
     if let Some(coverage) = &rust.coverage {
         scopes.extend(coverage.paths.iter().cloned());
+    }
+    if let Some(mutation) = &rust.mutation {
+        scopes.extend(mutation.targets.iter().cloned());
     }
     scopes
 }

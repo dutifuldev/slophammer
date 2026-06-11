@@ -258,15 +258,34 @@ func (cfg Config) GoScope() ([]string, []string) {
 // GoScopeConfigured reports whether any Go check scope is configured, which
 // is what arms scope-completeness checking and coverage counts.
 func (cfg Config) GoScopeConfigured() bool {
-	return len(cfg.Go.Targets) > 0 || len(cfg.Go.DRYPaths) > 0
+	return len(cfg.Go.Targets) > 0 || len(cfg.Go.DRYPaths) > 0 || len(cfg.Go.Mutation.Targets) > 0
 }
 
 // GoScopeUnion returns the union of every configured Go scope and every
-// configured exclude pattern, for scope-completeness checking.
+// configured exclude pattern, for scope-completeness checking. Mutation
+// targets participate so narrowing mutation scope stays visible.
 func (cfg Config) GoScopeUnion() ([]string, []string) {
 	targets, exclude := cfg.GoScope()
 	dryPaths, dryExclude := cfg.GoDRYScope()
-	return append(targets, dryPaths...), append(exclude, dryExclude...)
+	mutationTargets, mutationExclude := cfg.GoMutationScope()
+	union := append(targets, dryPaths...)
+	union = append(union, mutationTargets...)
+	excludes := append(exclude, dryExclude...)
+	excludes = append(excludes, mutationExclude...)
+	return dedupeStrings(union), dedupeStrings(excludes)
+}
+
+func dedupeStrings(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	unique := make([]string, 0, len(values))
+	for _, value := range values {
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		unique = append(unique, value)
+	}
+	return unique
 }
 
 func (cfg Config) GoCoverageProfile() string {
