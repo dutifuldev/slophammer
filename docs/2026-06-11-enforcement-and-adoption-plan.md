@@ -21,9 +21,13 @@ hides genuine duplication, and nothing in the report says the production tree
 went unscanned. Both holes matter because the adversary in Slophammer's
 threat model is an agent optimizing to make the check pass.
 
-## Phase 1: Make Declarations Bind
+The plan has two phases. Phase 1 is one implementation pass covering every
+enforcement, adoption, and distribution improvement. Phase 2 — the Python
+checker and the multi-language dispatcher — comes later.
 
-1. [ ] Refuse to credit CI steps that cannot run or cannot fail.
+## Phase 1: Enforcement, Adoption, and Distribution
+
+1. [ ] Credit only CI evidence that can run and can fail.
 
    Every `*-required` command rule accepts any command-file text containing
    the right command. Evidence collection lives in
@@ -47,38 +51,44 @@ threat model is an agent optimizing to make the check pass.
      or a plausible integration branch (`main`, `master`, `trunk`,
      `develop`). Everything else is non-binding.
 
-   Decisions already made:
+   Scripts and Makefiles are credited only when reachable: a script,
+   Makefile target, Taskfile task, or justfile recipe counts as evidence
+   only if a binding workflow step invokes it (directly, through `make`,
+   `task`, or `just`, or through a package script that a binding step runs).
+   This closes the standing hole where commands written in a file that
+   nothing executes satisfy the rules. Reachability is one level deep:
+   scripts invoking other scripts are followed once, not transitively.
+
+   Accepted limitations, documented in `specs/RULES.md`:
 
    - Expressions are only neutralizing when literal. A conditional
-     `continue-on-error: ${{ matrix.experimental }}` or a non-constant `if:`
-     keeps the step credited; the checker must not evaluate expressions.
-   - Reusable workflows (`uses:` at job level) stay credited in version 1;
-     following `uses:` references is out of scope.
-   - Makefiles and scripts remain credited without reachability analysis.
-     The product contract deliberately accepts "in CI or scripts"; tying
-     scripts to workflow invocation is a possible version 2 tightening and
-     would need its own decision.
+     `continue-on-error: ${{ matrix.experimental }}` or a non-constant
+     always-false `if:` keeps the step credited; the checkers stay static
+     and ship no expression evaluator.
+   - Reusable workflows (`uses:` at job level) stay credited; following
+     `uses:` references is out of scope.
    - Unparseable workflow YAML stays credited as raw text (today's
      behavior), so this change can only remove false passes, not add false
      failures on exotic-but-working setups.
 
-   Implementation per checker: a shared "binding workflow content" filter
-   applied where workflow files enter the command-file set — new
+   Implementation per checker: a shared "binding evidence" filter applied
+   where workflow files enter the command-file set, plus the reachability
+   pass over non-workflow command files — new
    `go/internal/rules/go_workflow_binding.go`, a workflow filter in
    `typescript/src/repo/repo.ts` (the `yaml` dependency is already present),
    and a module beside `rust_rules/mod.rs` (`yaml_serde` is already a
-   dependency). Makefile/script files bypass the filter.
+   dependency).
 
-   Fixtures: `go-neutralized-ci`, `typescript-neutralized-ci`, and
-   `rust-neutralized-ci` — copies of the clean fixtures with neutralized
-   workflows — must fail with the same findings as their `missing-*`
-   counterparts. Register all three in `scripts/check-conformance.mjs` and
-   add a per-neutralization-mechanism unit test in each implementation
-   (filter, `if`, `continue-on-error` at step and job level).
+   Fixtures: `go-neutralized-ci`, `typescript-neutralized-ci`,
+   `rust-neutralized-ci` (neutralized workflows must fail like their
+   `missing-*` counterparts) and one `*-unreachable-script` fixture per
+   ecosystem (commands present in a script no workflow invokes must fail).
+   Register all in `scripts/check-conformance.mjs` and add
+   per-neutralization-mechanism unit tests in each implementation.
 
-   Done when: the crafted counterexample produces findings in every
-   implementation, the three fixtures lock the behavior into conformance,
-   and the clean fixtures still pass unchanged.
+   Done when: both counterexamples (neutralized workflow, uninvoked script)
+   produce findings in every implementation, the fixtures lock the behavior
+   into conformance, and the clean fixtures still pass unchanged.
 
 2. [ ] Add a rule that the checker itself must run in CI.
 
@@ -101,7 +111,7 @@ threat model is an agent optimizing to make the check pass.
 
    Spec and fixture changes:
 
-   - `specs/rules.json` and `specs/RULES.md` gain the rule (40 rules total).
+   - `specs/rules.json` and `specs/RULES.md` gain the rule.
    - Every existing `*-clean` fixture that carries a `slophammer.yml` must
      gain a checker invocation in its workflow, or the rule makes it fail.
      This is an intentional cutover: config without enforcement becomes a
@@ -114,20 +124,24 @@ threat model is an agent optimizing to make the check pass.
    `repo.slophammer-ci-required` across all implementations and conformance
    passes with the regenerated expected reports.
 
-3. [ ] Make scope carve-outs visible and justified.
+3. [ ] Enforce scope completeness so carve-outs cannot hide code.
 
    Config can restrict `paths`, `targets`, and `exclude` without limit, so
    findings can be hidden by retargeting scope instead of weakening
-   thresholds — thresholds are validated, scope is not.
+   thresholds — thresholds are validated, scope is not. Making the gap
+   merely visible is not enough; an unread report does not stop anything.
 
-   Two complementary changes:
+   Design: scoped checks (native DRY, coverage, CRAP, mutation,
+   boundaries-bearing targets) must account for every production file. A
+   production file is one left after the conventional non-production list
+   (test globs such as `**/*_test.go` and `**/*.test.ts`, and `fixtures/`,
+   `templates/`, `testdata/`, `dist/`, `build/`, `coverage/`, `target/`,
+   `node_modules/`, `vendor/`, `generated` segments). Three parts:
 
    - Justified production excludes. An `exclude` entry stays a plain string
-     when it matches the conventional non-production list (test globs such
-     as `**/*_test.go` and `**/*.test.ts`, and `fixtures/`, `templates/`,
-     `testdata/`, `dist/`, `build/`, `coverage/`, `target/`,
-     `node_modules/`, `vendor/`, `generated` segments). Any other exclude
-     must use the object form, following the `rust.unsafe.allow` precedent:
+     when it matches the conventional list. Any exclude that matches
+     production files must use the object form, following the
+     `rust.unsafe.allow` precedent:
 
      ```yaml
      dry:
@@ -140,41 +154,36 @@ threat model is an agent optimizing to make the check pass.
      ```
 
      Strict validation rejects a production-matching string exclude with
-     `<section>.exclude requires a reason for production paths`. The
-     classification list is shared, spelled out in `specs/CONFIG.md`, and
-     identical in all three validators (`go/internal/config/config.go`,
-     `typescript/src/config/config.ts`,
-     `rust/crates/slophammer-cli/src/config.rs`).
+     `<section>.exclude requires a reason for production paths`.
 
-   - Scope coverage in the report. When a scoped check runs (native DRY,
-     coverage, CRAP, mutation), the report gains an additive `scope` block:
+   - Scope-completeness finding. After expansion, every production file
+     must be either in scope or covered by a reasoned or conventional
+     exclude. Uncovered production files produce a finding
+     (`<lang>.scope-incomplete`, severity `error`) naming the uncovered
+     directories, so narrowing `paths` to an innocuous corner fails the
+     check instead of passing with a quiet report. This closes the
+     demonstrated carve-out fully — exit code, not visibility.
 
-     ```json
-     "scope": { "scanned": 42, "production_files": 45 }
-     ```
+   - Scope coverage in the report. Scoped checks also gain an additive
+     report block, `"scope": { "scanned": 42, "production_files": 45 }`,
+     and the text renderer prints `DRY scanned 42 of 45 production files`.
+     `specs/REPORT_FORMAT.md` documents the field; expected fixture reports
+     regenerate.
 
-     where `production_files` counts the ecosystem's source files in the
-     repository after the conventional non-production list, and `scanned`
-     counts files actually in scope. The text renderer prints
-     `DRY scanned 42 of 45 production files`. `specs/REPORT_FORMAT.md`
-     documents the field; it is additive, so existing consumers keep
-     working, but expected fixture reports regenerate.
+   The classification list is shared, spelled out in `specs/CONFIG.md`, and
+   identical in all three validators (`go/internal/config/config.go`,
+   `typescript/src/config/config.ts`,
+   `rust/crates/slophammer-cli/src/config.rs`). `paths` pointing at a
+   nonexistent directory already fails loudly and keeps doing so.
 
-   Decisions already made:
+   Fixtures: a `*-carved-scope` fixture per ecosystem (real duplication in
+   `src/`, scope pointed elsewhere, no reasoned exclude — must fail with
+   `scope-incomplete`) and a passing variant where the same carve-out
+   carries a reason.
 
-   - No hard floor on scope coverage in this task. The number being visible
-     in the report (and in CI logs) is the version 1 goal; a configurable
-     minimum can come later if visibility proves insufficient.
-   - `paths` pointing at a nonexistent directory already fails loudly and
-     keeps doing so.
-
-   Done when: the carve-out counterexample (real duplication in `src/`,
-   `dry.paths` pointed at a trivial directory) either fails validation for a
-   reasonless production exclude or produces a report whose `scope` block
-   shows the production tree unscanned, and conformance covers both the
-   object-form exclude and the `scope` field.
-
-## Phase 2: Make Adoption Possible
+   Done when: the carve-out counterexample exits 1 with the new finding in
+   every implementation, the reasoned variant passes, and conformance covers
+   the object-form exclude, the new rule, and the `scope` report field.
 
 4. [ ] Add a baseline ratchet mode for existing repositories.
 
@@ -210,9 +219,9 @@ threat model is an agent optimizing to make the check pass.
    - Stale entries (baselined findings that no longer occur) are an error
      (exit `2`, `baseline contains resolved findings; rewrite it`), which is
      what makes the ratchet shrink-only.
-   - `check --baseline-write` writes the file from current findings, but
-     refuses to write a superset of an existing baseline (exit `2`), so debt
-     can be recorded once and reduced, never grown.
+   - `check --baseline-write` writes the file from current findings, refuses
+     to write a superset of an existing baseline (exit `2`), and prints the
+     full added/removed diff when it writes.
    - The flag is explicit; the file is never auto-read. An agent must not be
      able to silence findings by committing a baseline that the standard
      `check` invocation then honors invisibly.
@@ -221,20 +230,90 @@ threat model is an agent optimizing to make the check pass.
      findings to SARIF `suppressions`, which code scanning already
      understands.
 
+   Accepted limitation, stated in `specs/BASELINE.md`: deleting the
+   baseline file and writing a fresh one can launder new findings into
+   "initial" debt. A static checker cannot distinguish a first adoption
+   from a rewrite, so the spec requires the mitigation instead: baseline
+   files must be review-protected (CODEOWNERS or equivalent), and
+   `--baseline-write` output is designed to make a laundering diff obvious.
+
    Implementation: baseline read/write and matching live beside report
    assembly in each `app` layer (`go/internal/app/app.go`,
    `typescript/src/app/app.ts`, `rust/crates/slophammer-cli/src/app.rs`);
    the finding model gains the optional `baselined` field. Fixtures:
-   `adoption-baseline` (failing repo plus baseline file → exit 0),
-   a regression case (one finding not in baseline → exit 1), and a stale
-   case (baseline lists a resolved finding → exit 2), registered for all
+   `adoption-baseline` (failing repo plus baseline file → exit 0), a
+   regression case (one finding not in baseline → exit 1), and a stale case
+   (baseline lists a resolved finding → exit 2), registered for all
    implementations.
 
    Done when: the three fixture cases hold in every implementation and the
    format is specified well enough that a baseline written by one checker is
    readable by the others.
 
-5. [ ] Document version pinning as the supported consumption pattern.
+5. [ ] Add suppression-discipline rules.
+
+   Generated code accumulates lint and type suppressions, and nothing
+   counts them: an agent silencing a linter with `eslint-disable`,
+   `nolint`, or equivalent passes every current rule. Slophammer already
+   holds its own Go code to a justified-`nolint` standard through lint
+   config; this makes the same discipline a product rule.
+
+   New rules, one per ecosystem: `go.suppressions-justified`,
+   `ts.suppressions-justified`, `rust.suppressions-justified` (and
+   `py.suppressions-justified` when Phase 2 lands). A suppression directive
+   in production scope must carry a justification:
+
+   - Go: `//nolint:<linter>` requires a trailing `// reason` comment
+     (golangci's `nolintlint` convention).
+   - TypeScript: `eslint-disable`/`eslint-disable-next-line`,
+     `@ts-ignore`/`@ts-expect-error`, and `biome-ignore`/`oxlint-disable`
+     require a description on the directive line (the formats all support
+     one).
+   - Rust: `#[allow(...)]` in production scope requires either an adjacent
+     `// reason` comment or use of `#[expect(...)]` with a `reason`
+     attribute.
+
+   Bare suppressions are findings naming the file and line. Test scope is
+   exempt by the shared non-production classification from task 3.
+   Detection is line-based and deterministic — no semantic analysis.
+
+   Deliberately deferred, recorded here so the omission is a decision:
+   swallowed-error detection (empty catch blocks, discarded error values),
+   dead-export detection, and assertion-free test detection all need real
+   language analysis and earn their own plan if the suppression rules prove
+   the category.
+
+   Fixtures: `*-bare-suppression` per ecosystem (fails) and justified
+   variants inside the clean fixtures (pass). Specs `rules.json`/`RULES.md`
+   gain the three rules.
+
+   Done when: a bare suppression in production code fails in every
+   implementation and a justified one passes.
+
+6. [ ] Ship the distribution surface: GitHub Action and pre-commit hook.
+
+   Today the only adoption path is a human pasting a prompt block; the
+   checkers reach CI only when someone hand-writes the workflow steps.
+
+   - Composite GitHub Action at the repo root (`action.yml`), usable as
+     `uses: dutifuldev/slophammer@<tag>` with inputs `checker`
+     (`go|ts|rs`), `version` (exact, required — the action refuses
+     `latest`), and `args` (default `check .`). It installs the pinned
+     checker and runs it; SARIF upload stays the consumer's step. The
+     action is validated in this repo's CI by running it against the clean
+     fixtures.
+   - `.pre-commit-hooks.yaml` exposing `slophammer-go-check`,
+     `slophammer-ts-check`, and `slophammer-rs-check` hooks for pre-commit
+     users, each invoking an installed checker.
+   - README and `docs/AGENT_ENTRYPOINT.md` document both, and the
+     Agent Entrypoint instructs agents to prefer the action over
+     hand-written install steps.
+
+   Done when: a consumer workflow of three lines runs a pinned checker via
+   the action, this repo's CI exercises the action, and the pre-commit
+   hooks run against a fixture in CI.
+
+7. [ ] Document version pinning as the supported consumption pattern.
 
    Slophammer makes breaking releases deliberately and ships no
    compatibility shims, but neither the README nor the Agent Entrypoint says
@@ -247,16 +326,22 @@ threat model is an agent optimizing to make the check pass.
      `cargo install slophammer-rs --version 0.2.0 --locked`), ideally behind
      one env var so upgrades are single-line, and upgrade deliberately —
      strict config validation fails loudly across breaking releases by
-     design.
+     design. The task 6 action enforces this by requiring an exact version.
    - Update the copy-paste agent block to tell agents to pin the version
      they verified against.
+   - State the outer boundary explicitly in the README: Slophammer cannot
+     defend against being removed from a repository. Branch protection and
+     required status checks are the layer that makes the gate mandatory;
+     the docs should say so instead of implying the checker is
+     self-protecting.
 
-   Done when: both documents show pinned commands for all released checkers
-   and the paste block mentions pinning.
+   Done when: both documents show pinned commands for all released
+   checkers, the paste block mentions pinning, and the README names the
+   branch-protection boundary.
 
-## Phase 3: Cover the Code Agents Actually Write
+## Phase 2: Cover More Languages (Later)
 
-6. [ ] Ship `slophammer-py`.
+8. [ ] Ship `slophammer-py`.
 
    Python is the largest agent-coding ecosystem and the one planned
    implementation that does not exist; polyglot repositories with Python
@@ -269,17 +354,17 @@ threat model is an agent optimizing to make the check pass.
      The existing `templates/python` stays a template; the checker is new
      code held to Slophammer's own gates (coverage ≥ 85, complexity ≤ 8,
      DRY 0, mutation declared).
-   - Rule set `py.*`, 13 rules at TypeScript parity:
-     `py.project-required` (`pyproject.toml`), `py.typecheck-required`
-     (mypy or pyright, strict-ish flags), `py.types-strict-required`
-     (e.g. `disallow_untyped_defs`/pyright strict), `py.lint-required` and
-     `py.format-required` (Ruff check and format, tool-agnostic where
-     reasonable), `py.test-required` (pytest and friends),
-     `py.coverage-required` (`fail_under`/`--cov-fail-under` ≥ 85),
-     `py.complexity-required` (Ruff `C901` max ≤ 8 or radon),
-     `py.dry-required` plus a native copied-block port,
+   - Rule set `py.*` at TypeScript parity: `py.project-required`
+     (`pyproject.toml`), `py.typecheck-required` (mypy or pyright),
+     `py.types-strict-required` (e.g. `disallow_untyped_defs` or pyright
+     strict), `py.lint-required` and `py.format-required` (Ruff check and
+     format, tool-agnostic where reasonable), `py.test-required` (pytest
+     and friends), `py.coverage-required` (`fail_under` or
+     `--cov-fail-under` ≥ 85), `py.complexity-required` (Ruff `C901` ≤ 8 or
+     radon), `py.dry-required` plus a native copied-block port,
      `py.mutation-required` (mutmut or cosmic-ray declared),
-     `py.dependency-audit-required` (pip-audit or uv audit), and
+     `py.suppressions-justified` (`# noqa` and `# type: ignore` need
+     reasons), `py.dependency-audit-required` (pip-audit or uv audit), and
      `py.dependency-boundaries-required` (import parsing against the shared
      boundary config).
    - Config: a `python:` section in the shared nested shape; validators in
@@ -290,19 +375,18 @@ threat model is an agent optimizing to make the check pass.
      `scripts/check-conformance.mjs`; specs `rules.json`/`RULES.md` grow the
      `py.*` rows.
    - Release: PyPI package `slophammer-py` via trusted publishing, a
-     `python-release.yml` workflow cloned from the TypeScript one (tag shape
-     `python-pkg/vX.Y.Z` or similar — decide against colliding with the
-     `templates/python` history), GitHub release created by the workflow.
+     `python-release.yml` workflow cloned from the TypeScript one (tag
+     shape decided then, avoiding collision with `templates/python`
+     history), GitHub release created by the workflow.
 
-   This is the largest task in the plan and should be sequenced as its own
-   dated implementation plan once Phase 1 lands; this entry fixes the scope
-   and the contract, not the schedule.
+   Gets its own dated implementation plan when scheduled; this entry fixes
+   scope and contract.
 
    Done when: `slophammer-py check` passes shared conformance with a fixture
    set at parity with the other ecosystems and the checker passes its own
    gates in CI.
 
-7. [ ] Build the `slophammer` umbrella dispatcher.
+9. [ ] Build the `slophammer` umbrella dispatcher.
 
    Polyglot repositories need every per-language checker installed and wired
    by hand; in practice one language gets gated and the rest go unchecked.
@@ -313,8 +397,9 @@ threat model is an agent optimizing to make the check pass.
      `slophammer-ts`, `Cargo.toml` → `slophammer-rs`, `pyproject.toml` →
      `slophammer-py`.
    - For each detected ecosystem, resolve the checker on `PATH` and run
-     `check <path> --format json`, forwarding `--execute`, `--only`, and
-     `--format`. The dispatcher never installs checkers itself.
+     `check <path> --format json`, forwarding `--execute`, `--only`,
+     `--baseline`, and `--format`. The dispatcher never installs checkers
+     itself.
    - A detected ecosystem with no resolvable checker is itself a finding
      (`repo.checker-missing`, severity error), not a silent skip — the
      dispatcher must be unable to under-report.
@@ -331,24 +416,22 @@ threat model is an agent optimizing to make the check pass.
 
 ## Out of Scope
 
-- Verifying actual CI run history through the GitHub API. The checkers stay
-  static and offline; binding-evidence analysis (task 1) is the static
-  approximation.
-- Script reachability analysis (only crediting scripts that a binding
-  workflow invokes). Recorded as a possible version 2 tightening under
-  task 1.
+- Evaluating workflow expressions. Non-literal always-false conditions
+  remain credited; the checkers stay static and ship no expression engine.
+- Verifying actual CI run history through the GitHub API. Binding-evidence
+  analysis (task 1) is the static approximation.
+- Transitive script reachability beyond one level (task 1 follows one hop).
+- Semantic slop analysis: swallowed errors, dead exports, assertion-free
+  tests (deferred from task 5 pending its results).
 - Auto-installing checkers from the dispatcher.
 - Trend dashboards or history beyond the shrink-only baseline.
 
 ## Sequencing Notes
 
-- Tasks 1–3 are the priority: they close the gap between looking guarded
-  and being guarded, and every later adopter benefits. Task 1 lands first;
-  task 2 builds on its binding-evidence test.
-- Task 2 and task 3's report change both regenerate expected fixture
-  reports; batching them into one conformance update avoids churn.
-- Task 4 unlocks the existing population of unclean repositories and should
-  land before any adoption push. Task 5 is small and rides along with any
-  release.
-- Tasks 6 and 7 are large; 7 gains most of its value from 6 and follows it.
-  Task 6 gets its own dated implementation plan when scheduled.
+- Phase 1 is one implementation pass. Within it, task 1 lands first and
+  task 2 builds on its binding-evidence test; tasks 2, 3, and 5 all
+  regenerate expected fixture reports, so batch their conformance updates;
+  task 6 should land after 1–3 so the action ships with binding semantics;
+  tasks 4 and 7 are independent.
+- Phase 2 follows Phase 1. Task 9 gains most of its value from task 8 and
+  follows it; task 8 gets its own dated implementation plan when scheduled.
