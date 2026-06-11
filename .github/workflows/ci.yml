@@ -41,7 +41,7 @@ jobs:
         uses: ./
         with:
           checker: go
-          version: 0.2.0
+          version: 0.3.0
           args: check fixtures/repos/go-clean
 
   go-template:
