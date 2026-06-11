@@ -84,11 +84,49 @@ func bareSuppressionLine(content string) (int, bool) {
 }
 
 func bareNolintLine(line string, previousLineIsComment bool) bool {
-	directive := strings.Index(line, nolintDirective)
+	comment := lineCommentText(line)
+	directive := strings.Index(comment, nolintDirective)
 	if directive < 0 || previousLineIsComment {
 		return false
 	}
-	return !nolintExplanation(line[directive+len(nolintDirective):])
+	return !nolintExplanation(comment[directive+len(nolintDirective):])
+}
+
+// lineCommentText returns a line's comment, starting at the first // that
+// sits outside string and rune literals, so directives quoted in code are
+// not findings. Lines inside multi-line raw strings are beyond a line-based
+// scan and stay visible.
+func lineCommentText(line string) string {
+	var quote byte
+	for i := 0; i < len(line); i++ {
+		character := line[i]
+		if quote != 0 {
+			quote, i = insideGoQuote(quote, character, i)
+			continue
+		}
+		if goQuoteCharacter(character) {
+			quote = character
+			continue
+		}
+		if strings.HasPrefix(line[i:], "//") {
+			return line[i:]
+		}
+	}
+	return ""
+}
+
+func insideGoQuote(quote byte, character byte, index int) (byte, int) {
+	if character == '\\' && quote != '`' {
+		return quote, index + 1
+	}
+	if character == quote {
+		return 0, index
+	}
+	return quote, index
+}
+
+func goQuoteCharacter(character byte) bool {
+	return character == '"' || character == '\'' || character == '`'
 }
 
 // nolintExplanation reports whether the text after a nolint directive carries

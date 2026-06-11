@@ -28,6 +28,8 @@ pub enum BaselineError {
     Superset(String),
     #[error("baseline write failed: {0}")]
     Write(String),
+    #[error("baseline read failed: {0}")]
+    Read(String),
 }
 
 #[derive(Deserialize, Serialize)]
@@ -71,7 +73,13 @@ pub fn apply_check(root: &Path, report: &mut Report) -> Result<(), BaselineError
 /// recorded once, reviewed, and only ever reduced.
 pub fn write(root: &Path, report: &Report) -> Result<String, BaselineError> {
     let current: BTreeSet<BaselineEntry> = report.findings.iter().map(entry_of).collect();
-    let previous = read_baseline(root).unwrap_or_default();
+    // Only a missing baseline counts as the initial-write case; a present but
+    // malformed baseline propagates its error instead of being replaced.
+    let previous = match read_baseline(root) {
+        Ok(previous) => previous,
+        Err(BaselineError::Missing) => BTreeSet::new(),
+        Err(error) => return Err(error),
+    };
     let added: BTreeSet<_> = current.difference(&previous).cloned().collect();
     let removed: BTreeSet<_> = previous.difference(&current).cloned().collect();
     if !previous.is_empty() && !added.is_empty() && removed.is_empty() {
@@ -99,8 +107,13 @@ pub fn debt_line(report: &Report) -> String {
 }
 
 fn read_baseline(root: &Path) -> Result<BTreeSet<BaselineEntry>, BaselineError> {
-    let content =
-        std::fs::read_to_string(root.join(BASELINE_FILE)).map_err(|_| BaselineError::Missing)?;
+    let content = match std::fs::read_to_string(root.join(BASELINE_FILE)) {
+        Ok(content) => content,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return Err(BaselineError::Missing);
+        }
+        Err(error) => return Err(BaselineError::Read(error.to_string())),
+    };
     let file: BaselineFile =
         serde_json::from_str(&content).map_err(|error| BaselineError::Parse(error.to_string()))?;
     if file.version != 1 {
@@ -224,6 +237,17 @@ mod tests {
         let error = write(dir.path(), &report).expect_err("superset write");
 
         assert!(error.to_string().contains("grow the baseline"));
+    }
+
+    #[test]
+    fn write_refuses_malformed_existing_baseline() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join(BASELINE_FILE), "not json").expect("write baseline");
+        let report = new_report(vec![finding("repo.readme-required", "README.md")]);
+
+        let error = write(dir.path(), &report).expect_err("malformed baseline");
+
+        assert!(error.to_string().contains("baseline parse failed"));
     }
 
     #[test]

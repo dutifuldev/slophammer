@@ -130,6 +130,16 @@ describe("check --baseline-write", () => {
     expect(result.stderr).toContain("repo.agents-required at AGENTS.md");
   });
 
+  it("refuses to replace a malformed existing baseline", async () => {
+    const root = await emptyRepo();
+    await writeFile(path.join(root, baselineFileName), "not json\n");
+
+    const result = await check({ root, format: "text", execute: false, baseline: "write" });
+
+    expect(result.code).toBe(2);
+    expect(result.stderr).toContain("baseline parse failed");
+  });
+
   it("records removals when the baseline shrinks", async () => {
     const root = await emptyRepo();
     await writeBaselineFile(root, {

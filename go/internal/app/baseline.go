@@ -70,8 +70,8 @@ func writeBaselineFile(root string, report rules.Report) (string, error) {
 		current[entryOf(finding)] = struct{}{}
 	}
 	previous, err := readBaselineFile(root)
-	if err != nil {
-		previous = nil
+	if err != nil && !errors.Is(err, errBaselineMissing) {
+		return "", err
 	}
 	added := entryDifference(current, previous)
 	removed := entryDifference(previous, current)
@@ -105,11 +105,19 @@ func baselineDebtLine(report rules.Report) string {
 	return fmt.Sprintf("%d findings baselined; %d new\n", baselined, len(report.Findings)-baselined)
 }
 
+// errBaselineMissing marks the only read failure that counts as the
+// initial-write case; a present but unreadable or malformed baseline must
+// never be silently replaced.
+var errBaselineMissing = errors.New("baseline file " + baselineFileName + " is missing")
+
 func readBaselineFile(root string) (map[baselineEntry]struct{}, error) {
 	// #nosec G304 -- the baseline lives at a fixed name under the check root.
 	content, err := os.ReadFile(filepath.Join(root, baselineFileName))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, errBaselineMissing
+	}
 	if err != nil {
-		return nil, errors.New("baseline file " + baselineFileName + " is missing")
+		return nil, fmt.Errorf("baseline read failed: %w", err)
 	}
 	decoder := json.NewDecoder(bytes.NewReader(content))
 	decoder.DisallowUnknownFields()

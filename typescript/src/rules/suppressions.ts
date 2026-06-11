@@ -64,12 +64,44 @@ function bareSuppressionDirective(line: string, previousLineIsComment: boolean):
 }
 
 // Suppression directives only take effect inside comments, so directive
-// names in code or string literals are not findings.
+// names in code or string literals are not findings. The scan tracks quote
+// state so a marker inside a string or template literal stays invisible.
 function commentText(line: string): string {
-  const lineComment = line.indexOf("//");
-  const blockComment = line.indexOf("/*");
-  const start = [lineComment, blockComment].filter((index) => index >= 0);
-  return start.length === 0 ? "" : line.slice(Math.min(...start));
+  let quote: string | undefined;
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index] ?? "";
+    if (quote !== undefined) {
+      [quote, index] = insideQuote(quote, character, index);
+      continue;
+    }
+    if (quoteCharacter(character)) {
+      quote = character;
+      continue;
+    }
+    if (commentStart(line, index)) {
+      return line.slice(index);
+    }
+  }
+  return "";
+}
+
+function insideQuote(
+  quote: string,
+  character: string,
+  index: number
+): [string | undefined, number] {
+  if (character === "\\") {
+    return [quote, index + 1];
+  }
+  return [character === quote ? undefined : quote, index];
+}
+
+function quoteCharacter(character: string): boolean {
+  return character === '"' || character === "'" || character === "`";
+}
+
+function commentStart(line: string, index: number): boolean {
+  return line[index] === "/" && (line[index + 1] === "/" || line[index + 1] === "*");
 }
 
 function justifiedOnLine(marker: DirectiveMarker, rest: string): boolean {

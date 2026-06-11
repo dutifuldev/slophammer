@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { access, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import type { Finding, Report } from "../rules/types.js";
@@ -65,11 +65,22 @@ export function debtLine(report: Report): string {
   return `${String(baselined)} findings baselined; ${String(fresh)} new\n`;
 }
 
+// Only a missing baseline file counts as the initial-write case; a present
+// but malformed baseline propagates its parse error instead of being
+// silently replaced.
 async function previousBaseline(root: string): Promise<readonly BaselineEntry[]> {
-  try {
-    return await readBaseline(root);
-  } catch {
+  if (!(await baselinePresent(root))) {
     return [];
+  }
+  return readBaseline(root);
+}
+
+async function baselinePresent(root: string): Promise<boolean> {
+  try {
+    await access(path.join(root, baselineFileName));
+    return true;
+  } catch {
+    return false;
   }
 }
 

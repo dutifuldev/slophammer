@@ -89,6 +89,21 @@ describe("ts.suppressions-justified", () => {
     expect(suppressionFindings(content)).toEqual([]);
   });
 
+  it("ignores comment markers inside string literals", () => {
+    const content = [
+      'const directive = "// @ts-ignore";',
+      "const banner = `/* eslint-disable */`;",
+      "const escaped = 'quote \\' then // @ts-ignore stays quoted';",
+      'const flagged = "real"; // @ts-ignore',
+      ""
+    ].join("\n");
+
+    const findings = suppressionFindings(content);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.message).toContain("(line 4)");
+  });
+
   it("exempts test files, declarations, and project data", () => {
     const report = runRules(
       newSnapshot("/repo", [

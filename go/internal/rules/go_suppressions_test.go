@@ -49,6 +49,25 @@ func TestJustifiedSuppressionsPass(t *testing.T) {
 	}
 }
 
+func TestNolintInsideStringLiteralsIsNotADirective(t *testing.T) {
+	findings := suppressionFindings(t, map[string]repo.File{
+		"internal/app.go": goFile("internal/app.go",
+			"package app",
+			`const directive = "//`+`nolint:errcheck"`,
+			"const raw = `//"+"nolint inside a raw string`",
+			`const escaped = "quote \" then //`+`nolint stays quoted"`,
+			`var flagged = legacy() //`+`nolint:staticcheck`,
+		),
+	})
+
+	if len(findings) != 1 {
+		t.Fatalf("findings = %#v, want only the real directive", findings)
+	}
+	if !strings.Contains(findings[0].Message, "(line 5)") {
+		t.Fatalf("finding = %#v, want line 5", findings[0])
+	}
+}
+
 func TestEmptyNolintExplanationStaysBare(t *testing.T) {
 	findings := suppressionFindings(t, map[string]repo.File{
 		"internal/app.go": goFile("internal/app.go",

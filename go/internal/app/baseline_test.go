@@ -113,6 +113,20 @@ func TestInvalidBaselineFilesAreErrors(t *testing.T) {
 	}
 }
 
+func TestWriteBaselineRefusesMalformedExistingBaseline(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, baselineFileName), []byte("not json"), 0o600); err != nil {
+		t.Fatalf("write baseline: %v", err)
+	}
+	report := rules.NewReport([]rules.Finding{baselineFinding("repo.readme-required", "README.md")})
+
+	_, err := writeBaselineFile(root, report)
+
+	if err == nil || !strings.Contains(err.Error(), "baseline parse failed") {
+		t.Fatalf("error = %v, want parse failure instead of a silent rewrite", err)
+	}
+}
+
 func TestWriteBaselineRefusesSupersets(t *testing.T) {
 	root := t.TempDir()
 	writeBaselineFixture(t, root, baselineEntry{RuleID: "repo.readme-required", Path: "README.md"})
