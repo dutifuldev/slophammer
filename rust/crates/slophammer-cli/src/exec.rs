@@ -209,7 +209,6 @@ struct ExecutableCheck<'a> {
     message: &'static str,
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
