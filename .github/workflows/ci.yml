@@ -29,6 +29,21 @@ jobs:
           test ! -d rust/crates/slophammer-rust
       - run: npx -y @simpledoc/simpledoc check
 
+  action:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go/go.mod
+          cache: false
+      - name: Run the Slophammer action against a clean fixture
+        uses: ./
+        with:
+          checker: go
+          version: 0.2.0
+          args: check fixtures/repos/go-clean
+
   go-template:
     runs-on: ubuntu-latest
     defaults:

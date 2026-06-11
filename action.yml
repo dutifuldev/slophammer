@@ -1,0 +1,77 @@
+name: Slophammer
+description: >-
+  Run a pinned Slophammer checker against a repository. Slophammer checks
+  whether a project has the constraints that keep AI-generated code under
+  control.
+branding:
+  icon: check-square
+  color: orange
+
+inputs:
+  checker:
+    description: "Which checker to run: go, ts, or rs."
+    required: true
+  version:
+    description: >-
+      Exact checker version to install, for example 0.2.0. The action refuses
+      floating versions such as latest so breaking releases never land
+      mid-pipeline.
+    required: true
+  args:
+    description: "Arguments passed to the checker."
+    required: false
+    default: "check ."
+
+runs:
+  using: composite
+  steps:
+    - name: Validate inputs
+      shell: bash
+      env:
+        CHECKER: ${{ inputs.checker }}
+        VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        case "$CHECKER" in
+          go|ts|rs) ;;
+          *)
+            echo "checker must be go, ts, or rs; received: $CHECKER" >&2
+            exit 2
+            ;;
+        esac
+        if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+          echo "version must be an exact semver such as 0.2.0; received: $VERSION" >&2
+          echo "the action refuses floating versions so breaking releases never land mid-pipeline" >&2
+          exit 2
+        fi
+
+    - name: Run slophammer-go
+      if: inputs.checker == 'go'
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        ARGS: ${{ inputs.args }}
+      run: |
+        set -euo pipefail
+        go run "github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v$VERSION" $ARGS
+
+    - name: Run slophammer-ts
+      if: inputs.checker == 'ts'
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        ARGS: ${{ inputs.args }}
+      run: |
+        set -euo pipefail
+        npx --yes "slophammer-ts@$VERSION" $ARGS
+
+    - name: Run slophammer-rs
+      if: inputs.checker == 'rs'
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        ARGS: ${{ inputs.args }}
+      run: |
+        set -euo pipefail
+        cargo install slophammer-rs --version "$VERSION" --locked --quiet
+        slophammer-rs $ARGS

@@ -1,0 +1,23 @@
+- id: slophammer-go-check
+  name: slophammer-go check
+  description: Run the installed slophammer-go checker against the repository.
+  entry: slophammer-go check .
+  language: system
+  pass_filenames: false
+  always_run: true
+
+- id: slophammer-ts-check
+  name: slophammer-ts check
+  description: Run the installed slophammer-ts checker against the repository.
+  entry: slophammer-ts check .
+  language: system
+  pass_filenames: false
+  always_run: true
+
+- id: slophammer-rs-check
+  name: slophammer-rs check
+  description: Run the installed slophammer-rs checker against the repository.
+  entry: slophammer-rs check .
+  language: system
+  pass_filenames: false
+  always_run: true

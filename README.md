@@ -41,6 +41,38 @@ slophammer-go rules
 `check` exits `0` when the repo is clean, `1` when it has findings, and `2` on
 usage or runtime errors.
 
+### Pin the Version in CI
+
+Slophammer makes breaking releases deliberately and ships no compatibility
+shims; strict config validation fails loudly across breaking releases by
+design. Installing `@latest` in CI absorbs those breaks mid-pipeline. Pin an
+exact version, ideally behind one variable so upgrades are a single line:
+
+```sh
+go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.2.0 check .
+npx slophammer-ts@0.2.0 check .
+cargo install slophammer-rs --version 0.2.0 --locked
+```
+
+The simplest CI integration is the bundled GitHub Action, which requires an
+exact version by construction:
+
+```yaml
+- uses: dutifuldev/slophammer@main
+  with:
+    checker: go
+    version: 0.2.0
+```
+
+Pre-commit users can wire the hooks from `.pre-commit-hooks.yaml`
+(`slophammer-go-check`, `slophammer-ts-check`, `slophammer-rs-check`), which
+run the installed checkers.
+
+One boundary to be explicit about: Slophammer cannot defend against being
+removed from a repository. Branch protection and required status checks are
+the layer that makes the gate mandatory; the checker reports, your repository
+settings enforce.
+
 ## Quick Setup: Tell Your Agent About Slophammer
 
 If you are an agent applying Slophammer standards to an existing repository,
@@ -58,7 +90,8 @@ Attention agent: start with this file before changing code:
 https://raw.githubusercontent.com/dutifuldev/slophammer/refs/heads/main/docs/AGENT_ENTRYPOINT.md
 
 Follow it exactly. Detect the target repo's language, use the matching Slophammer
-implementation, and say clearly if no matching implementation exists.
+implementation, and say clearly if no matching implementation exists. Pin the
+exact checker version you verified against in CI; do not install latest.
 ```
 
 ## What This Is
