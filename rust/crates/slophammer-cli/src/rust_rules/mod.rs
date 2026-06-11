@@ -4,6 +4,7 @@ mod dry;
 mod evidence;
 mod scope;
 mod unsafe_policy;
+mod workflow_binding;
 
 use crate::config::Config;
 use crate::core::{Finding, find_definition};
@@ -411,7 +412,9 @@ mod tests {
                     ".github/workflows/ci.yml".to_owned(),
                     RepoFile {
                         path: ".github/workflows/ci.yml".to_owned(),
-                        content: format!("jobs:\n  ci:\n    steps:\n      - run: {command}\n"),
+                        content: format!(
+                            "on: [push]\njobs:\n  ci:\n    steps:\n      - run: {command}\n"
+                        ),
                     },
                 ),
             ]),
