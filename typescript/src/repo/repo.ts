@@ -271,22 +271,23 @@ function stepWorkflowCommands(step: unknown, matrixCommands: readonly string[]):
 // a literal-false if condition or a literal continue-on-error. Non-literal
 // expressions stay credited.
 function neutralizedEntry(record: Readonly<Record<string, unknown>>): boolean {
-  if (record["continue-on-error"] === true || record["continue-on-error"] === "true") {
+  const continueOnError = record["continue-on-error"];
+  if (continueOnError === true || literalExpressionValue(stringValue(continueOnError)) === "true") {
     return true;
   }
   const condition = record["if"];
   if (condition === false) {
     return true;
   }
-  return literalFalseExpression(stringValue(condition));
+  return literalExpressionValue(stringValue(condition)) === "false";
 }
 
-function literalFalseExpression(condition: string): boolean {
-  let trimmed = condition.trim();
+function literalExpressionValue(value: string): string {
+  let trimmed = value.trim();
   if (trimmed.startsWith("${{") && trimmed.endsWith("}}")) {
     trimmed = trimmed.slice(3, -2).trim();
   }
-  return trimmed === "false";
+  return trimmed;
 }
 
 // bindingWorkflowTriggers reports whether a workflow can fire for

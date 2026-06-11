@@ -269,18 +269,22 @@ func (s workflowStep) neutralized() bool {
 // false, optionally wrapped in an expression. Non-literal expressions stay
 // credited; the checker ships no expression evaluator.
 func literalFalseCondition(condition string) bool {
-	trimmed := strings.TrimSpace(condition)
-	if strings.HasPrefix(trimmed, "${{") && strings.HasSuffix(trimmed, "}}") {
-		trimmed = strings.TrimSpace(trimmed[3 : len(trimmed)-2])
-	}
-	return trimmed == "false"
+	return literalExpressionValue(condition) == "false"
 }
 
 func literalTrueNode(node yaml.Node) bool {
 	if node.Kind != yaml.ScalarNode {
 		return false
 	}
-	return strings.TrimSpace(node.Value) == "true"
+	return literalExpressionValue(node.Value) == "true"
+}
+
+func literalExpressionValue(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if strings.HasPrefix(trimmed, "${{") && strings.HasSuffix(trimmed, "}}") {
+		trimmed = strings.TrimSpace(trimmed[3 : len(trimmed)-2])
+	}
+	return trimmed
 }
 
 // bindingWorkflowTriggers reports whether a workflow's triggers can fire for

@@ -87,6 +87,9 @@ fn all_exclude_patterns(config: &Config) -> Vec<String> {
     if let Some(coverage) = config.rust.as_ref().and_then(|rust| rust.coverage.as_ref()) {
         patterns.extend(crate::config::exclude_patterns(&coverage.exclude));
     }
+    if let Some(mutation) = config.rust.as_ref().and_then(|rust| rust.mutation.as_ref()) {
+        patterns.extend(crate::config::exclude_patterns(&mutation.exclude));
+    }
     patterns
 }
 
@@ -191,4 +194,60 @@ fn globset(patterns: &[String]) -> Option<GlobSet> {
         }
     }
     builder.build().ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::scan::RepoFile as File;
+    use std::collections::BTreeMap;
+
+    fn snapshot(files: &[(&str, &str)]) -> Snapshot {
+        let mut map = BTreeMap::new();
+        for (path, content) in files {
+            map.insert(
+                (*path).to_owned(),
+                File {
+                    path: (*path).to_owned(),
+                    content: (*content).to_owned(),
+                },
+            );
+        }
+        Snapshot {
+            root: "/repo".into(),
+            files: map,
+        }
+    }
+
+    fn config(yaml: &str) -> Config {
+        crate::config::parse(yaml).expect("config parses")
+    }
+
+    #[test]
+    fn mutation_excludes_cover_out_of_scope_production_files() {
+        let repo = snapshot(&[
+            ("src/lib.rs", "pub fn live() {}\n"),
+            ("corner/extra.rs", "pub fn hidden() {}\n"),
+        ]);
+
+        let uncovered = config("rust:\n  targets: [src]\n");
+        assert_eq!(scope_findings(&repo, &uncovered).len(), 1);
+
+        let covered = config(
+            "rust:\n  targets: [src]\n  mutation:\n    targets: [src]\n    exclude:\n      - pattern: corner/**\n        reason: prototype corner kept out of every gate\n",
+        );
+        assert!(scope_findings(&repo, &covered).is_empty());
+    }
+
+    #[test]
+    fn mutation_targets_extend_configured_scope() {
+        let repo = snapshot(&[
+            ("src/lib.rs", "pub fn live() {}\n"),
+            ("corner/extra.rs", "pub fn hidden() {}\n"),
+        ]);
+        let config = config("rust:\n  targets: [src]\n  mutation:\n    targets: [corner]\n");
+
+        assert!(scope_findings(&repo, &config).is_empty());
+        assert_eq!(scope_counts(&repo, &config), Some((2, 2)));
+    }
 }

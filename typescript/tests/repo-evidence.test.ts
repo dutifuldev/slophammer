@@ -35,6 +35,35 @@ describe("synthetic repo evidence", () => {
     expect(commandFiles(snapshot).map((file) => file.path)).toContain("scripts/gate.sh");
   });
 
+  it("drops steps neutralized by expression-literal continue-on-error", () => {
+    const snapshot = newSnapshot("/repo", [
+      {
+        path: ".github/workflows/ci.yml",
+        content: [
+          "name: CI",
+          "on: [push]",
+          "jobs:",
+          "  check:",
+          "    steps:",
+          "      - run: npm run lint",
+          "        continue-on-error: ${{ true }}",
+          "      - run: npm run typecheck",
+          "        if: ${{ false }}",
+          "      - run: npm test",
+          ""
+        ].join("\n")
+      }
+    ]);
+
+    const evidence = commandFiles(snapshot)
+      .map((file) => file.content)
+      .join("\n");
+
+    expect(evidence).not.toContain("npm run lint");
+    expect(evidence).not.toContain("npm run typecheck");
+    expect(evidence).toContain("npm test");
+  });
+
   it("keeps nested package scopes supplied by scoped root workflows", () => {
     const report = runRules(newSnapshot("/repo", nestedPackageRepo("on: [push]")), emptyConfig(), {
       onlyRuleIDs: ["ts.lint-required"]

@@ -57,6 +57,31 @@ jobs:
 	}
 }
 
+func TestBindingFilteredWorkflowRemovesExpressionLiteralNeutralization(t *testing.T) {
+	content := `name: CI
+on: [push]
+jobs:
+  test:
+    steps:
+      - run: go test ./...
+        continue-on-error: ${{ true }}
+      - run: go vet ./...
+        if: ${{ false }}
+      - run: golangci-lint run
+`
+	filtered, ok := bindingFilteredWorkflow(content)
+
+	if !ok {
+		t.Fatal("ok = false, want structural filtering")
+	}
+	if strings.Contains(filtered, "go test ./...") || strings.Contains(filtered, "go vet ./...") {
+		t.Fatalf("expression-literal neutralized steps survived: %q", filtered)
+	}
+	if !strings.Contains(filtered, "golangci-lint run") {
+		t.Fatalf("live step lost: %q", filtered)
+	}
+}
+
 func TestBindingFilteredWorkflowDropsNonIntegrationTriggers(t *testing.T) {
 	content := `name: CI
 on:
