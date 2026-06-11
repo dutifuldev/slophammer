@@ -212,9 +212,9 @@ struct ExecutableCheck<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
     use crate::scan::{RepoFile, Snapshot};
     use std::collections::BTreeMap;
+    use std::path::PathBuf;
 
     struct FailingRunner;
     struct PassingRunner;
