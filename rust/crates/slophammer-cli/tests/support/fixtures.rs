@@ -126,6 +126,7 @@ jobs:
       - run: cargo llvm-cov --workspace --fail-under-lines 85
       - run: cargo audit
       - run: slophammer-rs dry .
+      - run: slophammer-rs check .
       - run: cargo mutants --workspace
 "#;
 

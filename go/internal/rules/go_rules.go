@@ -435,7 +435,7 @@ func fileHasConfigBackedSlophammerGoMutationCommandInWorkflowWorkingDir(file rep
 		if !workflowBlockUsesWorkingDirectory(block, root) {
 			continue
 		}
-		runContent := workflowRunContent(block)
+		runContent := workflowBlockRunContent(block)
 		if contentHasConfigBackedSlophammerGoCommand(runContent, "mutate", ".") ||
 			contentHasConfigBackedSlophammerGoCheckExecuteCommand(runContent, ".") {
 			return true
@@ -472,7 +472,7 @@ func fileHasConfigBackedSlophammerGoCommandAtRoot(file repo.File, subcommand str
 			if workingDirectory, ok := workflowBlockWorkingDirectory(block); ok {
 				blockRootPath = configRootPathFromWorkflowWorkingDirectory(configRootPath, workingDirectory)
 			}
-			if contentHasConfigBackedSlophammerGoCommand(workflowRunContent(block), subcommand, blockRootPath) {
+			if contentHasConfigBackedSlophammerGoCommand(workflowBlockRunContent(block), subcommand, blockRootPath) {
 				return true
 			}
 		}
@@ -493,7 +493,7 @@ func fileHasConfigBackedSlophammerGoCheckExecuteCommandAtRoot(file repo.File, co
 			if workingDirectory, ok := workflowBlockWorkingDirectory(block); ok {
 				blockRootPath = configRootPathFromWorkflowWorkingDirectory(configRootPath, workingDirectory)
 			}
-			if contentHasConfigBackedSlophammerGoCheckExecuteCommand(workflowRunContent(block), blockRootPath) {
+			if contentHasConfigBackedSlophammerGoCheckExecuteCommand(workflowBlockRunContent(block), blockRootPath) {
 				return true
 			}
 		}

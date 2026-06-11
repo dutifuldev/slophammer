@@ -20,7 +20,7 @@ func bindingWorkflowCommandText(content string) string {
 	if !bindingWorkflowTriggers(document.On) {
 		return ""
 	}
-	return strings.Join(document.bindingRunScripts(), "\n")
+	return strings.Join(document.bindingStepBlocks(), workflowStepBoundary)
 }
 
 // unparsedWorkflowCommandText keeps both the extracted run lines (for command
@@ -35,29 +35,43 @@ func unparsedWorkflowCommandText(content string) string {
 }
 
 type workflowDocument struct {
-	On   yaml.Node              `yaml:"on"`
-	Jobs map[string]workflowJob `yaml:"jobs"`
+	On       yaml.Node              `yaml:"on"`
+	Defaults workflowDefaults       `yaml:"defaults"`
+	Jobs     map[string]workflowJob `yaml:"jobs"`
+}
+
+type workflowDefaults struct {
+	Run workflowRunDefaults `yaml:"run"`
+}
+
+type workflowRunDefaults struct {
+	WorkingDirectory string `yaml:"working-directory"`
 }
 
 type workflowJob struct {
-	If              string        `yaml:"if"`
-	ContinueOnError yaml.Node     `yaml:"continue-on-error"`
-	Steps           []workflowStep `yaml:"steps"`
+	If              string           `yaml:"if"`
+	ContinueOnError yaml.Node        `yaml:"continue-on-error"`
+	Defaults        workflowDefaults `yaml:"defaults"`
+	Steps           []workflowStep   `yaml:"steps"`
 }
 
 type workflowStep struct {
-	If              string    `yaml:"if"`
-	ContinueOnError yaml.Node `yaml:"continue-on-error"`
-	Run             string    `yaml:"run"`
-	Uses            string    `yaml:"uses"`
+	If               string    `yaml:"if"`
+	ContinueOnError  yaml.Node `yaml:"continue-on-error"`
+	Run              string    `yaml:"run"`
+	Uses             string    `yaml:"uses"`
+	WorkingDirectory string    `yaml:"working-directory"`
 }
 
-func (d workflowDocument) bindingRunScripts() []string {
-	scripts := make([]string, 0)
+// bindingStepBlocks renders each surviving step as a boundary-separated
+// block of bare command text plus its effective working-directory context,
+// so the block-level matchers keep their working-directory awareness.
+func (d workflowDocument) bindingStepBlocks() []string {
+	blocks := make([]string, 0)
 	for _, name := range sortedJobNames(d.Jobs) {
-		scripts = append(scripts, d.Jobs[name].bindingRunScripts()...)
+		blocks = append(blocks, d.Jobs[name].bindingStepBlocks(d.Defaults.Run.WorkingDirectory)...)
 	}
-	return scripts
+	return blocks
 }
 
 func sortedJobNames(jobs map[string]workflowJob) []string {
@@ -69,31 +83,47 @@ func sortedJobNames(jobs map[string]workflowJob) []string {
 	return names
 }
 
-func (j workflowJob) bindingRunScripts() []string {
+func (j workflowJob) bindingStepBlocks(workflowDirectory string) []string {
 	if j.neutralized() {
 		return nil
 	}
-	scripts := make([]string, 0, len(j.Steps))
+	defaultDirectory := j.Defaults.Run.WorkingDirectory
+	if defaultDirectory == "" {
+		defaultDirectory = workflowDirectory
+	}
+	blocks := make([]string, 0, len(j.Steps))
 	for _, step := range j.Steps {
 		if step.neutralized() {
 			continue
 		}
-		scripts = append(scripts, step.evidence()...)
+		if block := step.evidenceBlock(defaultDirectory); block != "" {
+			blocks = append(blocks, block)
+		}
 	}
-	return scripts
+	return blocks
 }
 
-// evidence returns a step's command evidence: its run script and its action
-// reference, so action-backed declarations stay detectable.
-func (s workflowStep) evidence() []string {
-	evidence := make([]string, 0, 2)
+// evidenceBlock returns a step's command evidence: its run script and action
+// reference, with the effective working-directory as a context line.
+func (s workflowStep) evidenceBlock(defaultDirectory string) string {
+	lines := make([]string, 0, 3)
 	if strings.TrimSpace(s.Run) != "" {
-		evidence = append(evidence, s.Run)
+		lines = append(lines, s.Run)
 	}
 	if strings.TrimSpace(s.Uses) != "" {
-		evidence = append(evidence, "uses: "+s.Uses)
+		lines = append(lines, "uses: "+s.Uses)
 	}
-	return evidence
+	if len(lines) == 0 {
+		return ""
+	}
+	directory := s.WorkingDirectory
+	if directory == "" {
+		directory = defaultDirectory
+	}
+	if directory != "" {
+		lines = append(lines, "working-directory: "+directory)
+	}
+	return strings.Join(lines, "\n")
 }
 
 func (j workflowJob) neutralized() bool {

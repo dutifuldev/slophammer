@@ -165,6 +165,26 @@ func commandSections(file repo.File) []string {
 	return []string{file.Content}
 }
 
+// workflowBlockRunContent extracts a workflow block's run scripts. Blocks
+// from parsed workflows are already bare run text with no run: markers and
+// pass through with their context lines stripped; scoped step fragments
+// still need extraction.
+func workflowBlockRunContent(block string) string {
+	if strings.Contains(block, "run:") {
+		return workflowRunContent(block)
+	}
+	lines := strings.Split(block, "\n")
+	kept := make([]string, 0, len(lines))
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "working-directory:") || strings.HasPrefix(trimmed, "uses: ") {
+			continue
+		}
+		kept = append(kept, line)
+	}
+	return strings.Join(kept, "\n")
+}
+
 func workflowCommandSections(content string) []string {
 	blocks := workflowCommandBlocks(content)
 	sections := make([]string, 0, len(blocks))

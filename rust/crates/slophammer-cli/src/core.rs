@@ -27,6 +27,8 @@ pub struct Finding {
     pub severity: Severity,
     pub path: String,
     pub message: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub baselined: Option<bool>,
 }
 
 impl Finding {
@@ -36,6 +38,7 @@ impl Finding {
             severity: definition.severity,
             path: definition.path.to_owned(),
             message: definition.message.to_owned(),
+            baselined: None,
         }
     }
 
@@ -63,6 +66,16 @@ impl Finding {
 pub struct Report {
     pub ok: bool,
     pub findings: Vec<Finding>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scope: Option<ScopeCoverage>,
+}
+
+/// Coverage of configured scope over the ecosystem's production files,
+/// reported so a narrowed scope is visible instead of silent.
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct ScopeCoverage {
+    pub scanned: usize,
+    pub production_files: usize,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]

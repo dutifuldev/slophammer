@@ -141,12 +141,14 @@ fn run_check(
             severity: Severity::Error,
             path: prefixed_path(workspace_root, check.path),
             message: format!("{}: {}", check.message, compact_output(&output)),
+            baselined: None,
         }),
         Err(error) => Some(Finding {
             rule_id: check.rule_id.to_owned(),
             severity: Severity::Error,
             path: prefixed_path(workspace_root, check.path),
             message: format!("{}: {error}", check.message),
+            baselined: None,
         }),
     }
 }

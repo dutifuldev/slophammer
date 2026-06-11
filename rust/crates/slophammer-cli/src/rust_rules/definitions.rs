@@ -4,6 +4,7 @@ pub mod rule_ids {
     pub const README_REQUIRED: &str = "repo.readme-required";
     pub const AGENTS_REQUIRED: &str = "repo.agents-required";
     pub const CI_REQUIRED: &str = "repo.ci-required";
+    pub const SLOPHAMMER_CI_REQUIRED: &str = "repo.slophammer-ci-required";
     pub const RUST_MANIFEST_REQUIRED: &str = "rust.manifest-required";
     pub const RUST_MSRV_REQUIRED: &str = "rust.msrv-required";
     pub const RUST_CHECK_REQUIRED: &str = "rust.check-required";
@@ -17,6 +18,8 @@ pub mod rule_ids {
     pub const RUST_UNSAFE_POLICY_REQUIRED: &str = "rust.unsafe-policy-required";
     pub const RUST_DEPENDENCY_AUDIT_REQUIRED: &str = "rust.dependency-audit-required";
     pub const RUST_DEPENDENCY_BOUNDARIES_REQUIRED: &str = "rust.dependency-boundaries-required";
+    pub const RUST_SCOPE_INCOMPLETE: &str = "rust.scope-incomplete";
+    pub const RUST_SUPPRESSIONS_JUSTIFIED: &str = "rust.suppressions-justified";
 }
 
 pub fn default_definitions() -> Vec<RuleDefinition> {
@@ -51,6 +54,17 @@ pub fn default_definitions() -> Vec<RuleDefinition> {
             path: ".github/workflows",
             message: ".github/workflows must contain at least one .yml or .yaml workflow",
             description: "The target repo should have a CI workflow under .github/workflows.",
+            tool: None,
+            status: "implemented",
+        },
+        RuleDefinition {
+            id: rule_ids::SLOPHAMMER_CI_REQUIRED,
+            title: "Slophammer enforcement required",
+            category: "repo",
+            severity: Severity::Error,
+            path: ".github/workflows",
+            message: "CI must run a Slophammer checker when slophammer.yml is present",
+            description: "A repository that carries slophammer.yml must execute a Slophammer checker from binding CI evidence; config without enforcement is decoration.",
             tool: None,
             status: "implemented",
         },
@@ -158,6 +172,22 @@ pub fn default_definitions() -> Vec<RuleDefinition> {
             "Rust projects should declare dependency boundaries in slophammer.yml and keep local dependencies inside them.",
             None,
         ),
+        rust_definition(
+            rule_ids::RUST_SCOPE_INCOMPLETE,
+            "Rust scope completeness",
+            "slophammer.yml",
+            "Configured Rust scope must cover all production files or exclude them with reasons",
+            "Every production Rust file must be in configured scope or covered by a conventional or reasoned exclude, so findings cannot be hidden by narrowing scope.",
+            None,
+        ),
+        rust_definition(
+            rule_ids::RUST_SUPPRESSIONS_JUSTIFIED,
+            "Rust suppressions justified",
+            ".",
+            "allow attributes in production Rust code must carry a reason",
+            "An #[allow(...)] attribute in production scope must carry an adjacent // reason comment or use #[expect(..., reason = \"...\")]; bare suppressions accumulate silently.",
+            None,
+        ),
     ]
 }
 
@@ -179,6 +209,9 @@ pub fn definition(rule_id: &str) -> &'static RuleDefinition {
         rule_ids::RUST_UNSAFE_POLICY_REQUIRED => &RUST_UNSAFE_POLICY_REQUIRED,
         rule_ids::RUST_DEPENDENCY_AUDIT_REQUIRED => &RUST_DEPENDENCY_AUDIT_REQUIRED,
         rule_ids::RUST_DEPENDENCY_BOUNDARIES_REQUIRED => &RUST_DEPENDENCY_BOUNDARIES_REQUIRED,
+        rule_ids::SLOPHAMMER_CI_REQUIRED => &SLOPHAMMER_CI_REQUIRED,
+        rule_ids::RUST_SCOPE_INCOMPLETE => &RUST_SCOPE_INCOMPLETE,
+        rule_ids::RUST_SUPPRESSIONS_JUSTIFIED => &RUST_SUPPRESSIONS_JUSTIFIED,
         _ => &README_REQUIRED,
     }
 }
@@ -377,6 +410,39 @@ static RUST_DEPENDENCY_BOUNDARIES_REQUIRED: RuleDefinition = RuleDefinition {
     path: "slophammer.yml",
     message: "Rust projects must respect configured dependency boundaries",
     description: "Rust projects should declare dependency boundaries in slophammer.yml and keep local dependencies inside them.",
+    tool: None,
+    status: "implemented",
+};
+static SLOPHAMMER_CI_REQUIRED: RuleDefinition = RuleDefinition {
+    id: rule_ids::SLOPHAMMER_CI_REQUIRED,
+    title: "Slophammer enforcement required",
+    category: "repo",
+    severity: Severity::Error,
+    path: ".github/workflows",
+    message: "CI must run a Slophammer checker when slophammer.yml is present",
+    description: "A repository that carries slophammer.yml must execute a Slophammer checker from binding CI evidence; config without enforcement is decoration.",
+    tool: None,
+    status: "implemented",
+};
+static RUST_SCOPE_INCOMPLETE: RuleDefinition = RuleDefinition {
+    id: rule_ids::RUST_SCOPE_INCOMPLETE,
+    title: "Rust scope completeness",
+    category: "rust",
+    severity: Severity::Error,
+    path: "slophammer.yml",
+    message: "Configured Rust scope must cover all production files or exclude them with reasons",
+    description: "Every production Rust file must be in configured scope or covered by a conventional or reasoned exclude, so findings cannot be hidden by narrowing scope.",
+    tool: None,
+    status: "implemented",
+};
+static RUST_SUPPRESSIONS_JUSTIFIED: RuleDefinition = RuleDefinition {
+    id: rule_ids::RUST_SUPPRESSIONS_JUSTIFIED,
+    title: "Rust suppressions justified",
+    category: "rust",
+    severity: Severity::Error,
+    path: ".",
+    message: "allow attributes in production Rust code must carry a reason",
+    description: "An #[allow(...)] attribute in production scope must carry an adjacent // reason comment or use #[expect(..., reason = \"...\")]; bare suppressions accumulate silently.",
     tool: None,
     status: "implemented",
 };

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { emptyConfig } from "../src/config/config.js";
 import { newSnapshot } from "../src/repo/repo.js";
 import { runRules } from "../src/rules/rules.js";
+import { bindingScriptWorkflow } from "./helpers.js";
 
 describe("TypeScript ESLint parsing", () => {
   it("accepts legacy JavaScript ESLint configs", () => {
@@ -164,7 +165,7 @@ describe("TypeScript ESLint warning policy", () => {
         {
           path: ".github/workflows/ci.yml",
           content:
-            "name: ci\njobs:\n  lint:\n    steps:\n      - run: npm run lint -- --max-warnings=0\n"
+            "name: ci\non: [push]\njobs:\n  lint:\n    steps:\n      - run: npm run lint -- --max-warnings=0\n"
         },
         {
           path: "eslint.config.mjs",
@@ -289,7 +290,7 @@ function baseTypeScriptFiles(): readonly { readonly path: string; readonly conte
   return [
     { path: "README.md", content: "# Repo\n" },
     { path: "AGENTS.md", content: "# Agents\n" },
-    { path: ".github/workflows/ci.yml", content: "name: ci\n" },
+    { path: ".github/workflows/ci.yml", content: bindingScriptWorkflow() },
     {
       path: "tsconfig.json",
       content:

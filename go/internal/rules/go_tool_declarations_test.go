@@ -24,6 +24,7 @@ func TestGoCRAPRuleRequiresMetricThreshold(t *testing.T) {
 		{
 			name: "threshold in different workflow step",
 			workflow: `name: CI
+on: [push]
 defaults:
   run:
     working-directory: go
@@ -34,6 +35,9 @@ jobs:
       - run: go vet ./...
       - run: go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.0 run
       - run: ./scripts/check-go-coverage.sh
+      - run: ./scripts/check-dry.sh
+      - run: ./scripts/check-crap.sh
+      - run: ./scripts/check-mutation.sh
       - run: crap4go .
       - run: echo "minimum coverage >= 80"
 `,
@@ -82,6 +86,7 @@ func TestGoToolRulesAcceptSlophammerGoCommands(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 defaults:
   run:
     working-directory: go
@@ -92,6 +97,9 @@ jobs:
       - run: go vet ./...
       - run: golangci-lint run
       - run: ./scripts/check-go-coverage.sh
+      - run: ./scripts/check-dry.sh
+      - run: ./scripts/check-crap.sh
+      - run: ./scripts/check-mutation.sh
       - run: go run ./cmd/slophammer go dry ..
       - run: go run ./cmd/slophammer go crap ..
       - run: go run ./cmd/slophammer go mutate .. --scan
@@ -122,6 +130,7 @@ func TestGoToolRulesAcceptReleasedSlophammerGoCommands(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 defaults:
   run:
     working-directory: go
@@ -132,6 +141,9 @@ jobs:
       - run: go vet ./...
       - run: golangci-lint run
       - run: ./scripts/check-go-coverage.sh
+      - run: ./scripts/check-dry.sh
+      - run: ./scripts/check-crap.sh
+      - run: ./scripts/check-mutation.sh
       - run: go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.1 dry .. --max-candidates 0
       - run: go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.1 crap ..
       - run: go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.1 mutate .. --scan
@@ -162,6 +174,7 @@ func TestGoToolRulesAcceptConfigBackedSlophammerGoCheckExecute(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 defaults:
   run:
     working-directory: go
@@ -172,6 +185,14 @@ jobs:
       - run: go vet ./...
       - run: golangci-lint run
       - run: go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.5 check .. --execute
+      - run: ./scripts/check-go-coverage.sh
+        working-directory: go
+      - run: ./scripts/check-dry.sh
+        working-directory: go
+      - run: ./scripts/check-crap.sh
+        working-directory: go
+      - run: ./scripts/check-mutation.sh
+        working-directory: go
 `,
 		},
 		"go/scripts/check-dry.sh":      {Path: "go/scripts/check-dry.sh"},
@@ -220,6 +241,7 @@ func TestGoMutationRuleRequiresTargetForSlophammerCommand(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 defaults:
   run:
     working-directory: go
@@ -227,6 +249,14 @@ jobs:
   test:
     steps:
       - run: go run ./cmd/slophammer go mutate . --scan
+      - run: ./scripts/check-go-coverage.sh
+        working-directory: go
+      - run: ./scripts/check-dry.sh
+        working-directory: go
+      - run: ./scripts/check-crap.sh
+        working-directory: go
+      - run: ./scripts/check-mutation.sh
+        working-directory: go
 `,
 		},
 	})
@@ -250,6 +280,7 @@ func TestGoMutationRuleRejectsRepoRootConfigPathFromNestedWorkingDirectory(t *te
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 defaults:
   run:
     working-directory: go
@@ -257,6 +288,14 @@ jobs:
   test:
     steps:
       - run: slophammer-go mutate . --scan
+      - run: ./scripts/check-go-coverage.sh
+        working-directory: go
+      - run: ./scripts/check-dry.sh
+        working-directory: go
+      - run: ./scripts/check-crap.sh
+        working-directory: go
+      - run: ./scripts/check-mutation.sh
+        working-directory: go
 `,
 		},
 	})
@@ -278,17 +317,23 @@ func TestGoToolRulesAcceptConfigBackedSlophammerCommands(t *testing.T) {
     - .
 `,
 		},
+		"scripts/check-crap.sh": {
+			Path:    "scripts/check-crap.sh",
+			Content: "cd go && go run ./cmd/slophammer go crap ..\n",
+		},
+		"scripts/check-mutation.sh": {
+			Path:    "scripts/check-mutation.sh",
+			Content: "cd go && go run ./cmd/slophammer go mutate .. --scan\n",
+		},
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
-defaults:
-  run:
-    working-directory: go
+on: [push]
 jobs:
   test:
     steps:
-      - run: go run ./cmd/slophammer go crap ..
-      - run: go run ./cmd/slophammer go mutate .. --scan
+      - run: ./scripts/check-crap.sh
+      - run: ./scripts/check-mutation.sh
 `,
 		},
 	})
@@ -313,6 +358,7 @@ func TestGoMutationRuleResolvesRepoRootTargetsForNestedModule(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 defaults:
   run:
     working-directory: go
@@ -323,6 +369,9 @@ jobs:
       - run: go vet ./...
       - run: golangci-lint run
       - run: ./scripts/check-go-coverage.sh
+      - run: ./scripts/check-dry.sh
+      - run: ./scripts/check-crap.sh
+      - run: ./scripts/check-mutation.sh
       - run: ./scripts/check-dry.sh
       - run: ./scripts/check-crap.sh
       - run: go run ./cmd/slophammer go mutate .. --scan
@@ -350,13 +399,18 @@ func TestGoMutationRuleAcceptsRootConfigCommandForMultipleModules(t *testing.T) 
     - .
 `,
 		},
+		"scripts/check-mutation.sh": {
+			Path:    "scripts/check-mutation.sh",
+			Content: "slophammer-go mutate . --scan\n",
+		},
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 jobs:
   test:
     steps:
-      - run: slophammer-go mutate . --scan
+      - run: ./scripts/check-mutation.sh
 `,
 		},
 	})
@@ -383,13 +437,18 @@ func TestGoMutationRuleSkipsModulesOutsideConfiguredTargets(t *testing.T) {
     - a
 `,
 		},
+		"scripts/check-mutation.sh": {
+			Path:    "scripts/check-mutation.sh",
+			Content: "slophammer-go mutate . --scan\n",
+		},
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 jobs:
   test:
     steps:
-      - run: slophammer-go mutate . --scan
+      - run: ./scripts/check-mutation.sh
 `,
 		},
 	})
@@ -453,6 +512,16 @@ func TestGoMutationRuleDoesNotAcceptUnrelatedModuleLocalConfig(t *testing.T) {
 			Path:    "scripts/check-mutation.sh",
 			Content: "cd a && slophammer-go mutate --scan\n",
 		},
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+on: [push]
+jobs:
+  test:
+    steps:
+      - run: ./scripts/check-mutation.sh
+`,
+		},
 	})
 	roots := goProjectRoots(snapshot)
 
@@ -489,6 +558,7 @@ func TestGoMutationRuleDoesNotUseRootScopeToBypassLocalConfig(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 jobs:
   test:
     steps:
@@ -518,6 +588,7 @@ func TestGoMutationRuleRejectsRepoRootCommandForLocalConfigWithoutModuleRoot(t *
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 jobs:
   test:
     steps:
@@ -544,13 +615,18 @@ func TestGoMutationRuleUsesSingleModuleFallbackForRootConfig(t *testing.T) {
     - internal
 `,
 		},
+		"scripts/check-mutation.sh": {
+			Path:    "scripts/check-mutation.sh",
+			Content: "slophammer-go mutate . --scan\n",
+		},
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 jobs:
   test:
     steps:
-      - run: slophammer-go mutate . --scan
+      - run: ./scripts/check-mutation.sh
 `,
 		},
 	})
@@ -580,13 +656,18 @@ func TestGoMutationRuleAllowsRootCoverageWithUnrelatedLocalConfig(t *testing.T) 
     - .
 `,
 		},
+		"scripts/check-mutation.sh": {
+			Path:    "scripts/check-mutation.sh",
+			Content: "slophammer-go mutate . --scan\n",
+		},
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 jobs:
   test:
     steps:
-      - run: slophammer-go mutate . --scan
+      - run: ./scripts/check-mutation.sh
 `,
 		},
 	})
@@ -616,16 +697,18 @@ func TestGoMutationRuleResolvesModuleLocalConfigTargets(t *testing.T) {
     - internal
 `,
 		},
+		"scripts/check-mutation.sh": {
+			Path:    "scripts/check-mutation.sh",
+			Content: "cd go && slophammer-go mutate --scan\n",
+		},
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
-defaults:
-  run:
-    working-directory: go
+on: [push]
 jobs:
   test:
     steps:
-      - run: slophammer-go mutate --scan
+      - run: ./scripts/check-mutation.sh
 `,
 		},
 	})
@@ -648,13 +731,18 @@ func TestGoMutationRuleAcceptsRepoRootCommandForModuleLocalConfig(t *testing.T) 
     - .
 `,
 		},
+		"scripts/check-mutation.sh": {
+			Path:    "scripts/check-mutation.sh",
+			Content: "slophammer-go mutate go --scan\n",
+		},
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 jobs:
   test:
     steps:
-      - run: slophammer-go mutate go --scan
+      - run: ./scripts/check-mutation.sh
 `,
 		},
 	})
@@ -680,6 +768,7 @@ func TestGoMutationRuleRejectsWorkflowWorkingDirDoubleModulePath(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 defaults:
   run:
     working-directory: go
@@ -687,6 +776,14 @@ jobs:
   test:
     steps:
       - run: slophammer-go mutate go --scan
+      - run: ./scripts/check-go-coverage.sh
+        working-directory: go
+      - run: ./scripts/check-dry.sh
+        working-directory: go
+      - run: ./scripts/check-crap.sh
+        working-directory: go
+      - run: ./scripts/check-mutation.sh
+        working-directory: go
 `,
 		},
 	})
@@ -713,6 +810,16 @@ func TestGoMutationRuleAcceptsCdCommandForModuleLocalConfig(t *testing.T) {
 			Path:    "scripts/check-mutation.sh",
 			Content: "cd go && slophammer-go mutate --scan\n",
 		},
+		".github/workflows/ci.yml": {
+			Path: ".github/workflows/ci.yml",
+			Content: `name: CI
+on: [push]
+jobs:
+  test:
+    steps:
+      - run: ./scripts/check-mutation.sh
+`,
+		},
 	})
 	roots := goProjectRoots(snapshot)
 	scoped := goProjectSnapshot(snapshot, "go", roots)
@@ -737,6 +844,7 @@ func TestGoToolRulesRejectConfigBackedNonRootParentPath(t *testing.T) {
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 defaults:
   run:
     working-directory: go
@@ -745,6 +853,14 @@ jobs:
     steps:
       - run: go run ./cmd/slophammer go crap ../tmp
       - run: go run ./cmd/slophammer go mutate ../tmp --scan
+      - run: ./scripts/check-go-coverage.sh
+        working-directory: go
+      - run: ./scripts/check-dry.sh
+        working-directory: go
+      - run: ./scripts/check-crap.sh
+        working-directory: go
+      - run: ./scripts/check-mutation.sh
+        working-directory: go
 `,
 		},
 	})
@@ -783,17 +899,19 @@ func TestGoToolRulesRequireConfigRootForDeepWorkingDirectory(t *testing.T) {
 			for path, file := range files {
 				snapshotFiles[path] = file
 			}
+			snapshotFiles["scripts/check-tools.sh"] = repo.File{
+				Path: "scripts/check-tools.sh",
+				Content: "cd services/api && go run ./cmd/slophammer go crap " + tt.path + "\n" +
+					"cd services/api && go run ./cmd/slophammer go mutate " + tt.path + " --scan\n",
+			}
 			snapshotFiles[".github/workflows/ci.yml"] = repo.File{
 				Path: ".github/workflows/ci.yml",
 				Content: `name: CI
-defaults:
-  run:
-    working-directory: services/api
+on: [push]
 jobs:
   test:
     steps:
-      - run: go run ./cmd/slophammer go crap ` + tt.path + `
-      - run: go run ./cmd/slophammer go mutate ` + tt.path + ` --scan
+      - run: ./scripts/check-tools.sh
 `,
 			}
 			snapshot := repo.NewSnapshot("/repo", snapshotFiles)
@@ -822,17 +940,15 @@ func TestConfigBackedMutationCommandWorkflowWorkingDir(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Scoped step fragments, as produced by per-module workflow
+			// scoping, keep their raw step text including the
+			// working-directory context lines.
 			snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
 				".github/workflows/ci.yml": {
 					Path: ".github/workflows/ci.yml",
-					Content: `name: CI
-defaults:
-  run:
-    working-directory: go
-jobs:
-  test:
-    steps:
-      - run: ` + tt.run + `
+					Content: `      - run: ` + tt.run + `
+        working-directory: go` + workflowStepBoundary + `      - run: go test ./...
+        working-directory: go
 `,
 				},
 			})
@@ -925,14 +1041,23 @@ func TestGoToolRulesAcceptConfigBackedRootSlophammerCommands(t *testing.T) {
     - .
 `,
 		},
+		"scripts/check-crap.sh": {
+			Path:    "scripts/check-crap.sh",
+			Content: "go run ./cmd/slophammer go crap .\n",
+		},
+		"scripts/check-mutation.sh": {
+			Path:    "scripts/check-mutation.sh",
+			Content: "go run ./cmd/slophammer go mutate . --scan\n",
+		},
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 jobs:
   test:
     steps:
-      - run: go run ./cmd/slophammer go crap .
-      - run: go run ./cmd/slophammer go mutate . --scan
+      - run: ./scripts/check-crap.sh
+      - run: ./scripts/check-mutation.sh
 `,
 		},
 	})
@@ -957,14 +1082,23 @@ func TestGoToolRulesAcceptConfigBackedRootSlophammerCommandsWithDefaultPath(t *t
     - .
 `,
 		},
+		"scripts/check-crap.sh": {
+			Path:    "scripts/check-crap.sh",
+			Content: "go run ./cmd/slophammer go crap\n",
+		},
+		"scripts/check-mutation.sh": {
+			Path:    "scripts/check-mutation.sh",
+			Content: "go run ./cmd/slophammer go mutate --scan\n",
+		},
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
 			Content: `name: CI
+on: [push]
 jobs:
   test:
     steps:
-      - run: go run ./cmd/slophammer go crap
-      - run: go run ./cmd/slophammer go mutate --scan
+      - run: ./scripts/check-crap.sh
+      - run: ./scripts/check-mutation.sh
 `,
 		},
 	})

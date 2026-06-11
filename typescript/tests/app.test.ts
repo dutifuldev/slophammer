@@ -138,10 +138,15 @@ describe("explain", () => {
 async function nestedTypeScriptRepo(): Promise<string> {
   const root = await mkdtemp(path.join(tmpdir(), "slophammer-nested-ts-"));
   await mkdir(path.join(root, ".github", "workflows"), { recursive: true });
+  await mkdir(path.join(root, "pkg", ".github", "workflows"), { recursive: true });
   await mkdir(path.join(root, "pkg", "src"), { recursive: true });
   await writeFile(path.join(root, "README.md"), "# Repo\n");
   await writeFile(path.join(root, "AGENTS.md"), "# Agents\n");
   await writeFile(path.join(root, ".github", "workflows", "ci.yml"), "name: CI\n");
+  await writeFile(
+    path.join(root, "pkg", ".github", "workflows", "ci.yml"),
+    nestedPackageWorkflow()
+  );
   await writeFile(path.join(root, "slophammer.yml"), nestedConfig());
   await writeFile(
     path.join(root, "pkg", "package.json"),
@@ -192,6 +197,24 @@ async function nestedTypeScriptRepoWithJavaScriptRoot(): Promise<string> {
     JSON.stringify({ scripts: { test: "node --test" } })
   );
   return root;
+}
+
+function nestedPackageWorkflow(): string {
+  return [
+    "name: package ci",
+    "on: [push]",
+    "jobs:",
+    "  check:",
+    "    steps:",
+    "      - run: npm run format",
+    "      - run: npm run lint",
+    "      - run: npm run typecheck",
+    "      - run: npm test",
+    "      - run: npm run coverage",
+    "      - run: npm run dry",
+    "      - run: npm run mutate",
+    ""
+  ].join("\n");
 }
 
 function nestedConfig(): string {

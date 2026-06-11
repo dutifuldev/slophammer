@@ -91,7 +91,10 @@ async function tsgoOnlyTypeScriptRepo(): Promise<string> {
   await mkdir(path.join(root, ".github", "workflows"), { recursive: true });
   await writeFile(path.join(root, "README.md"), "# Repo\n");
   await writeFile(path.join(root, "AGENTS.md"), "# Agents\n");
-  await writeFile(path.join(root, ".github", "workflows", "ci.yml"), "name: CI\n");
+  await writeFile(
+    path.join(root, ".github", "workflows", "ci.yml"),
+    "name: CI\non: [push]\njobs:\n  check:\n    steps:\n      - run: npm run typecheck\n"
+  );
   await writeFile(
     path.join(root, "package.json"),
     JSON.stringify({

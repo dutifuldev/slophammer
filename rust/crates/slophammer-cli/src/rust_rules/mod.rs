@@ -3,6 +3,7 @@ mod definitions;
 mod dry;
 mod evidence;
 mod scope;
+mod suppressions;
 mod unsafe_policy;
 mod workflow_binding;
 
@@ -47,6 +48,7 @@ fn run_rule(rule_id: &str, snapshot: &Snapshot, config: &Config) -> Vec<Finding>
         rule_ids::README_REQUIRED => repo_readme(snapshot),
         rule_ids::AGENTS_REQUIRED => repo_agents(snapshot),
         rule_ids::CI_REQUIRED => repo_ci(snapshot),
+        rule_ids::SLOPHAMMER_CI_REQUIRED => repo_slophammer_ci(snapshot),
         rule_ids::RUST_MANIFEST_REQUIRED => rust_manifest(snapshot),
         rule_ids::RUST_MSRV_REQUIRED => rust_msrv(snapshot),
         rule_ids::RUST_CHECK_REQUIRED => cargo_command(snapshot, rule_id, "cargo check"),
@@ -62,6 +64,8 @@ fn run_rule(rule_id: &str, snapshot: &Snapshot, config: &Config) -> Vec<Finding>
         rule_ids::RUST_DEPENDENCY_BOUNDARIES_REQUIRED => {
             boundaries::boundary_findings(snapshot, config)
         }
+        rule_ids::RUST_SUPPRESSIONS_JUSTIFIED => rust_suppressions(snapshot),
+        rule_ids::RUST_SCOPE_INCOMPLETE => scope::scope_findings(snapshot, config),
         _ => Vec::new(),
     }
 }
@@ -82,6 +86,45 @@ fn repo_agents(snapshot: &Snapshot) -> Vec<Finding> {
 
 fn repo_ci(snapshot: &Snapshot) -> Vec<Finding> {
     missing(!snapshot.has_workflow(), rule_ids::CI_REQUIRED)
+}
+
+/// Config without enforcement is decoration: when slophammer.yml is present,
+/// binding CI evidence must invoke a Slophammer checker.
+fn repo_slophammer_ci(snapshot: &Snapshot) -> Vec<Finding> {
+    let has_config =
+        snapshot.file("slophammer.yml").is_some() || snapshot.file("slophammer.yaml").is_some();
+    missing(
+        has_config && !slophammer_invocation(&evidence::command_text(snapshot)),
+        rule_ids::SLOPHAMMER_CI_REQUIRED,
+    )
+}
+
+fn slophammer_invocation(evidence: &str) -> bool {
+    if evidence.contains("uses: dutifuldev/slophammer@") {
+        return true;
+    }
+    [
+        "slophammer-go",
+        "slophammer-ts",
+        "slophammer-rs",
+        "slophammer-py",
+    ]
+    .iter()
+    .any(|binary| invocation_with_check(evidence, binary))
+}
+
+fn invocation_with_check(evidence: &str, binary: &str) -> bool {
+    evidence.match_indices(binary).any(|(index, _)| {
+        let window_end = (index + 160).min(evidence.len());
+        evidence[index..window_end].contains(" check")
+    })
+}
+
+fn rust_suppressions(snapshot: &Snapshot) -> Vec<Finding> {
+    if !is_rust_project(snapshot) {
+        return Vec::new();
+    }
+    suppressions::suppression_findings(snapshot)
 }
 
 fn rust_manifest(snapshot: &Snapshot) -> Vec<Finding> {

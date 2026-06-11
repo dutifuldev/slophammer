@@ -18,6 +18,7 @@ pub fn new_report(mut findings: Vec<Finding>) -> Report {
     Report {
         ok: findings.is_empty(),
         findings,
+        scope: None,
     }
 }
 
@@ -199,12 +200,14 @@ mod tests {
                 severity: Severity::Error,
                 path: "b".to_owned(),
                 message: "b".to_owned(),
+                baselined: None,
             },
             Finding {
                 rule_id: "repo.readme-required".to_owned(),
                 severity: Severity::Error,
                 path: "a".to_owned(),
                 message: "a".to_owned(),
+                baselined: None,
             },
         ]);
         assert_eq!(report.findings[0].rule_id, "repo.readme-required");
@@ -218,6 +221,7 @@ mod tests {
             severity: Severity::Error,
             path: ".github/workflows".to_owned(),
             message: "missing".to_owned(),
+            baselined: None,
         }]);
         let text = write_text(&report);
         assert!(text.contains("error rust.check-required .github/workflows: missing"));
@@ -231,6 +235,7 @@ mod tests {
             severity: Severity::Error,
             path: ".github/workflows".to_owned(),
             message: "missing".to_owned(),
+            baselined: None,
         }]);
         let json = write_json(&report).expect("json report");
         assert!(json.contains("\"ok\": false"));
@@ -245,12 +250,14 @@ mod tests {
                 severity: Severity::Error,
                 path: ".github/workflows".to_owned(),
                 message: "missing".to_owned(),
+                baselined: None,
             },
             Finding {
                 rule_id: "rust.warn-example".to_owned(),
                 severity: Severity::Warn,
                 path: String::new(),
                 message: "warning".to_owned(),
+                baselined: None,
             },
         ]);
         let sarif = write_sarif(&report).expect("sarif report");

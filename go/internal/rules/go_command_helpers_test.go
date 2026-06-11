@@ -120,6 +120,7 @@ func TestFileHasConfigBackedSlophammerGoCommand(t *testing.T) {
 			file: repo.File{
 				Path: ".github/workflows/ci.yml",
 				Content: `name: CI
+on: [push]
 jobs:
   test:
     steps:
@@ -136,6 +137,7 @@ jobs:
 			file: repo.File{
 				Path: ".github/workflows/ci.yml",
 				Content: `name: CI
+on: [push]
 jobs:
   test:
     steps:
@@ -205,6 +207,7 @@ func TestFileHasConfigBackedSlophammerGoCheckExecuteCommand(t *testing.T) {
 			file: repo.File{
 				Path: ".github/workflows/ci.yml",
 				Content: `name: CI
+on: [push]
 jobs:
   test:
     steps:
@@ -220,6 +223,7 @@ jobs:
 			file: repo.File{
 				Path: ".github/workflows/ci.yml",
 				Content: `name: CI
+on: [push]
 jobs:
   test:
     steps:

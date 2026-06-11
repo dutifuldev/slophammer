@@ -1,5 +1,8 @@
 name: CI
 
+on:
+  push:
+
 jobs:
   go:
     steps:
