@@ -354,19 +354,32 @@ checker and the multi-language dispatcher — comes later.
      The existing `templates/python` stays a template; the checker is new
      code held to Slophammer's own gates (coverage ≥ 85, complexity ≤ 8,
      DRY 0, mutation declared).
+   - The checker's own typechecker is `ty` (Astral). Its gradual-guarantee
+     defaults pass unannotated code, so the gate configures the rule
+     severities that make missing annotations errors; if ty cannot yet
+     express that or is not stable enough to pin in CI when implementation
+     starts, run ty alongside a strict fallback checker until it can,
+     rather than dropping the requirement.
    - Rule set `py.*` at TypeScript parity: `py.project-required`
-     (`pyproject.toml`), `py.typecheck-required` (mypy or pyright),
-     `py.types-strict-required` (e.g. `disallow_untyped_defs` or pyright
-     strict), `py.lint-required` and `py.format-required` (Ruff check and
+     (`pyproject.toml`), `py.typecheck-required` (ty, mypy, or pyright —
+     ty recognized from day one, including its `# ty: ignore[rule]`
+     suppression form), `py.types-strict-required` (the configuration that
+     makes annotations mandatory: ty rule severities, mypy
+     `disallow_untyped_defs`/`strict`, or pyright strict; strictness
+     carve-outs on production modules need reasons, mirroring scope
+     excludes; when pydantic is a dependency and mypy is the checker, the
+     pydantic mypy plugin is required so strict mode is not lying at the
+     boundary), `py.lint-required` and `py.format-required` (Ruff check and
      format, tool-agnostic where reasonable), `py.test-required` (pytest
      and friends), `py.coverage-required` (`fail_under` or
      `--cov-fail-under` ≥ 85), `py.complexity-required` (Ruff `C901` ≤ 8 or
      radon), `py.dry-required` plus a native copied-block port,
      `py.mutation-required` (mutmut or cosmic-ray declared),
-     `py.suppressions-justified` (`# noqa` and `# type: ignore` need
-     reasons), `py.dependency-audit-required` (pip-audit or uv audit), and
-     `py.dependency-boundaries-required` (import parsing against the shared
-     boundary config).
+     `py.suppressions-justified` (`# noqa`, `# type: ignore`, and
+     `# ty: ignore` need reasons; bare `# type: ignore` without an error
+     code is itself a finding), `py.dependency-audit-required` (pip-audit
+     or uv audit), and `py.dependency-boundaries-required` (import parsing
+     against the shared boundary config).
    - Config: a `python:` section in the shared nested shape; validators in
      the other three checkers learn its allowed keys, exactly as they
      cross-validate each other today.
