@@ -320,6 +320,37 @@ describe("TypeScript mutation threshold regressions", () => {
     expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.mutation-required");
   });
 
+  it("honors an explicit stryker config with a breaking threshold", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles().filter((file) => file.path !== "stryker.conf.json"),
+        {
+          path: "config/stryker.conf.json",
+          content: '{"thresholds":{"high":70,"low":50,"break":50}}'
+        },
+        packageWithScripts({ mutate: "stryker run config/stryker.conf.json" }),
+        enabledESLintConfig()
+      ]),
+      emptyConfig()
+    );
+
+    expect(report.findings.map((finding) => finding.rule_id)).not.toContain("ts.mutation-required");
+  });
+
+  it("does not accept an explicit stryker config without a breaking threshold", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles().filter((file) => file.path !== "stryker.conf.json"),
+        { path: "config/stryker.conf.json", content: '{"thresholds":{"high":70,"low":50}}' },
+        packageWithScripts({ mutate: "stryker run config/stryker.conf.json" }),
+        enabledESLintConfig()
+      ]),
+      emptyConfig()
+    );
+
+    expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.mutation-required");
+  });
+
   it("accepts an uncommented breaking threshold in a js config", () => {
     const report = runRules(
       newSnapshot("/repo", [

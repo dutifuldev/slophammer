@@ -7,24 +7,50 @@ import { ignoredProjectDataPath } from "./source-paths.js";
 // execute a mutant, and a dry run validates configuration without being
 // able to fail on a survivor. Stryker itself exits zero on surviving
 // mutants unless thresholds.break is configured, so the run only gates
-// beside a positive breaking threshold.
+// when the config it actually loads declares a positive breaking
+// threshold.
 export function hasTypeScriptMutationCommand(snapshot: Snapshot): boolean {
-  if (!hasStrykerBreakThreshold(snapshot)) {
-    return false;
-  }
   const scripts = packageScripts(snapshot);
   return commandFiles(snapshot).some((file) =>
     commandSegments(file.content)
       .flatMap((segment) => expandedPackageScriptSegments(segment, scripts))
       .map((segment) => normalizeCommandContent(segment))
-      .some((segment) => /\bstryker run\b/u.test(segment) && !/--dry-?run-?only\b/u.test(segment))
+      .some(
+        (segment) =>
+          /\bstryker run\b/u.test(segment) &&
+          !/--dry-?run-?only\b/u.test(segment) &&
+          runDeclaresBreakThreshold(snapshot, segment)
+      )
   );
 }
 
-// Stryker loads its config from the directory it runs in, so only a
-// config at the project root can gate the credited run; a copy under
-// docs/ or another subdirectory is never loaded.
-function hasStrykerBreakThreshold(snapshot: Snapshot): boolean {
+// A run with a positional config file loads that file; otherwise Stryker
+// loads its config from the directory it runs in, so only a project-root
+// config gates the run - a copy under docs/ is never loaded.
+function runDeclaresBreakThreshold(snapshot: Snapshot, segment: string): boolean {
+  const explicit = /\bstryker run\s+([^\s-]\S*)/u.exec(segment)?.[1];
+  if (explicit !== undefined) {
+    const file = configFileNamed(snapshot, explicit);
+    return file !== undefined && strykerConfigDeclaresBreak(file.content, file.path);
+  }
+  return hasRootStrykerBreakThreshold(snapshot);
+}
+
+// Segments are lowercased during normalization, so the lookup compares
+// lowercased paths.
+function configFileNamed(
+  snapshot: Snapshot,
+  configPath: string
+): { readonly path: string; readonly content: string } | undefined {
+  for (const file of snapshot.files.values()) {
+    if (file.path.toLowerCase() === configPath && !ignoredProjectDataPath(file.path)) {
+      return file;
+    }
+  }
+  return undefined;
+}
+
+function hasRootStrykerBreakThreshold(snapshot: Snapshot): boolean {
   for (const file of snapshot.files.values()) {
     if (file.path.includes("/") || ignoredProjectDataPath(file.path)) {
       continue;
