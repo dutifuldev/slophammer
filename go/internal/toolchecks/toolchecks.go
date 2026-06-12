@@ -669,79 +669,6 @@ func nonEmptyStrings(values []string) []string {
 	return kept
 }
 
-func CheckMutation(ctx context.Context, options MutationOptions, out io.Writer, errOut io.Writer, runner Runner) int {
-	root := defaultRoot(options.Root)
-	targets := mutationTargets(options)
-	if len(targets) == 0 {
-		_, _ = fmt.Fprintln(errOut, "--target is required")
-		return 2
-	}
-	totals := mutationTotals{}
-	for _, target := range targets {
-		args := gotools.Mutate4Go.GoRunArgs(gotools.Latest, target)
-		if options.Scan {
-			args = append(args, "--scan")
-		}
-
-		result, err := runner.Run(ctx, root, "go", args...)
-		writeBytes(out, result.Stdout)
-		writeBytes(errOut, result.Stderr)
-		if err != nil {
-			_, _ = fmt.Fprintf(errOut, "mutate4go failed for %s: %v\n", target, err)
-			return 2
-		}
-		totals.add(result.Stdout)
-	}
-	if options.Scan {
-		return 0
-	}
-	return totals.gate(errOut)
-}
-
-type mutationTotals struct {
-	survived         int
-	uncoveredChanged int
-}
-
-func (t *mutationTotals) add(output []byte) {
-	t.survived += reportedCount(output, "Survived: ")
-	changed := reportedCount(output, "Changed mutation sites: ")
-	selected := reportedCount(output, "Selected mutation sites: ")
-	if changed > selected {
-		t.uncoveredChanged += changed - selected
-	}
-}
-
-// Survivors are new untested behavior in changed functions; changed sites
-// without test coverage never get mutated at all, so they would pass
-// silently. Both fail the gate.
-func (t mutationTotals) gate(errOut io.Writer) int {
-	if t.survived > 0 {
-		_, _ = fmt.Fprintf(errOut, "%d mutant(s) survived; strengthen the tests or refresh the manifest deliberately\n", t.survived)
-		return 1
-	}
-	if t.uncoveredChanged > 0 {
-		_, _ = fmt.Fprintf(errOut, "%d changed mutation site(s) have no test coverage; cover them before relying on the gate\n", t.uncoveredChanged)
-		return 1
-	}
-	return 0
-}
-
-func reportedCount(output []byte, prefix string) int {
-	total := 0
-	for _, line := range strings.Split(string(output), "\n") {
-		value, found := strings.CutPrefix(strings.TrimSpace(line), prefix)
-		if !found {
-			continue
-		}
-		count, err := strconv.Atoi(strings.TrimSpace(value))
-		if err == nil {
-			total += count
-		}
-	}
-	return total
-}
-
 func CountDRYCandidates(report []byte) (int, error) {
 	var parsed map[string][]json.RawMessage
 	if err := json.Unmarshal(report, &parsed); err != nil {
@@ -801,19 +728,6 @@ func dryPaths(options DryOptions) []string {
 		return []string{"."}
 	}
 	return paths
-}
-
-func mutationTargets(options MutationOptions) []string {
-	if options.Target != "" {
-		return []string{options.Target}
-	}
-	targets := make([]string, 0, len(options.Targets))
-	for _, target := range options.Targets {
-		if target != "" {
-			targets = append(targets, target)
-		}
-	}
-	return targets
 }
 
 func writeBytes(out io.Writer, content []byte) {
