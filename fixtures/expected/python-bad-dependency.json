@@ -5,7 +5,7 @@
       "rule_id": "py.dependency-boundaries-required",
       "severity": "error",
       "path": "src/app/main.py",
-      "message": "Python imports must respect the configured dependency boundaries: imports src/helpers"
+      "message": "Python imports must respect the configured dependency boundaries: imports src/helpers/util"
     }
   ],
   "scope": {
