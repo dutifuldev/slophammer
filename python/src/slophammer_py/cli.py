@@ -38,6 +38,9 @@ def build_parser() -> argparse.ArgumentParser:
         action="append",
         help="Comma-separated rule ids to run; repeatable",
     )
+    check_parser.add_argument(
+        "--execute", action="store_true", help="Run the real gates and report failures"
+    )
     baseline = check_parser.add_mutually_exclusive_group()
     baseline.add_argument("--baseline", action="store_true", help="Apply the checked-in baseline")
     baseline.add_argument(
@@ -98,7 +101,11 @@ def run_check(arguments: argparse.Namespace) -> CommandResult:
         return CommandResult(code=2, stderr=error)
     baseline = "write" if arguments.baseline_write else "check" if arguments.baseline else "off"
     return check(
-        arguments.path, output_format=arguments.format, only_rule_ids=only, baseline=baseline
+        arguments.path,
+        output_format=arguments.format,
+        only_rule_ids=only,
+        baseline=baseline,
+        execute=arguments.execute,
     )
 
 

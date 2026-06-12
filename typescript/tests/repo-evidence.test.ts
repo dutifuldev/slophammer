@@ -72,6 +72,31 @@ describe("synthetic repo evidence", () => {
     expect(report.findings).toEqual([]);
   });
 
+  it("drops tag-only push workflows from binding evidence", () => {
+    const snapshot = newSnapshot("/repo", [
+      {
+        path: ".github/workflows/release.yml",
+        content: [
+          "name: Release",
+          "on:",
+          "  push:",
+          '    tags: ["v*"]',
+          "jobs:",
+          "  release:",
+          "    steps:",
+          "      - run: npm test",
+          ""
+        ].join("\n")
+      }
+    ]);
+
+    const evidence = commandFiles(snapshot)
+      .map((file) => file.content)
+      .join("\n");
+
+    expect(evidence).not.toContain("npm test");
+  });
+
   it("drops scoped evidence from non-binding root workflows", () => {
     const report = runRules(
       newSnapshot("/repo", nestedPackageRepo("on: workflow_dispatch")),

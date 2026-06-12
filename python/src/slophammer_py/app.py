@@ -7,11 +7,12 @@ from dataclasses import dataclass
 
 from .baseline import BaselineError, apply_baseline_check, debt_line, write_baseline
 from .config import ConfigError, load_config
-from .core import Report
+from .core import Report, new_report
 from .dry import dry_findings, max_findings
 from .report import write_json, write_sarif, write_text
 from .rules import run_rules
 from .scan import scan_repo
+from .toolchecks import Runner, execute_python_checks, subprocess_runner
 
 
 @dataclass(frozen=True)
@@ -26,11 +27,16 @@ def check(
     output_format: str = "text",
     only_rule_ids: list[str] | None = None,
     baseline: str = "off",
+    execute: bool = False,
+    runner: Runner = subprocess_runner,
 ) -> CommandResult:
     try:
         snapshot = scan_repo(root)
         config = load_config(snapshot)
         report = run_rules(snapshot, config, only_rule_ids)
+        if execute:
+            executed = execute_python_checks(snapshot, config, runner, only_rule_ids)
+            report = new_report([*report.findings, *executed], scope=report.scope)
         return finish_check(snapshot.root, report, output_format, baseline)
     except (ConfigError, BaselineError, OSError) as error:
         return CommandResult(code=2, stderr=f"check failed: {error}\n")

@@ -172,7 +172,9 @@ fn binding_trigger_entry(name: &str, value: &Value) -> bool {
 
 fn binding_push_filter(value: &Value) -> bool {
     let Some(branches) = value.get("branches") else {
-        return true;
+        // A tags-only push filter never fires for branch pushes, so it is a
+        // release trigger, not integration CI.
+        return value.get("tags").is_none();
     };
     match branches {
         Value::String(pattern) => integration_branch_pattern(pattern),
@@ -276,6 +278,20 @@ jobs:
         assert!(text.contains("cargo test --workspace"));
         assert!(text.contains("cargo audit"));
         assert!(!text.contains("matrix.command"));
+    }
+
+    #[test]
+    fn tag_only_push_triggers_do_not_bind() {
+        let workflow = r#"
+on:
+  push:
+    tags: ["v*"]
+jobs:
+  release:
+    steps:
+      - run: cargo test --workspace
+"#;
+        assert_eq!(binding_workflow_text(workflow), Some(String::new()));
     }
 
     #[test]

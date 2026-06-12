@@ -30,6 +30,10 @@ class TestBindingTriggers:
         assert not binding_workflow_triggers("workflow_dispatch")
         assert not binding_workflow_triggers(["workflow_dispatch"])
 
+    def test_tag_only_push_does_not_bind(self):
+        assert not binding_workflow_triggers({"push": {"tags": ["v*"]}})
+        assert binding_workflow_triggers({"push": {"tags": ["v*"], "branches": ["main"]}})
+
     def test_push_branch_filters(self):
         assert binding_workflow_triggers({"push": {"branches": ["main"]}})
         assert binding_workflow_triggers({"push": {"branches": ["release/*"]}})

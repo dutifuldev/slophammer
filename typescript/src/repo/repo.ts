@@ -315,9 +315,12 @@ function bindingTriggerEntry(name: string, value: unknown): boolean {
   if (name !== "push") {
     return false;
   }
-  const branches = asRecord(value)["branches"];
+  const record = asRecord(value);
+  const branches = record["branches"];
   if (branches === undefined) {
-    return true;
+    // A tags-only push filter never fires for branch pushes, so it is a
+    // release trigger, not integration CI.
+    return !("tags" in record);
   }
   const patterns = Array.isArray(branches) ? branches.map(stringValue) : [stringValue(branches)];
   return patterns.some(integrationBranchPattern);

@@ -323,11 +323,14 @@ def binding_trigger_name(name: str) -> bool:
 def binding_trigger_entry(name: str, value: object) -> bool:
     if name in {"pull_request", "pull_request_target", "merge_group", "schedule"}:
         return True
-    if name != "push" and name != "True":
+    if name != "push":
         return False
-    branches = as_record(value).get("branches")
+    record = as_record(value)
+    branches = record.get("branches")
     if branches is None:
-        return True
+        # A tags-only push filter never fires for branch pushes, so it is a
+        # release trigger, not integration CI.
+        return "tags" not in record
     patterns = (
         [string_value(branch) for branch in branches]
         if isinstance(branches, list)

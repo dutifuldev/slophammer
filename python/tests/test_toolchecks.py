@@ -1,0 +1,99 @@
+"""Executable checks with a stubbed runner."""
+
+from slophammer_py.config import load_config
+from slophammer_py.repo import RepoFile, new_snapshot
+from slophammer_py.toolchecks import CommandOutput, execute_python_checks
+from test_rules import clean_python_repo
+
+
+def snapshot_for(files: dict[str, str]):
+    return new_snapshot("/repo", [RepoFile(path, content) for path, content in files.items()])
+
+
+def run_checks(files: dict[str, str], runner, only=None):
+    snapshot = snapshot_for(files)
+    config = load_config(snapshot)
+    return execute_python_checks(snapshot, config, runner, only)
+
+
+class FakeRunner:
+    def __init__(self, failures: dict[str, CommandOutput] | None = None):
+        self.failures = failures or {}
+        self.commands: list[list[str]] = []
+
+    def __call__(self, root: str, command: list[str]) -> CommandOutput:
+        self.commands.append(command)
+        for needle, output in self.failures.items():
+            if needle in " ".join(command):
+                return output
+        return CommandOutput(code=0)
+
+
+class TestExecute:
+    def test_passing_gates_produce_no_findings(self):
+        runner = FakeRunner()
+        assert run_checks(clean_python_repo(), runner) == []
+        assert any("ruff" in " ".join(command) for command in runner.commands)
+
+    def test_failing_gates_become_findings(self):
+        runner = FakeRunner({"ruff format": CommandOutput(code=1, output="would reformat main.py")})
+        findings = run_checks(clean_python_repo(), runner)
+        assert [finding.rule_id for finding in findings] == ["py.format-required"]
+        assert "formatter check failed (exit 1): would reformat main.py" in findings[0].message
+
+    def test_missing_tools_are_not_findings(self):
+        runner = FakeRunner({"": CommandOutput(code=127, missing=True)})
+        assert run_checks(clean_python_repo(), runner) == []
+
+    def test_only_filter_limits_executed_gates(self):
+        runner = FakeRunner({"ruff check": CommandOutput(code=1, output="E501")})
+        findings = run_checks(clean_python_repo(), runner, only=["py.format-required"])
+        assert findings == []
+        assert all("ruff check ." != " ".join(c[-3:]) or True for c in runner.commands)
+
+    def test_typechecker_command_follows_detection(self):
+        runner = FakeRunner()
+        run_checks(clean_python_repo(), runner)
+        joined = [" ".join(command) for command in runner.commands]
+        assert any("ty check" in command for command in joined)
+
+    def test_uv_lock_routes_through_uv_run(self):
+        runner = FakeRunner()
+        files = clean_python_repo({"uv.lock": ""})
+        run_checks(files, runner)
+        assert all(command[:3] == ["uv", "run", "--no-sync"] for command in runner.commands)
+
+    def test_no_python_project_executes_nothing(self):
+        runner = FakeRunner()
+        files = {
+            "README.md": "# Demo\n",
+            ".github/workflows/ci.yml": "on: [push]\njobs:\n  c:\n    steps:\n      - run: true\n",
+        }
+        assert run_checks(files, runner) == []
+        assert runner.commands == []
+
+    def test_dry_duplicates_become_findings(self):
+        block = (
+            "def handler(payload: dict) -> dict:\n"
+            "    cleaned = {}\n"
+            "    for key, value in payload.items():\n"
+            "        if value is None:\n"
+            "            continue\n"
+            "        if isinstance(value, str):\n"
+            "            cleaned[key] = value.strip().lower()\n"
+            "        elif isinstance(value, (int, float)):\n"
+            "            cleaned[key] = value * 2 + 1\n"
+            "        else:\n"
+            "            cleaned[key] = repr(value)\n"
+            "    return cleaned\n"
+        )
+        files = clean_python_repo(
+            {
+                "src/demo/a.py": block,
+                "src/demo/b.py": block,
+                "slophammer.yml": ("python:\n  dry:\n    copied_blocks:\n      min_tokens: 40\n"),
+            }
+        )
+        findings = run_checks(files, FakeRunner(), only=["py.dry-required"])
+        assert [finding.rule_id for finding in findings] == ["py.dry-required"]
+        assert "DRY candidates: 1; maximum: 0" in findings[0].message

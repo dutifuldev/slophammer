@@ -349,12 +349,18 @@ func bindingPushFilter(value *yaml.Node) bool {
 	if value == nil || value.Kind != yaml.MappingNode {
 		return true
 	}
+	tagsOnly := false
 	for i := 0; i+1 < len(value.Content); i += 2 {
-		if value.Content[i].Value == "branches" {
+		switch value.Content[i].Value {
+		case "branches":
 			return bindingBranchFilter(value.Content[i+1])
+		case "tags":
+			tagsOnly = true
 		}
 	}
-	return true
+	// A tags-only push filter never fires for branch pushes, so it is a
+	// release trigger, not integration CI.
+	return !tagsOnly
 }
 
 func bindingBranchFilter(branches *yaml.Node) bool {

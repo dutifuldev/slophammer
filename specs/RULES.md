@@ -21,7 +21,9 @@ fail. Workflow YAML is parsed structurally: steps and jobs with a literal
 nothing, and a workflow contributes nothing unless its triggers can fire for
 integration — `pull_request`, `pull_request_target`, `merge_group`,
 `schedule`, or `push` whose branch filter is absent, wildcarded, or names an
-integration branch (`main`, `master`, `trunk`, `develop`). Surviving steps
+integration branch (`main`, `master`, `trunk`, `develop`). A `push` filter
+that names only tags is a release trigger, not integration CI: it never
+fires for branch pushes, so it contributes nothing. Surviving steps
 contribute their `run` script and their `uses:` action reference.
 
 Scripts, Makefiles, Taskfiles, and justfiles count as evidence only when
