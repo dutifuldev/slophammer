@@ -376,9 +376,12 @@ checker and the multi-language dispatcher — comes later.
      `error-on-warning = true` (or the flag) so warn-tier rules block;
      these ignore-default rules promoted to error: `missing-type-argument`,
      `possibly-missing-attribute`, `possibly-unresolved-reference`,
-     `possibly-missing-import`. Preview rules are never required, and
-     unknown rule names are tolerated in both directions so checker
-     upgrades do not break gates. The default-severity table ships as
+     `possibly-missing-import`; and
+     `respect-type-ignore-comments = false`, so blanket `# type: ignore`
+     comments silence nothing and the only working suppression is the
+     rule-coded `# ty: ignore[rule]` form. Preview rules are never
+     required, and unknown rule names are tolerated in both directions so
+     checker upgrades do not break gates. The default-severity table ships as
      generated spec data (`specs/ty-rules.json`: rule, default level,
      stability), extracted from ty's source by a script; refreshing it is
      part of bumping the supported ty version.
@@ -406,8 +409,16 @@ checker and the multi-language dispatcher — comes later.
      `py.suppressions-justified` (`# noqa`, `# type: ignore`, and
      `# ty: ignore` need reasons; bare `# type: ignore` without an error
      code is itself a finding), `py.dependency-audit-required` (pip-audit
-     or uv audit), and `py.dependency-boundaries-required` (import parsing
-     against the shared boundary config).
+     or uv audit), `py.dependency-boundaries-required` (import parsing
+     against the shared boundary config), and `py.typed-marker-required`
+     (a project that builds a published package must ship the `py.typed`
+     marker, or its checked types degrade to `Any` for every consumer;
+     does not apply to applications). Deliberately out of scope, recorded
+     so they are not relitigated: mandatory pydantic strict mode
+     (boundary coercion is often correct; a semantic-phase candidate) and
+     runtime annotation verification via typeguard/beartype in tests
+     (real value, but it mandates a dependency; the Python template
+     demonstrates it instead).
    - Config: a `python:` section in the shared nested shape; validators in
      the other three checkers learn its allowed keys, exactly as they
      cross-validate each other today.
