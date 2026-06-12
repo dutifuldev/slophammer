@@ -1,8 +1,8 @@
 """Executable checks with a stubbed runner."""
 
-from slophammer_py.config import load_config
-from slophammer_py.repo import RepoFile, new_snapshot
-from slophammer_py.toolchecks import CommandOutput, execute_python_checks
+from slophammer.config import load_config
+from slophammer.repo import RepoFile, new_snapshot
+from slophammer.toolchecks import CommandOutput, execute_python_checks
 from test_rules import clean_python_repo
 
 
@@ -44,7 +44,7 @@ class TestExecute:
     def test_missing_tools_are_infrastructure_errors(self):
         import pytest
 
-        from slophammer_py.toolchecks import ExecutionError
+        from slophammer.toolchecks import ExecutionError
 
         runner = FakeRunner({"": CommandOutput(code=127, missing=True)})
         with pytest.raises(ExecutionError, match="command not found"):
@@ -53,7 +53,7 @@ class TestExecute:
     def test_missing_tools_exit_two_from_check(self, tmp_path):
         from pathlib import Path
 
-        from slophammer_py.app import check as app_check
+        from slophammer.app import check as app_check
 
         for path, content in clean_python_repo().items():
             target = Path(tmp_path) / path
@@ -114,7 +114,7 @@ class TestExecute:
         import tempfile
         from pathlib import Path
 
-        from slophammer_py.app import check as app_check
+        from slophammer.app import check as app_check
 
         with tempfile.TemporaryDirectory() as root:
             for path, content in clean_python_repo(

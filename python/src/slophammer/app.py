@@ -5,14 +5,14 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, replace
 
-from slophammer_py.baseline import BaselineError, apply_baseline_check, debt_line, write_baseline
-from slophammer_py.config import ConfigError, load_config
-from slophammer_py.core import Report, new_report
-from slophammer_py.dry import dry_findings, max_findings
-from slophammer_py.report import write_json, write_sarif, write_text
-from slophammer_py.rules import rule_severity, run_rules
-from slophammer_py.scan import scan_repo
-from slophammer_py.toolchecks import (
+from slophammer.baseline import BaselineError, apply_baseline_check, debt_line, write_baseline
+from slophammer.config import ConfigError, load_config
+from slophammer.core import Report, new_report
+from slophammer.dry import dry_findings, max_findings
+from slophammer.report import write_json, write_sarif, write_text
+from slophammer.rules import rule_severity, run_rules
+from slophammer.scan import scan_repo
+from slophammer.toolchecks import (
     ExecutionError,
     Runner,
     execute_python_checks,

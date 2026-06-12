@@ -1,6 +1,6 @@
 """Binding evidence tests, ported from typescript/tests for behavior parity."""
 
-from slophammer_py.repo import (
+from slophammer.repo import (
     RepoFile,
     binding_workflow_triggers,
     command_files,

@@ -31,7 +31,7 @@ check-python:
 	cd python && uv run ruff format --check .
 	cd python && uv run ruff check .
 	cd python && uv run ty check src
-	cd python && uv run pytest --cov=src/slophammer_py --cov-fail-under=85
+	cd python && uv run pytest --cov=src/slophammer --cov-fail-under=85
 	cd python && uv run slophammer-py dry ..
 	cd python && uv run slophammer-py check ..
 

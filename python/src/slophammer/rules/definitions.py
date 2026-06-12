@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from slophammer_py.core import Severity
+from slophammer.core import Severity
 
 
 @dataclass(frozen=True)

@@ -12,10 +12,10 @@ from __future__ import annotations
 
 import ast
 
-from slophammer_py.core import Finding
-from slophammer_py.repo import Snapshot
-from slophammer_py.rules.definitions import Definition
-from slophammer_py.rules.scope import conventional_path
+from slophammer.core import Finding
+from slophammer.repo import Snapshot
+from slophammer.rules.definitions import Definition
+from slophammer.rules.scope import conventional_path
 
 
 def absolute_import_findings(definition: Definition, snapshot: Snapshot) -> list[Finding]:

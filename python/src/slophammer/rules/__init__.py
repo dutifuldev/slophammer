@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from slophammer_py.config import Config
-from slophammer_py.core import Finding, Report, Severity, new_report
-from slophammer_py.repo import Snapshot, has_file, workflow_files
-from slophammer_py.rules import evidence, toolconfig
-from slophammer_py.rules.boundaries import boundary_findings
-from slophammer_py.rules.definitions import (
+from slophammer.config import Config
+from slophammer.core import Finding, Report, Severity, new_report
+from slophammer.repo import Snapshot, has_file, workflow_files
+from slophammer.rules import evidence, toolconfig
+from slophammer.rules.boundaries import boundary_findings
+from slophammer.rules.definitions import (
     DEFAULT_DEFINITIONS,
     PY_ABSOLUTE_IMPORTS,
     PY_AUDIT,
@@ -33,9 +33,9 @@ from slophammer_py.rules.definitions import (
     REPO_SLOPHAMMER_CI,
     Definition,
 )
-from slophammer_py.rules.imports import absolute_import_findings
-from slophammer_py.rules.scope import production_python_files, scope_counts, scope_findings
-from slophammer_py.rules.suppressions import suppression_findings
+from slophammer.rules.imports import absolute_import_findings
+from slophammer.rules.scope import production_python_files, scope_counts, scope_findings
+from slophammer.rules.suppressions import suppression_findings
 
 
 def run_rules(snapshot: Snapshot, config: Config, only_rule_ids: list[str] | None = None) -> Report:

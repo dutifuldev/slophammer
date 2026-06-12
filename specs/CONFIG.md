@@ -144,12 +144,12 @@ python:
       min_tokens: 100
   mutation:
     targets:
-      - python/src/slophammer_py/rules
+      - python/src/slophammer/rules
     exclude: []
   dependency_boundaries:
-    - from: python/src/slophammer_py/rules
+    - from: python/src/slophammer/rules
       allow:
-        - python/src/slophammer_py/config
+        - python/src/slophammer/config
   typecheck:
     demotions:
       - rule: deprecated

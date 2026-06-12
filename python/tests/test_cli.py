@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from slophammer_py.cli import main
+from slophammer.cli import main
 
 
 def write_repo(root: Path, files: dict[str, str]) -> None:

@@ -5,14 +5,14 @@ from pathlib import Path
 
 import pytest
 
-from slophammer_py.app import check
-from slophammer_py.baseline import (
+from slophammer.app import check
+from slophammer.baseline import (
     BaselineError,
     apply_baseline_check,
     debt_line,
     write_baseline,
 )
-from slophammer_py.core import Finding, new_report
+from slophammer.core import Finding, new_report
 
 ENTRY = {"rule_id": "repo.readme-required", "path": "README.md"}
 

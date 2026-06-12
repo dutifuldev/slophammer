@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 
 import yaml
 
-from slophammer_py.repo import Snapshot
+from slophammer.repo import Snapshot
 
 CONFIG_FILE_NAMES = ("slophammer.yml", "slophammer.yaml")
 

@@ -57,7 +57,7 @@ def main() -> int:
     serialized = json.dumps(rules, indent=2) + "\n"
     for destination in (
         repo_root / "specs" / "ty-rules.json",
-        repo_root / "python" / "src" / "slophammer_py" / "ty_rules.json",
+        repo_root / "python" / "src" / "slophammer" / "ty_rules.json",
     ):
         destination.write_text(serialized, encoding="utf-8")
         print(f"wrote {len(rules)} rules to {destination}")

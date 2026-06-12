@@ -3,10 +3,10 @@
 import json
 from pathlib import Path
 
-from slophammer_py.cli import main
-from slophammer_py.config import parse_config
-from slophammer_py.dry import dry_findings, find_copied_blocks
-from slophammer_py.repo import RepoFile, new_snapshot
+from slophammer.cli import main
+from slophammer.config import parse_config
+from slophammer.dry import dry_findings, find_copied_blocks
+from slophammer.repo import RepoFile, new_snapshot
 
 BLOCK = (
     "def handler_{n}(payload: dict) -> dict:\n"

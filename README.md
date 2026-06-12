@@ -116,8 +116,9 @@ exact checker version you verified against in CI; do not install latest.
 ## The Checkers
 
 Slophammer is the standard; implementations carry short language-specific
-names. The bare `slophammer` npm name is reserved for a future umbrella
-package.
+names. The bare `slophammer` name is reserved on both npm and PyPI for a
+future umbrella package. The Python checker ships as `slophammer-py` but
+owns the `import slophammer` namespace, so the umbrella stays command-only.
 
 | Language   | Command         | Status                                  |
 | ---------- | --------------- | --------------------------------------- |

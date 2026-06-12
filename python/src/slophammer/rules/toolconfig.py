@@ -16,9 +16,9 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from importlib import resources
 
-from slophammer_py.config import Config, conventional_exclude_pattern
-from slophammer_py.repo import Snapshot
-from slophammer_py.rules.evidence import snapshot_segments, tool_pattern
+from slophammer.config import Config, conventional_exclude_pattern
+from slophammer.repo import Snapshot
+from slophammer.rules.evidence import snapshot_segments, tool_pattern
 
 LEVELS = ("ignore", "warn", "error")
 REQUIRED_PROMOTIONS = (
@@ -39,7 +39,7 @@ class TyContract:
 
 
 def load_ty_rules() -> Mapping[str, Mapping[str, str]]:
-    content = resources.files("slophammer_py").joinpath("ty_rules.json").read_text("utf-8")
+    content = resources.files("slophammer").joinpath("ty_rules.json").read_text("utf-8")
     parsed = json.loads(content)
     return parsed if isinstance(parsed, dict) else {}
 

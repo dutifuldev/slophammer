@@ -2,7 +2,7 @@
 
 import pytest
 
-from slophammer_py.config import ConfigError, parse_config
+from slophammer.config import ConfigError, parse_config
 
 
 def rejects(content: str, message: str) -> None:

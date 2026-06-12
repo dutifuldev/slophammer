@@ -99,7 +99,7 @@ jobs:
           uv run ruff format --check .
           uv run ruff check .
           uv run ty check src
-          uv run pytest --cov=src/slophammer_py --cov-fail-under=85
+          uv run pytest --cov=src/slophammer --cov-fail-under=85
           uv run slophammer-py check ..
 
       - name: Validate shared conformance

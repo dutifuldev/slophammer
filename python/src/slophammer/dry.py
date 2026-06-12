@@ -12,9 +12,9 @@ import token as token_types
 import tokenize as tokenizer
 from dataclasses import dataclass
 
-from slophammer_py.config import Config
-from slophammer_py.repo import RepoFile, Snapshot
-from slophammer_py.rules.scope import excluded, in_targets, production_python_files
+from slophammer.config import Config
+from slophammer.repo import RepoFile, Snapshot
+from slophammer.rules.scope import excluded, in_targets, production_python_files
 
 SKIPPED_TOKEN_TYPES = {
     token_types.NEWLINE,

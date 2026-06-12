@@ -458,7 +458,13 @@ checker and the multi-language dispatcher — comes later.
 
    Polyglot repositories need every per-language checker installed and wired
    by hand; in practice one language gets gated and the rest go unchecked.
-   The reserved `slophammer` npm name becomes a thin dispatcher:
+   The reserved `slophammer` name (npm, and on PyPI as a reserved
+   distribution) becomes a thin dispatcher. Naming decision, fixed here:
+   the Python checker's distribution is `slophammer-py` but its import
+   package is `slophammer`, so the dispatcher must stay command-only — its
+   command is `slophammer`, and it never claims the Python import
+   namespace. Reserving the PyPI name (a stub upload) happens alongside the
+   first Python checker release:
 
    - Detection by ecosystem markers, reusing the spec's project-detection
      semantics: `go.mod` → `slophammer-go`, TypeScript signals →

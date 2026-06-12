@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from slophammer_py.repo import RepoFile, Snapshot, new_snapshot
+from slophammer.repo import RepoFile, Snapshot, new_snapshot
 
 MAX_FILE_BYTES = 1 << 20
 SKIPPED_DIRECTORIES = {

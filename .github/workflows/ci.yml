@@ -180,7 +180,7 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run ruff check .
       - run: uv run ty check src
-      - run: uv run pytest --cov=src/slophammer_py --cov-fail-under=85
+      - run: uv run pytest --cov=src/slophammer --cov-fail-under=85
       - run: uv run mutmut run
       - name: Audit dependencies
         run: |

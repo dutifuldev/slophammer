@@ -13,14 +13,14 @@ Homepage = "https://github.com/dutifuldev/slophammer"
 Repository = "https://github.com/dutifuldev/slophammer"
 
 [project.scripts]
-slophammer-py = "slophammer_py.cli:main"
+slophammer-py = "slophammer.cli:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/slophammer_py"]
+packages = ["src/slophammer"]
 
 [dependency-groups]
 dev = [
@@ -66,7 +66,7 @@ testpaths = ["tests"]
 addopts = "-q"
 
 [tool.coverage.run]
-source = ["src/slophammer_py"]
+source = ["src/slophammer"]
 branch = true
 
 [tool.coverage.report]
@@ -74,18 +74,18 @@ fail_under = 85
 show_missing = true
 
 [tool.mutmut]
-paths_to_mutate = ["src/slophammer_py/rules/", "src/slophammer_py/repo.py"]
+paths_to_mutate = ["src/slophammer/rules/", "src/slophammer/repo.py"]
 also_copy = [
-    "src/slophammer_py/__init__.py",
-    "src/slophammer_py/app.py",
-    "src/slophammer_py/baseline.py",
-    "src/slophammer_py/cli.py",
-    "src/slophammer_py/config.py",
-    "src/slophammer_py/core.py",
-    "src/slophammer_py/dry.py",
-    "src/slophammer_py/report.py",
-    "src/slophammer_py/scan.py",
-    "src/slophammer_py/toolchecks.py",
-    "src/slophammer_py/ty_rules.json",
-    "src/slophammer_py/py.typed",
+    "src/slophammer/__init__.py",
+    "src/slophammer/app.py",
+    "src/slophammer/baseline.py",
+    "src/slophammer/cli.py",
+    "src/slophammer/config.py",
+    "src/slophammer/core.py",
+    "src/slophammer/dry.py",
+    "src/slophammer/report.py",
+    "src/slophammer/scan.py",
+    "src/slophammer/toolchecks.py",
+    "src/slophammer/ty_rules.json",
+    "src/slophammer/py.typed",
 ]

@@ -148,14 +148,14 @@ python:
       min_tokens: 100
   mutation:
     targets:
-      - python/src/slophammer_py/rules
-      - python/src/slophammer_py/repo.py
+      - python/src/slophammer/rules
+      - python/src/slophammer/repo.py
   dependency_boundaries:
-    - from: python/src/slophammer_py/rules
+    - from: python/src/slophammer/rules
       allow:
-        - python/src/slophammer_py/config
-        - python/src/slophammer_py/core
-        - python/src/slophammer_py/repo
+        - python/src/slophammer/config
+        - python/src/slophammer/core
+        - python/src/slophammer/repo
 rust:
   coverage:
     threshold: 85

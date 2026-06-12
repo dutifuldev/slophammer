@@ -1,8 +1,8 @@
 """Rule evaluation tests over synthetic repositories."""
 
-from slophammer_py.config import Config, load_config, parse_config
-from slophammer_py.repo import RepoFile, new_snapshot
-from slophammer_py.rules import explain, run_rules
+from slophammer.config import Config, load_config, parse_config
+from slophammer.repo import RepoFile, new_snapshot
+from slophammer.rules import explain, run_rules
 
 GATE_STEPS = """\
       - run: uv run ty check src --error-on-warning
@@ -602,7 +602,7 @@ class TestBoundaries:
 def test_invalid_rule_severity_is_a_config_error():
     import pytest
 
-    from slophammer_py.config import ConfigError
+    from slophammer.config import ConfigError
 
     with pytest.raises(ConfigError, match="severity must be error or warn"):
         parse_config("rules:\n  repo.readme-required:\n    severity: warning\n")
@@ -611,7 +611,7 @@ def test_invalid_rule_severity_is_a_config_error():
 def test_parse_config_rejects_unknown_keys():
     import pytest
 
-    from slophammer_py.config import ConfigError
+    from slophammer.config import ConfigError
 
     with pytest.raises(ConfigError, match=r"python\.made_up is not supported"):
         parse_config("python:\n  made_up: true\n")

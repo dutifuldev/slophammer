@@ -2,8 +2,8 @@
 
 import json
 
-from slophammer_py.core import Finding, ScopeCoverage, new_report
-from slophammer_py.report import write_json, write_sarif, write_text
+from slophammer.core import Finding, ScopeCoverage, new_report
+from slophammer.report import write_json, write_sarif, write_text
 
 
 def finding(rule_id: str = "repo.readme-required", path: str = "README.md") -> Finding:

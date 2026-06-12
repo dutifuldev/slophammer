@@ -37,12 +37,12 @@ python:
       min_tokens: 100
   mutation:
     targets:
-      - python/src/slophammer_py/rules
+      - python/src/slophammer/rules
     exclude: []
   dependency_boundaries:
-    - from: python/src/slophammer_py/rules
+    - from: python/src/slophammer/rules
       allow:
-        - python/src/slophammer_py/config
+        - python/src/slophammer/config
   typecheck:
     demotions:           # reasoned ty rule demotions; bare demotion in
       - rule: deprecated # ty.toml/[tool.ty]/CLI flags is a finding
@@ -60,16 +60,16 @@ the conformance behavior has an obvious counterpart to diff against:
 
 | Module                         | Mirrors (TypeScript)            |
 | ------------------------------ | ------------------------------- |
-| `slophammer_py/cli.py`         | `src/cli/cli.ts`                |
-| `slophammer_py/app.py`         | `src/app/app.ts`                |
-| `slophammer_py/baseline.py`    | `src/app/baseline.ts`           |
-| `slophammer_py/scan.py`        | `src/scan/scan.ts`              |
-| `slophammer_py/config.py`      | `src/config/config.ts`          |
-| `slophammer_py/repo.py`        | `src/repo/repo.ts`              |
-| `slophammer_py/report.py`      | `src/report/report.ts`          |
-| `slophammer_py/dry/`           | `src/dry/`                      |
-| `slophammer_py/rules/`         | `src/rules/`                    |
-| `slophammer_py/toolconfig.py`  | new: ty/mypy/pyright config     |
+| `slophammer/cli.py`         | `src/cli/cli.ts`                |
+| `slophammer/app.py`         | `src/app/app.ts`                |
+| `slophammer/baseline.py`    | `src/app/baseline.ts`           |
+| `slophammer/scan.py`        | `src/scan/scan.ts`              |
+| `slophammer/config.py`      | `src/config/config.ts`          |
+| `slophammer/repo.py`        | `src/repo/repo.ts`              |
+| `slophammer/report.py`      | `src/report/report.ts`          |
+| `slophammer/dry/`           | `src/dry/`                      |
+| `slophammer/rules/`         | `src/rules/`                    |
+| `slophammer/toolconfig.py`  | new: ty/mypy/pyright config     |
 
 Tests live in `python/tests/`, pytest, named after the TypeScript test files
 they port so coverage gaps are visible by filename.

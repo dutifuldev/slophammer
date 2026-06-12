@@ -15,10 +15,10 @@ import io
 import re
 import tokenize
 
-from slophammer_py.core import Finding
-from slophammer_py.repo import RepoFile, Snapshot
-from slophammer_py.rules.definitions import Definition
-from slophammer_py.rules.scope import conventional_path
+from slophammer.core import Finding
+from slophammer.repo import RepoFile, Snapshot
+from slophammer.rules.definitions import Definition
+from slophammer.rules.scope import conventional_path
 
 NOQA = re.compile(r"#\s*noqa(?P<codes>:\s*[\w, ]+)?", re.IGNORECASE)
 TYPE_IGNORE = re.compile(r"#\s*type:\s*ignore(?P<codes>\[[\w,\s-]+\])?")
