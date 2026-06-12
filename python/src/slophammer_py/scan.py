@@ -16,6 +16,7 @@ SKIPPED_DIRECTORIES = {
     ".pytest_cache",
     ".ruff_cache",
     ".stryker-tmp",
+    "mutants",
     "__pycache__",
     "dist",
     "coverage",
