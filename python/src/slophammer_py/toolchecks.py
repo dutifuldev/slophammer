@@ -23,6 +23,7 @@ from .rules.definitions import (
     PY_DRY,
     PY_FORMAT,
     PY_LINT,
+    PY_TEST,
     PY_TYPECHECK,
     definition,
 )
@@ -74,9 +75,7 @@ def execute_python_checks(
     wanted = set(only_rule_ids or [])
     working_directory = execution_directory(snapshot)
     findings: list[Finding] = []
-    for rule_id, label, command in gate_commands(snapshot, config):
-        if wanted and rule_id not in wanted:
-            continue
+    for rule_id, label, command in selected_gate_commands(snapshot, config, wanted):
         result = runner(working_directory, run_prefix(snapshot) + command)
         if result.missing or result.code == 0:
             continue
@@ -84,6 +83,22 @@ def execute_python_checks(
     if not wanted or PY_DRY in wanted:
         findings.extend(executed_dry_findings(snapshot, config))
     return findings
+
+
+# The coverage command runs the test suite, so a full run skips the bare
+# test gate; a --only selection that names just the test rule still runs it.
+def selected_gate_commands(
+    snapshot: Snapshot, config: Config, wanted: set[str]
+) -> list[tuple[str, str, list[str]]]:
+    commands = [
+        (rule_id, label, command)
+        for rule_id, label, command in gate_commands(snapshot, config)
+        if not wanted or rule_id in wanted
+    ]
+    rule_ids = {rule_id for rule_id, _, _ in commands}
+    if PY_COVERAGE in rule_ids:
+        commands = [entry for entry in commands if entry[0] != PY_TEST]
+    return commands
 
 
 # Gates run in the project directory, where pyproject.toml scopes the tools,
@@ -100,6 +115,7 @@ def gate_commands(snapshot: Snapshot, config: Config) -> list[tuple[str, str, li
     commands = [
         (PY_FORMAT, "formatter check failed", ["ruff", "format", "--check", "."]),
         (PY_LINT, "lint failed", ["ruff", "check", "."]),
+        (PY_TEST, "tests failed", ["pytest"]),
         (
             PY_COVERAGE,
             "coverage gate failed",

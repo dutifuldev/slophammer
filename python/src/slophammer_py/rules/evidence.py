@@ -86,22 +86,28 @@ def has_test_command(snapshot: Snapshot) -> bool:
     )
 
 
-FAIL_UNDER_FLAG = re.compile(r"--cov-fail-under[ =](\d+(?:\.\d+)?)")
+COV_FAIL_UNDER_FLAG = re.compile(r"--cov-fail-under[ =](\d+(?:\.\d+)?)")
+FAIL_UNDER_FLAG = re.compile(r"--fail-under[ =](\d+(?:\.\d+)?)")
 
 
-# Threshold flags only count on a pytest-cov invocation that actually
-# collects coverage; an explicit below-threshold value is a weakened gate
-# and fails the rule instead of falling back to the configured threshold.
+# Threshold flags only count on commands that evaluate them: pytest-cov
+# collection and coverage report. An explicit below-threshold value is a
+# weakened gate and fails the rule instead of falling back to config.
 def has_coverage_command(snapshot: Snapshot, threshold: int) -> bool:
-    values = [
-        float(match.group(1))
-        for segment in snapshot_segments(snapshot)
-        if pytest_cov_segment(segment)
-        for match in FAIL_UNDER_FLAG.finditer(segment)
-    ]
+    values = coverage_flag_values(snapshot)
     if values:
         return min(values) >= threshold
     return has_coverage_run(snapshot) and has_coverage_config_threshold(snapshot, threshold)
+
+
+def coverage_flag_values(snapshot: Snapshot) -> list[float]:
+    values: list[float] = []
+    for segment in snapshot_segments(snapshot):
+        if pytest_cov_segment(segment):
+            values.extend(float(match.group(1)) for match in COV_FAIL_UNDER_FLAG.finditer(segment))
+        elif coverage_report_segment(segment):
+            values.extend(float(match.group(1)) for match in FAIL_UNDER_FLAG.finditer(segment))
+    return values
 
 
 def pytest_cov_segment(segment: str) -> bool:
@@ -109,6 +115,10 @@ def pytest_cov_segment(segment: str) -> bool:
         re.search(tool_pattern("pytest"), segment) is not None
         and re.search(r"--cov(?:[= ]|$)", segment) is not None
     )
+
+
+def coverage_report_segment(segment: str) -> bool:
+    return re.search(tool_pattern("coverage") + r" report\b", segment) is not None
 
 
 # Only commands that evaluate the threshold count: pytest-cov reporting and

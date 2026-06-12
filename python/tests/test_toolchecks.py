@@ -51,6 +51,19 @@ class TestExecute:
         assert findings == []
         assert all("ruff check ." != " ".join(c[-3:]) or True for c in runner.commands)
 
+    def test_only_test_rule_runs_pytest(self):
+        runner = FakeRunner({"pytest": CommandOutput(code=1, output="1 failed")})
+        findings = run_checks(clean_python_repo(), runner, only=["py.test-required"])
+        assert [finding.rule_id for finding in findings] == ["py.test-required"]
+        assert any(command[-1] == "pytest" for command in runner.commands)
+
+    def test_full_run_uses_coverage_command_for_tests(self):
+        runner = FakeRunner()
+        run_checks(clean_python_repo(), runner)
+        joined = [" ".join(command) for command in runner.commands]
+        assert any("--cov-fail-under=85" in command for command in joined)
+        assert not any(command.endswith(" pytest") or command == "pytest" for command in joined)
+
     def test_typechecker_command_follows_detection(self):
         runner = FakeRunner()
         run_checks(clean_python_repo(), runner)

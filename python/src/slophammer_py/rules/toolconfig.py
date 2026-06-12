@@ -358,9 +358,20 @@ def packaged_dirs_without_typed_marker(snapshot: Snapshot) -> list[str]:
     return missing
 
 
-# Markers under conventional non-production paths (tests, fixtures) do not
-# type the published package.
+# Every importable package the project ships needs its own marker; a marker
+# in a sibling package or under conventional non-production paths does not
+# type this one.
 def has_typed_marker_under(snapshot: Snapshot, directory: str) -> bool:
+    packages = package_source_dirs(snapshot, directory)
+    if not packages:
+        return any_typed_marker_under(snapshot, directory)
+    return all(
+        f"{package}/py.typed" in snapshot.files or f"{package}.py.typed" in snapshot.files
+        for package in packages
+    )
+
+
+def any_typed_marker_under(snapshot: Snapshot, directory: str) -> bool:
     prefix = f"{directory}/" if directory else ""
     for path in snapshot.files:
         if not path.startswith(prefix) or path.rsplit("/", 1)[-1] != "py.typed":
@@ -369,6 +380,30 @@ def has_typed_marker_under(snapshot: Snapshot, directory: str) -> bool:
         if not relative_segments & IGNORED_PROJECT_SEGMENTS:
             return True
     return False
+
+
+# Shipped package directories: src-layout packages first, flat-layout
+# top-level packages otherwise, conventional directories excluded.
+def package_source_dirs(snapshot: Snapshot, directory: str) -> list[str]:
+    prefix = f"{directory}/" if directory else ""
+    src_packages = {
+        path.rsplit("/__init__.py", 1)[0]
+        for path in snapshot.files
+        if path.startswith(f"{prefix}src/")
+        and path.endswith("/__init__.py")
+        and path.count("/") == len(f"{prefix}src/x/__init__.py".split("/")) - 1
+    }
+    if src_packages:
+        return sorted(src_packages)
+    flat_packages = {
+        path.rsplit("/__init__.py", 1)[0]
+        for path in snapshot.files
+        if path.startswith(prefix)
+        and path.endswith("/__init__.py")
+        and path[len(prefix) :].count("/") == 1
+        and path[len(prefix) :].split("/")[0] not in IGNORED_PROJECT_SEGMENTS
+    }
+    return sorted(flat_packages)
 
 
 def as_mapping(value: object) -> Mapping[str, object]:

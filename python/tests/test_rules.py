@@ -274,6 +274,28 @@ class TestGateRules:
         ids = rule_ids(report_for(files, only=["py.coverage-required"]))
         assert ids == ["py.coverage-required"]
 
+    def test_weakened_coverage_report_flag_fails(self):
+        files = clean_python_repo(
+            {
+                "pyproject.toml": STRICT_PYPROJECT + "\n[tool.coverage.report]\nfail_under = 85\n",
+            }
+        )
+        files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
+            "uv run pytest --cov=src --cov-fail-under=85",
+            "uv run coverage run -m pytest\n      - run: uv run coverage report --fail-under=50",
+        )
+        ids = rule_ids(report_for(files, only=["py.coverage-required"]))
+        assert ids == ["py.coverage-required"]
+
+    def test_coverage_report_flag_at_threshold_is_a_gate(self):
+        files = clean_python_repo()
+        files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
+            "uv run pytest --cov=src --cov-fail-under=85",
+            "uv run coverage run -m pytest\n      - run: uv run coverage report --fail-under=85",
+        )
+        ids = rule_ids(report_for(files, only=["py.coverage-required"]))
+        assert ids == []
+
     def test_active_coveragerc_fail_under_is_a_gate(self):
         files = clean_python_repo()
         files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
@@ -350,6 +372,19 @@ class TestTypedMarker:
         files["tests/py.typed"] = ""
         ids = rule_ids(report_for(files, only=["py.typed-marker-required"]))
         assert ids == ["py.typed-marker-required"]
+
+    def test_sibling_package_marker_does_not_type_the_other(self):
+        build_system = (
+            '[build-system]\nrequires = ["hatchling"]\nbuild-backend = "hatchling.build"\n'
+        )
+        files = clean_python_repo({"pyproject.toml": STRICT_PYPROJECT + "\n" + build_system})
+        files["src/bar/__init__.py"] = ""
+        files["src/bar/py.typed"] = ""
+        ids = rule_ids(report_for(files, only=["py.typed-marker-required"]))
+        assert ids == ["py.typed-marker-required"]
+        files["src/demo/py.typed"] = ""
+        ids = rule_ids(report_for(files, only=["py.typed-marker-required"]))
+        assert ids == []
 
     def test_each_package_needs_its_own_marker(self):
         packaged = (
