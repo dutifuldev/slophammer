@@ -18,13 +18,12 @@ import tokenize
 from ..core import Finding
 from ..repo import RepoFile, Snapshot
 from .definitions import Definition
+from .scope import conventional_path
 
 NOQA = re.compile(r"#\s*noqa(?P<codes>:\s*[\w, ]+)?", re.IGNORECASE)
 TYPE_IGNORE = re.compile(r"#\s*type:\s*ignore(?P<codes>\[[\w,\s-]+\])?")
 TY_IGNORE = re.compile(r"#\s*ty:\s*ignore(?P<codes>\[[\w,\s-]+\])?")
 REASON_TEXT = re.compile(r"--\s*\S")
-
-EXEMPT_SEGMENTS = {"tests", "test", "fixtures", "templates", "testdata", "vendor", "scripts"}
 
 
 def suppression_findings(definition: Definition, snapshot: Snapshot) -> list[Finding]:
@@ -45,14 +44,10 @@ def suppression_findings(definition: Definition, snapshot: Snapshot) -> list[Fin
     return findings
 
 
+# The shared conventional non-production classification: tests, fixtures,
+# generated and build output are not suppression scope either.
 def production_python_path(path: str) -> bool:
-    if not path.endswith(".py"):
-        return False
-    base = path.rsplit("/", 1)[-1]
-    if base.startswith("test_") or base.endswith("_test.py") or base == "conftest.py":
-        return False
-    segments = set(path.split("/")[:-1])
-    return not (segments & EXEMPT_SEGMENTS) and "migrations" not in segments
+    return path.endswith(".py") and not conventional_path(path)
 
 
 def bare_suppression_line(file: RepoFile) -> int | None:

@@ -166,6 +166,24 @@ class TestMypy:
         )
         assert "ANN" in messages(files)
 
+    def test_extend_per_file_ignores_on_production_are_weakening(self):
+        files = clean_python_repo(
+            {
+                "pyproject.toml": STRICT_PYPROJECT
+                + '\n[tool.ruff.lint.extend-per-file-ignores]\n"src/**" = ["ANN"]\n'
+            }
+        )
+        assert "ANN" in messages(files)
+
+    def test_installed_but_never_run_mypy_is_not_the_checker(self):
+        files = clean_python_repo()
+        files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
+            "uv run ruff check .",
+            "uv run ruff check .\n      - run: pip install mypy",
+        )
+        # ty remains the detected checker; the install line must not flip it.
+        assert rule_ids(report_for(files, only=ONLY)) == []
+
     def test_test_scope_per_file_ignores_are_conventional(self):
         files = clean_python_repo(
             {

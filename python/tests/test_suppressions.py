@@ -65,6 +65,14 @@ class TestScopeExemptions:
         files = clean_python_repo({"conftest.py": "x = 1  # noqa\n"})
         assert rule_ids(report_for(files, only=ONLY)) == []
 
+    def test_generated_files_are_exempt(self):
+        files = clean_python_repo({"src/generated_client.py": "x = 1  # noqa\n"})
+        assert rule_ids(report_for(files, only=ONLY)) == []
+
+    def test_build_output_is_exempt(self):
+        files = clean_python_repo({"out/build/foo.py": "x = 1  # noqa\n"})
+        assert rule_ids(report_for(files, only=ONLY)) == []
+
     def test_migrations_are_exempt(self):
         files = clean_python_repo({"app/migrations/0001_initial.py": "x = 1  # noqa\n"})
         assert rule_ids(report_for(files, only=ONLY)) == []

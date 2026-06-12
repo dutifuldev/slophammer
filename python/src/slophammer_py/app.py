@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from .baseline import BaselineError, apply_baseline_check, debt_line, write_baseline
 from .config import ConfigError, load_config
 from .core import Report, new_report
 from .dry import dry_findings, max_findings
 from .report import write_json, write_sarif, write_text
-from .rules import run_rules
+from .rules import rule_severity, run_rules
 from .scan import scan_repo
 from .toolchecks import Runner, execute_python_checks, subprocess_runner
 
@@ -35,7 +35,10 @@ def check(
         config = load_config(snapshot)
         report = run_rules(snapshot, config, only_rule_ids)
         if execute:
-            executed = execute_python_checks(snapshot, config, runner, only_rule_ids)
+            executed = [
+                replace(finding, severity=rule_severity(config, finding.rule_id, finding.severity))
+                for finding in execute_python_checks(snapshot, config, runner, only_rule_ids)
+            ]
             report = new_report([*report.findings, *executed], scope=report.scope)
         return finish_check(snapshot.root, report, output_format, baseline)
     except (ConfigError, BaselineError, OSError) as error:

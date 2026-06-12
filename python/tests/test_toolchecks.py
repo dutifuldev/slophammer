@@ -76,6 +76,31 @@ class TestExecute:
         run_checks(files, runner)
         assert all(command[:3] == ["uv", "run", "--no-sync"] for command in runner.commands)
 
+    def test_executed_findings_respect_severity_overrides(self):
+        import json as json_module
+        import tempfile
+        from pathlib import Path
+
+        from slophammer_py.app import check as app_check
+
+        with tempfile.TemporaryDirectory() as root:
+            for path, content in clean_python_repo(
+                {
+                    "slophammer.yml": (
+                        "rules:\n  py.format-required:\n    severity: warn\n"
+                        "python:\n  coverage:\n    threshold: 85\n"
+                    )
+                }
+            ).items():
+                target = Path(root) / path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(content)
+            runner = FakeRunner({"ruff format": CommandOutput(code=1, output="bad")})
+            result = app_check(root, output_format="json", execute=True, runner=runner)
+            parsed = json_module.loads(result.stdout)
+            formats = [f for f in parsed["findings"] if f["rule_id"] == "py.format-required"]
+            assert formats and formats[0]["severity"] == "warn"
+
     def test_no_python_project_executes_nothing(self):
         runner = FakeRunner()
         files = {

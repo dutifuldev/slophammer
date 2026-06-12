@@ -18,7 +18,7 @@ from importlib import resources
 
 from ..config import Config, conventional_exclude_pattern
 from ..repo import Snapshot
-from .evidence import snapshot_segments
+from .evidence import snapshot_segments, tool_pattern
 
 LEVELS = ("ignore", "warn", "error")
 REQUIRED_PROMOTIONS = (
@@ -178,9 +178,9 @@ def level_rank(level: str) -> int:
 def typechecker_in_use(snapshot: Snapshot) -> str | None:
     segments = snapshot_segments(snapshot)
     for tool, pattern in (
-        ("ty", r"\bty(?: [\w./=-]+)* check\b"),
-        ("mypy", r"\bmypy\b"),
-        ("pyright", r"\bpyright\b"),
+        ("ty", tool_pattern("ty") + r"(?: [\w./=-]+)* check\b"),
+        ("mypy", tool_pattern("mypy")),
+        ("pyright", tool_pattern("pyright")),
     ):
         if any(re.search(pattern, segment) for segment in segments):
             return tool
@@ -308,14 +308,14 @@ def overlapping_code(item: object, code: str) -> bool:
 # Per-file ignores on conventional non-production paths (tests, migrations)
 # are normal; on production paths they carve the family out of enforcement.
 def production_per_file_ignore(config: Mapping[str, object], code: str) -> bool:
-    ignores = as_mapping(config.get("per-file-ignores"))
-    for pattern, codes in ignores.items():
-        if not isinstance(codes, list):
-            continue
-        if not any(overlapping_code(item, code) for item in codes):
-            continue
-        if not conventional_exclude_pattern(str(pattern)):
-            return True
+    for key in ("per-file-ignores", "extend-per-file-ignores"):
+        for pattern, codes in as_mapping(config.get(key)).items():
+            if not isinstance(codes, list):
+                continue
+            if not any(overlapping_code(item, code) for item in codes):
+                continue
+            if not conventional_exclude_pattern(str(pattern)):
+                return True
     return False
 
 
