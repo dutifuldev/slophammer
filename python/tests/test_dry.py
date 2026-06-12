@@ -83,6 +83,16 @@ class TestDryScoping:
         config = self.config("python:\n  dry:\n    copied_blocks:\n      min_tokens: 40\n")
         assert dry_findings(snapshot, config) == []
 
+    def test_disabled_copied_blocks_skip_the_scan(self):
+        snapshot = new_snapshot(
+            "/repo",
+            [RepoFile("src/a.py", BLOCK.format(n=1)), RepoFile("src/b.py", BLOCK.format(n=1))],
+        )
+        disabled = self.config(
+            "python:\n  dry:\n    copied_blocks:\n      enabled: false\n      min_tokens: 40\n"
+        )
+        assert dry_findings(snapshot, disabled) == []
+
     def test_min_tokens_config_applies(self):
         snapshot = new_snapshot(
             "/repo",

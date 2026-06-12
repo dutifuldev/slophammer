@@ -87,11 +87,23 @@ def imported_modules(content: str, file_path: str) -> list[str]:
         if isinstance(node, ast.Import):
             modules.extend(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom):
-            modules.append(resolve_relative(node, file_path))
+            modules.extend(resolve_import_from(node, file_path))
     return [module for module in modules if module]
 
 
-def resolve_relative(node: ast.ImportFrom, file_path: str) -> str:
+# `from .. import config` carries no module, only aliases; each alias is the
+# imported module, so the parent package alone must not be judged.
+def resolve_import_from(node: ast.ImportFrom, file_path: str) -> list[str]:
+    base = import_from_base(node, file_path)
+    if node.module is not None:
+        return [base]
+    if node.level == 0:
+        return []
+    prefix = f"{base}." if base else ""
+    return [f"{prefix}{alias.name}" for alias in node.names]
+
+
+def import_from_base(node: ast.ImportFrom, file_path: str) -> str:
     if node.level == 0:
         return node.module or ""
     parts = file_path.split("/")[:-1]

@@ -275,10 +275,12 @@ def ruff_lint_config(snapshot: Snapshot) -> Mapping[str, object]:
 
 
 def ruff_selects(snapshot: Snapshot, code: str) -> bool:
-    select = ruff_lint_config(snapshot).get("select")
-    if not isinstance(select, list):
-        return False
-    return any(str(item) in ("ALL", code) for item in select)
+    config = ruff_lint_config(snapshot)
+    for key in ("select", "extend-select"):
+        selection = config.get(key)
+        if isinstance(selection, list) and any(str(item) in ("ALL", code) for item in selection):
+            return True
+    return False
 
 
 def ruff_complexity_limit(snapshot: Snapshot) -> int | None:

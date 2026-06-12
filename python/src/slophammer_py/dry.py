@@ -62,9 +62,16 @@ def range_json(value: SourceRange) -> dict[str, object]:
 
 
 def dry_findings(snapshot: Snapshot, config: Config) -> list[DryFinding]:
+    if not copied_blocks_enabled(config):
+        return []
     files = dry_source_files(snapshot, config)
     window = min_tokens(config)
     return find_copied_blocks(files, window)
+
+
+def copied_blocks_enabled(config: Config) -> bool:
+    dry = config.python.dry if config.python is not None else None
+    return dry.copied_blocks.enabled if dry is not None else True
 
 
 def dry_source_files(snapshot: Snapshot, config: Config) -> list[RepoFile]:

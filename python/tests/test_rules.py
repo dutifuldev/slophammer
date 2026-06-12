@@ -289,6 +289,24 @@ class TestBoundaries:
         ids = rule_ids(report_for(files, only=["py.dependency-boundaries-required"]))
         assert ids == []
 
+    def test_alias_only_relative_imports_resolve_to_modules(self):
+        files = clean_python_repo(
+            {
+                "slophammer.yml": (
+                    "python:\n"
+                    "  dependency_boundaries:\n"
+                    "    - from: src/demo\n"
+                    "      allow:\n"
+                    "        - src/config\n"
+                ),
+                "src/__init__.py": "",
+                "src/demo/main.py": "from .. import config\n",
+                "src/config/__init__.py": "",
+            }
+        )
+        ids = rule_ids(report_for(files, only=["py.dependency-boundaries-required"]))
+        assert ids == []
+
     def test_third_party_imports_are_ignored(self):
         files = clean_python_repo(
             {
@@ -300,6 +318,15 @@ class TestBoundaries:
         )
         ids = rule_ids(report_for(files, only=["py.dependency-boundaries-required"]))
         assert ids == []
+
+
+def test_invalid_rule_severity_is_a_config_error():
+    import pytest
+
+    from slophammer_py.config import ConfigError
+
+    with pytest.raises(ConfigError, match="severity must be error or warn"):
+        parse_config("rules:\n  repo.readme-required:\n    severity: warning\n")
 
 
 def test_parse_config_rejects_unknown_keys():

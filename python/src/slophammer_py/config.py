@@ -65,7 +65,7 @@ class ComplexityConfig:
 
 @dataclass(frozen=True)
 class CopiedBlocksConfig:
-    enabled: bool = False
+    enabled: bool = True
     min_tokens: int = 100
 
 
@@ -163,7 +163,7 @@ def parse_rules(value: object) -> dict[str, RuleConfig]:
             entry, f"rules.{rule_id}", ("severity", "disabled", "reason", "threshold", "max")
         )
         rules[str(rule_id)] = RuleConfig(
-            severity=optional_str(entry.get("severity"), f"rules.{rule_id}.severity"),
+            severity=rule_severity_value(entry.get("severity"), f"rules.{rule_id}.severity"),
             disabled=bool(entry.get("disabled", False)),
             reason=optional_str(entry.get("reason"), f"rules.{rule_id}.reason"),
             threshold=optional_number(entry.get("threshold"), f"rules.{rule_id}.threshold"),
@@ -232,7 +232,7 @@ def parse_copied_blocks(value: object) -> CopiedBlocksConfig:
         return CopiedBlocksConfig()
     section = as_mapping(value, "python.dry.copied_blocks")
     assert_known_keys(section, "python.dry.copied_blocks", ("enabled", "min_tokens"))
-    enabled = section.get("enabled", False)
+    enabled = section.get("enabled", True)
     if not isinstance(enabled, bool):
         raise ConfigError("python.dry.copied_blocks.enabled must be a boolean")
     min_tokens = optional_int(section.get("min_tokens"), "python.dry.copied_blocks.min_tokens")
@@ -470,6 +470,13 @@ def assert_known_keys(
     for key in mapping:
         if key not in allowed:
             raise ConfigError(f"{field_name}.{key} is not supported")
+
+
+def rule_severity_value(value: object, field_name: str) -> str | None:
+    severity = optional_str(value, field_name)
+    if severity is not None and severity not in ("error", "warn"):
+        raise ConfigError(f"{field_name} must be error or warn")
+    return severity
 
 
 def optional_str(value: object, field_name: str) -> str | None:

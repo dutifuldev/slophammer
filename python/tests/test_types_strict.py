@@ -89,6 +89,17 @@ class TestTyContract:
         del files["ty.toml"]
         assert rule_ids(report_for(files, only=ONLY)) == []
 
+    def test_extend_select_ann_counts(self):
+        files = clean_python_repo(
+            {
+                "pyproject.toml": STRICT_PYPROJECT.replace(
+                    'select = ["E", "F", "ANN", "C90"]',
+                    'select = ["E", "F"]\nextend-select = ["ANN", "C90"]',
+                )
+            }
+        )
+        assert rule_ids(report_for(files, only=ONLY)) == []
+
     def test_missing_ann_selection_is_a_finding(self):
         files = clean_python_repo({"pyproject.toml": STRICT_PYPROJECT.replace('"ANN", ', "")})
         assert "ANN" in messages(files)
