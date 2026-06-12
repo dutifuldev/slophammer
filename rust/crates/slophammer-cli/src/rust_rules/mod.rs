@@ -399,6 +399,31 @@ mod tests {
     }
 
     #[test]
+    fn list_command_beside_executing_gate_stays_credited() {
+        let workflow = "name: CI\non: [push]\njobs:\n  ci:\n    steps:\n      - run: cargo mutants --workspace --list\n      - run: cargo mutants --workspace --in-diff pr.diff\n";
+        let snapshot = Snapshot {
+            root: PathBuf::from("."),
+            files: BTreeMap::from([
+                (
+                    "Cargo.toml".to_owned(),
+                    RepoFile {
+                        path: "Cargo.toml".to_owned(),
+                        content: "[package]\nname = \"x\"\n".to_owned(),
+                    },
+                ),
+                (
+                    ".github/workflows/ci.yml".to_owned(),
+                    RepoFile {
+                        path: ".github/workflows/ci.yml".to_owned(),
+                        content: workflow.to_owned(),
+                    },
+                ),
+            ]),
+        };
+        assert!(rust_mutation(&snapshot).is_empty());
+    }
+
+    #[test]
     fn list_only_mutation_commands_are_not_evidence() {
         let workflow = "name: CI\non: [push]\njobs:\n  ci:\n    steps:\n      - run: cargo mutants --workspace --list\n";
         let snapshot = Snapshot {

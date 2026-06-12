@@ -181,7 +181,11 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ty check src
       - run: uv run pytest --cov=src/slophammer --cov-fail-under=85
-      - run: uv run mutmut run && uv run python scripts/check-mutation.py --min-kill-rate 74
+      - name: Mutation testing behind the kill-rate floor
+        run: |
+          set -euo pipefail
+          uv run mutmut run 2>&1 | tee /tmp/mutmut.log
+          uv run python scripts/check-mutation.py --min-kill-rate 74 --stats-file /tmp/mutmut.log
       - name: Audit dependencies
         run: |
           uv export --frozen --no-emit-project -o /tmp/requirements.txt

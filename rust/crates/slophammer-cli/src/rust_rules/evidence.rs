@@ -118,6 +118,8 @@ fn active_workflow_path(path: &str) -> bool {
     !name.contains('/') && (name.ends_with(".yml") || name.ends_with(".yaml"))
 }
 
+// Whitespace is normalized per line: line boundaries separate commands, so
+// flattening them would let one command's flags discredit another's.
 fn normalized_content(content: &str) -> String {
     content
         .lines()
@@ -125,9 +127,11 @@ fn normalized_content(content: &str) -> String {
         .collect::<Vec<_>>()
         .join("\n")
         .replace("\\\n", " ")
-        .split_whitespace()
+        .lines()
+        .map(|line| line.split_whitespace().collect::<Vec<_>>().join(" "))
+        .filter(|line| !line.is_empty())
         .collect::<Vec<_>>()
-        .join(" ")
+        .join("\n")
         .to_ascii_lowercase()
 }
 

@@ -27,21 +27,27 @@ STATS = re.compile(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--min-kill-rate", type=float, required=True)
+    parser.add_argument(
+        "--stats-file",
+        help="Parse an existing mutmut run log instead of running mutmut again",
+    )
     arguments = parser.parse_args()
 
-    completed = subprocess.run(
-        ["mutmut", "run"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    output = completed.stdout + completed.stderr
-    if completed.returncode != 0:
-        sys.stderr.write(output)
-        sys.stderr.write(
-            f"mutation gate failed: mutmut exited {completed.returncode}\n"
+    if arguments.stats_file:
+        with open(arguments.stats_file, encoding="utf-8") as handle:
+            output = handle.read()
+    else:
+        completed = subprocess.run(
+            ["mutmut", "run"],
+            capture_output=True,
+            text=True,
+            check=False,
         )
-        return 2
+        output = completed.stdout + completed.stderr
+        if completed.returncode != 0:
+            sys.stderr.write(output)
+            sys.stderr.write(f"mutation gate failed: mutmut exited {completed.returncode}\n")
+            return 2
     stats = last_stats(output)
     if stats is None:
         sys.stderr.write(output)
