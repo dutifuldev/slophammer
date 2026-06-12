@@ -113,12 +113,18 @@ def pyproject_tool(snapshot: Snapshot, tool: str) -> Mapping[str, object]:
     return {}
 
 
+# The effective severity per rule is the weakest seen anywhere: a demoting
+# invocation flag is part of the effective command, so config never masks it.
 def ty_contract(snapshot: Snapshot) -> TyContract:
     config = project_file_toml(snapshot, "ty.toml") or pyproject_tool(snapshot, "ty")
-    severities = dict(flag_severities(snapshot))
+    severities: dict[str, str] = {}
     for rule, level in as_mapping(config.get("rules")).items():
         if isinstance(level, str):
             severities[str(rule)] = level
+    for rule, level in flag_severities(snapshot).items():
+        current = severities.get(rule)
+        if current is None or level_rank(level) < level_rank(current):
+            severities[rule] = level
     terminal = as_mapping(config.get("terminal"))
     analysis = as_mapping(config.get("analysis"))
     return TyContract(
@@ -295,14 +301,21 @@ def ruff_selects(snapshot: Snapshot, code: str) -> bool:
 
 
 # A selection entry covers a requested code when it is the code itself, a
-# family prefix of it (C90 covers C901), or ALL — but never a more specific
-# member (selecting only ANN401 does not enforce the ANN family).
+# rule-family prefix of it (C90 covers C901, A does not cover ANN), or ALL —
+# but never a more specific member (selecting only ANN401 does not enforce
+# the ANN family).
 def selection_covers(item: object, code: str) -> bool:
-    return str(item) == "ALL" or code.startswith(str(item))
+    return str(item) == "ALL" or family_prefix(str(item), code)
+
+
+def family_prefix(prefix: str, code: str) -> bool:
+    if prefix == code:
+        return True
+    return code.startswith(prefix) and code[len(prefix) :][:1].isdigit()
 
 
 def overlapping_code(item: object, code: str) -> bool:
-    return str(item).startswith(code) or code.startswith(str(item))
+    return family_prefix(str(item), code) or family_prefix(code, str(item))
 
 
 # Per-file ignores on conventional non-production paths (tests, migrations)

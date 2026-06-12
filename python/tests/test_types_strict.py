@@ -121,6 +121,26 @@ class TestTyContract:
         )
         assert "ANN" in messages(files)
 
+    def test_a_family_does_not_cover_ann(self):
+        files = clean_python_repo(
+            {
+                "pyproject.toml": STRICT_PYPROJECT.replace(
+                    'select = ["E", "F", "ANN", "C90"]', 'select = ["E", "F", "A", "C90"]'
+                )
+            }
+        )
+        assert "ANN" in messages(files)
+
+    def test_cli_demotion_is_not_masked_by_config_error(self):
+        files = clean_python_repo(
+            {"ty.toml": STRICT_TY_TOML + '\nunresolved-attribute = "error"\n'}
+        )
+        files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
+            "uv run ty check src --error-on-warning",
+            "uv run ty check src --error-on-warning --ignore unresolved-attribute",
+        )
+        assert "unresolved-attribute" in messages(files)
+
     def test_missing_ann_selection_is_a_finding(self):
         files = clean_python_repo({"pyproject.toml": STRICT_PYPROJECT.replace('"ANN", ', "")})
         assert "ANN" in messages(files)

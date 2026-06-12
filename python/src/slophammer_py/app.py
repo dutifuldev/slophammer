@@ -12,7 +12,7 @@ from .dry import dry_findings, max_findings
 from .report import write_json, write_sarif, write_text
 from .rules import rule_severity, run_rules
 from .scan import scan_repo
-from .toolchecks import Runner, execute_python_checks, subprocess_runner
+from .toolchecks import ExecutionError, Runner, execute_python_checks, subprocess_runner
 
 
 @dataclass(frozen=True)
@@ -41,7 +41,7 @@ def check(
             ]
             report = new_report([*report.findings, *executed], scope=report.scope)
         return finish_check(snapshot.root, report, output_format, baseline)
-    except (ConfigError, BaselineError, OSError) as error:
+    except (ConfigError, BaselineError, ExecutionError, OSError) as error:
         return CommandResult(code=2, stderr=f"check failed: {error}\n")
 
 

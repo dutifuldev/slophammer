@@ -32,6 +32,10 @@ from .rules.toolconfig import project_dirs, typechecker_in_use
 Runner = Callable[[str, list[str]], "CommandOutput"]
 
 
+class ExecutionError(Exception):
+    """A gate tool that cannot be launched is an infrastructure failure."""
+
+
 @dataclass(frozen=True)
 class CommandOutput:
     code: int
@@ -76,8 +80,11 @@ def execute_python_checks(
     working_directory = execution_directory(snapshot)
     findings: list[Finding] = []
     for rule_id, label, command in selected_gate_commands(snapshot, config, wanted):
-        result = runner(working_directory, run_prefix(snapshot) + command)
-        if result.missing or result.code == 0:
+        full_command = run_prefix(snapshot) + command
+        result = runner(working_directory, full_command)
+        if result.missing:
+            raise ExecutionError(f"cannot run {' '.join(full_command)}: command not found")
+        if result.code == 0:
             continue
         findings.append(executed_finding(rule_id, label, result))
     if not wanted or PY_DRY in wanted:

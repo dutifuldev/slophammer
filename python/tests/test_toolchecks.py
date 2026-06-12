@@ -41,9 +41,28 @@ class TestExecute:
         assert [finding.rule_id for finding in findings] == ["py.format-required"]
         assert "formatter check failed (exit 1): would reformat main.py" in findings[0].message
 
-    def test_missing_tools_are_not_findings(self):
+    def test_missing_tools_are_infrastructure_errors(self):
+        import pytest
+
+        from slophammer_py.toolchecks import ExecutionError
+
         runner = FakeRunner({"": CommandOutput(code=127, missing=True)})
-        assert run_checks(clean_python_repo(), runner) == []
+        with pytest.raises(ExecutionError, match="command not found"):
+            run_checks(clean_python_repo(), runner)
+
+    def test_missing_tools_exit_two_from_check(self, tmp_path):
+        from pathlib import Path
+
+        from slophammer_py.app import check as app_check
+
+        for path, content in clean_python_repo().items():
+            target = Path(tmp_path) / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(content)
+        runner = FakeRunner({"": CommandOutput(code=127, missing=True)})
+        result = app_check(str(tmp_path), execute=True, runner=runner)
+        assert result.code == 2
+        assert "command not found" in result.stderr
 
     def test_only_filter_limits_executed_gates(self):
         runner = FakeRunner({"ruff check": CommandOutput(code=1, output="E501")})
