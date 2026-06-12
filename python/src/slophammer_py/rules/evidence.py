@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import re
 
-from ..repo import Snapshot, command_files
+from slophammer_py.repo import Snapshot, command_files
 
 CHECK_INVOCATION_WINDOW = 160
 CHECKER_BINARIES = ("slophammer-go", "slophammer-ts", "slophammer-rs", "slophammer-py")
@@ -131,7 +131,7 @@ def has_coverage_run(snapshot: Snapshot) -> bool:
 
 
 def has_coverage_config_threshold(snapshot: Snapshot, threshold: int) -> bool:
-    from .toolconfig import coverage_fail_under
+    from slophammer_py.rules.toolconfig import coverage_fail_under
 
     configured = coverage_fail_under(snapshot)
     return configured is not None and configured >= threshold

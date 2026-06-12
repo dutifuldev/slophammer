@@ -7,9 +7,9 @@ import json
 import sys
 from importlib import metadata
 
-from .app import CommandResult, check, dry
-from .rules import explain
-from .rules.definitions import DEFAULT_DEFINITIONS
+from slophammer_py.app import CommandResult, check, dry
+from slophammer_py.rules import explain
+from slophammer_py.rules.definitions import DEFAULT_DEFINITIONS
 
 FORMATS = ("text", "json", "sarif")
 

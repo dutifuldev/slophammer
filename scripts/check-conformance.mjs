@@ -93,6 +93,7 @@ const pythonFixtures = [
   "python-missing-tests",
   "python-missing-typecheck",
   "python-neutralized-ci",
+  "python-relative-imports",
   "python-soft-warnings",
   "python-unreachable-script",
 ];

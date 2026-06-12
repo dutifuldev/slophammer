@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..core import Severity
+from slophammer_py.core import Severity
 
 
 @dataclass(frozen=True)
@@ -35,6 +35,7 @@ PY_SUPPRESSIONS = "py.suppressions-justified"
 PY_AUDIT = "py.dependency-audit-required"
 PY_BOUNDARIES = "py.dependency-boundaries-required"
 PY_TYPED_MARKER = "py.typed-marker-required"
+PY_ABSOLUTE_IMPORTS = "py.absolute-imports-required"
 PY_SCOPE = "py.scope-incomplete"
 
 DEFAULT_DEFINITIONS: tuple[Definition, ...] = (
@@ -205,6 +206,21 @@ DEFAULT_DEFINITIONS: tuple[Definition, ...] = (
         description=(
             "A project that builds a published package must ship the py.typed marker, "
             "or its checked types degrade to Any for every consumer."
+        ),
+    ),
+    Definition(
+        id=PY_ABSOLUTE_IMPORTS,
+        title="Absolute Python imports required",
+        severity="error",
+        path="",
+        message=(
+            "Python imports must be absolute; replace relative imports "
+            "(ruff check --select TID252 --fix)"
+        ),
+        description=(
+            "Relative imports defeat grep, break on file moves, and read as "
+            "dot-counting at depth; production imports must name the package. "
+            "Ruff's TID252 autofix converts a whole repository in one command."
         ),
     ),
     Definition(

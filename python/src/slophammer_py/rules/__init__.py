@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from ..config import Config
-from ..core import Finding, Report, Severity, new_report
-from ..repo import Snapshot, has_file, workflow_files
-from . import evidence, toolconfig
-from .boundaries import boundary_findings
-from .definitions import (
+from slophammer_py.config import Config
+from slophammer_py.core import Finding, Report, Severity, new_report
+from slophammer_py.repo import Snapshot, has_file, workflow_files
+from slophammer_py.rules import evidence, toolconfig
+from slophammer_py.rules.boundaries import boundary_findings
+from slophammer_py.rules.definitions import (
     DEFAULT_DEFINITIONS,
+    PY_ABSOLUTE_IMPORTS,
     PY_AUDIT,
     PY_BOUNDARIES,
     PY_COMPLEXITY,
@@ -32,8 +33,9 @@ from .definitions import (
     REPO_SLOPHAMMER_CI,
     Definition,
 )
-from .scope import production_python_files, scope_counts, scope_findings
-from .suppressions import suppression_findings
+from slophammer_py.rules.imports import absolute_import_findings
+from slophammer_py.rules.scope import production_python_files, scope_counts, scope_findings
+from slophammer_py.rules.suppressions import suppression_findings
 
 
 def run_rules(snapshot: Snapshot, config: Config, only_rule_ids: list[str] | None = None) -> Report:
@@ -108,6 +110,8 @@ def check_python_definition(
 ) -> list[Finding]:
     if definition.id == PY_SUPPRESSIONS:
         return suppression_findings(definition, snapshot)
+    if definition.id == PY_ABSOLUTE_IMPORTS:
+        return absolute_import_findings(definition, snapshot)
     if definition.id == PY_BOUNDARIES:
         return boundary_findings(definition, snapshot, config)
     if definition.id == PY_SCOPE:

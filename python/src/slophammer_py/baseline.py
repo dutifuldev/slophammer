@@ -11,7 +11,7 @@ import json
 from dataclasses import replace
 from pathlib import Path
 
-from .core import Finding, Report
+from slophammer_py.core import Finding, Report
 
 BASELINE_FILE_NAME = "slophammer-baseline.json"
 

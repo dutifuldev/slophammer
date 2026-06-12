@@ -47,8 +47,12 @@ select = [
     "C90",
     "ANN",
     "RUF",
+    "TID",
 ]
 # ANN401 stays on: no Any in signatures; escapes need `# noqa: ANN401 -- reason`.
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
 
 [tool.ruff.lint.mccabe]
 max-complexity = 8

@@ -120,6 +120,7 @@ Ruff's ANN selection, so every production signature is annotated.
 | `py.dependency-audit-required` | `error` | `.github/workflows` | `Python projects must audit dependencies (pip-audit or uv audit) in CI` |
 | `py.dependency-boundaries-required` | `error` | `.` | `Python imports must respect the configured dependency boundaries` |
 | `py.typed-marker-required` | `error` | `.` | `Published Python packages must ship a py.typed marker` |
+| `py.absolute-imports-required` | `error` | `.` | `Python imports must be absolute; replace relative imports (ruff check --select TID252 --fix)` |
 | `py.scope-incomplete` | `error` | `slophammer.yml` | `Configured Python scope must cover all production files or exclude them with reasons` |
 
 ## Rust Rules

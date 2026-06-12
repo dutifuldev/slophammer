@@ -227,8 +227,8 @@ for the full shape.
 
 ## Rule Set
 
-The shared registry contains 61 implemented rules: 4 repository rules, 12 Go
-rules, 15 TypeScript rules, 15 Python rules, and 15 Rust rules. Each
+The shared registry contains 62 implemented rules: 4 repository rules, 12 Go
+rules, 15 TypeScript rules, 16 Python rules, and 15 Rust rules. Each
 executable prints the rules it implements: repo rules plus its native
 language rules.
 
@@ -279,6 +279,7 @@ language rules.
 | `py.dependency-audit-required` | Binding CI evidence must audit Python dependencies. |
 | `py.dependency-boundaries-required` | When python.dependency_boundaries is configured, imports crossing a boundary outside its allow list are findings. |
 | `py.typed-marker-required` | A project that builds a published package must ship the py.typed marker, or its checked types degrade to Any for every consumer. |
+| `py.absolute-imports-required` | Relative imports defeat grep, break on file moves, and read as dot-counting at depth; production imports must name the package. |
 | `py.scope-incomplete` | Every production Python file must be inside a configured scope or covered by a conventional or reasoned exclude, so narrowing scope cannot hide code. |
 | `rust.manifest-required`            | Rust projects should include `Cargo.toml`.                    |
 | `rust.msrv-required`                | Rust projects should declare an MSRV.                         |

@@ -16,9 +16,9 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from importlib import resources
 
-from ..config import Config, conventional_exclude_pattern
-from ..repo import Snapshot
-from .evidence import snapshot_segments, tool_pattern
+from slophammer_py.config import Config, conventional_exclude_pattern
+from slophammer_py.repo import Snapshot
+from slophammer_py.rules.evidence import snapshot_segments, tool_pattern
 
 LEVELS = ("ignore", "warn", "error")
 REQUIRED_PROMOTIONS = (

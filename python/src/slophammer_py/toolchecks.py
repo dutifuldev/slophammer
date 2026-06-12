@@ -13,12 +13,12 @@ import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from .config import Config
-from .core import Finding
-from .dry import dry_findings, max_findings
-from .repo import Snapshot, has_file
-from .rules import coverage_threshold, evidence, python_project_present
-from .rules.definitions import (
+from slophammer_py.config import Config
+from slophammer_py.core import Finding
+from slophammer_py.dry import dry_findings, max_findings
+from slophammer_py.repo import Snapshot, has_file
+from slophammer_py.rules import coverage_threshold, evidence, python_project_present
+from slophammer_py.rules.definitions import (
     PY_COVERAGE,
     PY_DRY,
     PY_FORMAT,
@@ -27,7 +27,7 @@ from .rules.definitions import (
     PY_TYPECHECK,
     definition,
 )
-from .rules.toolconfig import project_dirs, typechecker_in_use
+from slophammer_py.rules.toolconfig import project_dirs, typechecker_in_use
 
 Runner = Callable[[str, list[str]], "CommandOutput"]
 

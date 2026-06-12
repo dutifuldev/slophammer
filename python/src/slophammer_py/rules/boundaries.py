@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import ast
 
-from ..config import Config, DependencyBoundary
-from ..core import Finding
-from ..repo import RepoFile, Snapshot
-from .definitions import Definition
+from slophammer_py.config import Config, DependencyBoundary
+from slophammer_py.core import Finding
+from slophammer_py.repo import RepoFile, Snapshot
+from slophammer_py.rules.definitions import Definition
 
 
 def boundary_findings(definition: Definition, snapshot: Snapshot, config: Config) -> list[Finding]:

@@ -7,10 +7,10 @@ from __future__ import annotations
 
 import re
 
-from ..config import Config, ExcludeEntry, PythonConfig
-from ..core import Finding, ScopeCoverage
-from ..repo import Snapshot
-from .definitions import Definition
+from slophammer_py.config import Config, ExcludeEntry, PythonConfig
+from slophammer_py.core import Finding, ScopeCoverage
+from slophammer_py.repo import Snapshot
+from slophammer_py.rules.definitions import Definition
 
 CONVENTIONAL_DIRS = {
     "tests",

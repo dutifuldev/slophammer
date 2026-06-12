@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from .core import Finding, Report, Severity
+from slophammer_py.core import Finding, Report, Severity
 
 
 def report_json_value(report: Report) -> dict[str, object]:

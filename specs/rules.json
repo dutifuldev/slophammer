@@ -640,6 +640,16 @@
       "message": "Configured Python scope must cover all production files or exclude them with reasons",
       "description": "Every production Python file must be inside a configured scope or covered by a conventional or reasoned exclude, so narrowing scope cannot hide code.",
       "status": "implemented"
+    },
+    {
+      "id": "py.absolute-imports-required",
+      "title": "Absolute Python imports required",
+      "category": "python",
+      "severity": "error",
+      "path": "",
+      "message": "Python imports must be absolute; replace relative imports (ruff check --select TID252 --fix)",
+      "description": "Relative imports defeat grep, break on file moves, and read as dot-counting at depth; production imports must name the package. Ruff's TID252 autofix converts a whole repository in one command.",
+      "status": "implemented"
     }
   ]
 }
