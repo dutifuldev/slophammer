@@ -218,11 +218,20 @@ def mypy_ini_strict(snapshot: Snapshot) -> bool:
             continue
         if not parser.has_section("mypy"):
             continue
-        if parser.getboolean("mypy", "strict", fallback=False):
-            return True
-        if parser.getboolean("mypy", "disallow_untyped_defs", fallback=False):
+        if ini_boolean(parser, "mypy", "strict") or ini_boolean(
+            parser, "mypy", "disallow_untyped_defs"
+        ):
             return True
     return False
+
+
+# Malformed external tool config never crashes the checker; an unreadable
+# value is just absent strictness.
+def ini_boolean(parser: configparser.ConfigParser, section: str, option: str) -> bool:
+    try:
+        return parser.getboolean(section, option, fallback=False)
+    except ValueError:
+        return False
 
 
 def mypy_pydantic_plugin(snapshot: Snapshot) -> bool:
@@ -281,12 +290,30 @@ def ruff_lint_config(snapshot: Snapshot) -> Mapping[str, object]:
         prefix = f"{directory}/" if directory else ""
         for name in ("ruff.toml", ".ruff.toml"):
             config = file_toml(snapshot, f"{prefix}{name}")
-            if config:
-                return as_mapping(config.get("lint")) or config
+            lint = as_mapping(config.get("lint")) or lint_settings_only(config)
+            if lint:
+                return lint
         pyproject = file_toml(snapshot, f"{prefix}pyproject.toml")
         lint = as_mapping(as_mapping(as_mapping(pyproject.get("tool")).get("ruff")).get("lint"))
         if lint:
             return lint
+    return {}
+
+
+# A Ruff file without lint settings (formatter or global options only) must
+# not mask a nested project's lint configuration.
+def lint_settings_only(config: Mapping[str, object]) -> Mapping[str, object]:
+    lint_keys = {
+        "select",
+        "extend-select",
+        "ignore",
+        "extend-ignore",
+        "per-file-ignores",
+        "extend-per-file-ignores",
+        "mccabe",
+    }
+    if any(key in config for key in lint_keys):
+        return config
     return {}
 
 
@@ -360,7 +387,10 @@ def coverage_fail_under(snapshot: Snapshot) -> float | None:
             parser.read_string(file.content)
         except configparser.Error:
             return None
-        value = parser.getfloat("report", "fail_under", fallback=None)
+        try:
+            value = parser.getfloat("report", "fail_under", fallback=None)
+        except ValueError:
+            return None
         if value is not None:
             return value
     return None

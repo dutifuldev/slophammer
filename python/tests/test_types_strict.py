@@ -141,6 +141,22 @@ class TestTyContract:
         )
         assert "unresolved-attribute" in messages(files)
 
+    def test_invalid_mypy_ini_boolean_is_not_strict(self):
+        files = mypy_repo(strict_section="")
+        files["mypy.ini"] = "[mypy]\nstrict = maybe\n"
+        assert "strict" in messages(files)
+
+    def test_format_only_root_ruff_toml_does_not_mask_nested_lint(self):
+        files = clean_python_repo()
+        files["ruff.toml"] = "line-length = 100\n"
+        files["pyproject.toml"] = (
+            '[project]\nname = "demo"\nversion = "0"\n'
+            "[tool.ruff.lint]\n"
+            'select = ["E", "F", "ANN", "C90"]\n'
+            "[tool.ruff.lint.mccabe]\nmax-complexity = 8\n"
+        )
+        assert rule_ids(report_for(files, only=ONLY)) == []
+
     def test_root_format_only_ruff_does_not_mask_nested_lint(self):
         files = clean_python_repo()
         files["pyproject.toml"] = (

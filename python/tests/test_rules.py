@@ -296,6 +296,16 @@ class TestGateRules:
         ids = rule_ids(report_for(files, only=["py.coverage-required"]))
         assert ids == []
 
+    def test_non_numeric_coveragerc_fail_under_is_not_a_gate(self):
+        files = clean_python_repo()
+        files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
+            "uv run pytest --cov=src --cov-fail-under=85",
+            "uv run coverage run -m pytest\n      - run: uv run coverage report",
+        )
+        files[".coveragerc"] = "[report]\nfail_under = lots\n"
+        ids = rule_ids(report_for(files, only=["py.coverage-required"]))
+        assert ids == ["py.coverage-required"]
+
     def test_active_coveragerc_fail_under_is_a_gate(self):
         files = clean_python_repo()
         files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
