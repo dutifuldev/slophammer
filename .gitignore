@@ -20,3 +20,11 @@ bin/
 # Rust
 target/
 rust/target/
+
+# Python implementation
+python/.venv/
+python/mutants/
+python/.coverage
+python/.ruff_cache/
+__pycache__/
+*.egg-info/

@@ -118,7 +118,7 @@ def check_python_definition(
 
 
 def python_project_present(snapshot: Snapshot) -> bool:
-    if has_file(snapshot, "pyproject.toml") or has_file(snapshot, "setup.py"):
+    if toolconfig.project_dirs(snapshot) or has_file(snapshot, "setup.py"):
         return True
     return bool(production_python_files(snapshot))
 
@@ -128,7 +128,9 @@ def check_python_project_definition(
 ) -> list[Finding]:
     checks = {
         PY_PROJECT: lambda: project_findings(definition, snapshot),
-        PY_TYPECHECK: lambda: presence_finding(definition, evidence.has_typecheck_command(snapshot)),
+        PY_TYPECHECK: lambda: presence_finding(
+            definition, evidence.has_typecheck_command(snapshot)
+        ),
         PY_TYPES_STRICT: lambda: types_strict_findings(definition, snapshot, config),
         PY_LINT: lambda: presence_finding(definition, evidence.has_lint_command(snapshot)),
         PY_FORMAT: lambda: presence_finding(definition, evidence.has_format_command(snapshot)),
@@ -149,7 +151,7 @@ def check_python_project_definition(
 def project_findings(definition: Definition, snapshot: Snapshot) -> list[Finding]:
     if not production_python_files(snapshot):
         return []
-    return presence_finding(definition, has_file(snapshot, "pyproject.toml"))
+    return presence_finding(definition, bool(toolconfig.project_dirs(snapshot)))
 
 
 def coverage_threshold(config: Config) -> int:
@@ -168,7 +170,9 @@ def complexity_limit(config: Config) -> int:
     return 8
 
 
-def complexity_findings(definition: Definition, snapshot: Snapshot, config: Config) -> list[Finding]:
+def complexity_findings(
+    definition: Definition, snapshot: Snapshot, config: Config
+) -> list[Finding]:
     if evidence.has_complexity_command(snapshot):
         return []
     limit = toolconfig.ruff_complexity_limit(snapshot)

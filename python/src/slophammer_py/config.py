@@ -8,8 +8,8 @@ ignored. Unknown keys anywhere fail with exit code 2.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Mapping
 
 import yaml
 
@@ -208,7 +208,9 @@ def parse_complexity(value: object) -> ComplexityConfig | None:
         return None
     section = as_mapping(value, "python.complexity")
     assert_known_keys(section, "python.complexity", ("max",))
-    return ComplexityConfig(max_complexity=optional_int(section.get("max"), "python.complexity.max"))
+    return ComplexityConfig(
+        max_complexity=optional_int(section.get("max"), "python.complexity.max")
+    )
 
 
 def parse_dry(value: object) -> DryConfig | None:
@@ -303,7 +305,7 @@ def validate(config: Config) -> None:
     for boundary in python.dependency_boundaries:
         if boundary.source.strip() == "":
             raise ConfigError("python dependency boundaries require from")
-    for demotion in (python.typecheck.demotions if python.typecheck else []):
+    for demotion in python.typecheck.demotions if python.typecheck else []:
         if demotion.rule.strip() == "" or demotion.reason.strip() == "":
             raise ConfigError("python.typecheck.demotions entries require rule and reason")
 
@@ -376,7 +378,12 @@ IGNORED_SECTIONS: dict[str, dict[str, object]] = {
             "max_findings": None,
             "paths": None,
             "exclude": EXCLUDES,
-            "structural": {"enabled": None, "threshold": None, "min_lines": None, "min_nodes": None},
+            "structural": {
+                "enabled": None,
+                "threshold": None,
+                "min_lines": None,
+                "min_nodes": None,
+            },
             "copied_blocks": {"enabled": None, "min_tokens": None},
         },
         "crap": {"max_score": None},
@@ -419,7 +426,7 @@ def validate_ignored_section(value: object, section: str) -> None:
     validate_ignored_tree(value, IGNORED_SECTIONS[section], section)
 
 
-def validate_ignored_tree(value: object, tree: dict[str, object], field_name: str) -> None:
+def validate_ignored_tree(value: object, tree: Mapping[str, object], field_name: str) -> None:
     mapping = as_mapping(value, field_name)
     assert_known_keys(mapping, field_name, tuple(tree))
     for key, subtree in tree.items():
@@ -430,7 +437,7 @@ def validate_ignored_tree(value: object, tree: dict[str, object], field_name: st
 
 def validate_ignored_value(value: object, subtree: object, field_name: str) -> None:
     if isinstance(subtree, dict):
-        validate_ignored_tree(value, subtree, field_name)
+        validate_ignored_tree(value, {str(key): item for key, item in subtree.items()}, field_name)
     elif subtree == EXCLUDES:
         exclude_entries(value, field_name)
     elif subtree == BOUNDARIES:
@@ -455,7 +462,9 @@ def as_mapping(value: object, field_name: str) -> Mapping[str, object]:
     return {str(key): item for key, item in value.items()}
 
 
-def assert_known_keys(mapping: Mapping[str, object], field_name: str, allowed: tuple[str, ...]) -> None:
+def assert_known_keys(
+    mapping: Mapping[str, object], field_name: str, allowed: tuple[str, ...]
+) -> None:
     if field_name == "rules":
         return
     for key in mapping:
@@ -496,6 +505,11 @@ def optional_number(value: object, field_name: str) -> float | None:
 def string_list(value: object, field_name: str) -> list[str]:
     if value is None:
         return []
-    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+    if not isinstance(value, list):
         raise ConfigError(f"{field_name} must be a list of strings")
-    return list(value)
+    items: list[str] = []
+    for item in value:
+        if not isinstance(item, str):
+            raise ConfigError(f"{field_name} must be a list of strings")
+        items.append(item)
+    return items

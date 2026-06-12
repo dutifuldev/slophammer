@@ -12,7 +12,7 @@ import ast
 
 from ..config import Config, DependencyBoundary
 from ..core import Finding
-from ..repo import Snapshot
+from ..repo import RepoFile, Snapshot
 from .definitions import Definition
 
 
@@ -37,7 +37,7 @@ def boundary_findings(definition: Definition, snapshot: Snapshot, config: Config
     return findings
 
 
-def python_files_under(snapshot: Snapshot, root: str) -> list[object]:
+def python_files_under(snapshot: Snapshot, root: str) -> list[RepoFile]:
     prefix = root.rstrip("/") + "/"
     return [
         file

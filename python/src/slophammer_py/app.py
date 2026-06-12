@@ -6,7 +6,7 @@ import json
 from dataclasses import dataclass
 
 from .baseline import BaselineError, apply_baseline_check, debt_line, write_baseline
-from .config import Config, ConfigError, load_config
+from .config import ConfigError, load_config
 from .core import Report
 from .dry import dry_findings, max_findings
 from .report import write_json, write_sarif, write_text

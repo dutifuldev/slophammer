@@ -62,6 +62,13 @@ def dispatch(arguments: argparse.Namespace) -> CommandResult:
     )
 
 
+def run_explain(rule_id: str) -> CommandResult:
+    text = explain(rule_id)
+    if text is None:
+        return CommandResult(code=2, stderr=f"explain failed: unknown rule {rule_id}\n")
+    return CommandResult(code=0, stdout=text + "\n")
+
+
 def run_check(arguments: argparse.Namespace) -> CommandResult:
     only, error = parse_only(arguments.only)
     if error is not None:

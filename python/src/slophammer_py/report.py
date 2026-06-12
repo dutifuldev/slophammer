@@ -53,7 +53,8 @@ def report_body(report: Report) -> str:
 def scope_line(report: Report) -> str:
     if report.scope is None:
         return ""
-    return f"scope: scanned {report.scope.scanned} of {report.scope.production_files} production files\n"
+    scanned, total = report.scope.scanned, report.scope.production_files
+    return f"scope: scanned {scanned} of {total} production files\n"
 
 
 def write_sarif(report: Report) -> str:

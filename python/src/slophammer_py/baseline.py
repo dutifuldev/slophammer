@@ -100,16 +100,17 @@ def parse_baseline_entries(value: object) -> list[dict[str, str]]:
         raise BaselineError("baseline parse failed: findings must be a list")
     entries: list[dict[str, str]] = []
     for item in value:
-        if (
-            not isinstance(item, dict)
-            or not set(item) <= {"rule_id", "path"}
-            or not isinstance(item.get("rule_id"), str)
-            or not isinstance(item.get("path"), str)
-        ):
+        if not isinstance(item, dict) or not set(item) <= {"rule_id", "path"}:
             raise BaselineError(
                 "baseline parse failed: findings entries need rule_id and path strings"
             )
-        entries.append({"rule_id": item["rule_id"], "path": item["path"]})
+        rule_id = item.get("rule_id")
+        path = item.get("path")
+        if not isinstance(rule_id, str) or not isinstance(path, str):
+            raise BaselineError(
+                "baseline parse failed: findings entries need rule_id and path strings"
+            )
+        entries.append({"rule_id": rule_id, "path": path})
     return entries
 
 

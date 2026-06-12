@@ -71,3 +71,16 @@ show_missing = true
 
 [tool.mutmut]
 paths_to_mutate = ["src/slophammer_py/rules/", "src/slophammer_py/repo.py"]
+also_copy = [
+    "src/slophammer_py/__init__.py",
+    "src/slophammer_py/app.py",
+    "src/slophammer_py/baseline.py",
+    "src/slophammer_py/cli.py",
+    "src/slophammer_py/config.py",
+    "src/slophammer_py/core.py",
+    "src/slophammer_py/dry.py",
+    "src/slophammer_py/report.py",
+    "src/slophammer_py/scan.py",
+    "src/slophammer_py/ty_rules.json",
+    "src/slophammer_py/py.typed",
+]

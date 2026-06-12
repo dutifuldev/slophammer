@@ -12,9 +12,9 @@ import configparser
 import json
 import re
 import tomllib
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from importlib import resources
-from typing import Mapping
 
 from ..config import Config
 from ..repo import Snapshot
@@ -56,13 +56,59 @@ def file_toml(snapshot: Snapshot, path: str) -> Mapping[str, object]:
     return parse_toml(file.content) if file is not None else {}
 
 
+IGNORED_PROJECT_SEGMENTS = {
+    "fixtures",
+    "templates",
+    "testdata",
+    "node_modules",
+    "vendor",
+    "dist",
+    "build",
+}
+
+
+# Python projects can live in nested directories (the slophammer repo's own
+# checker lives under python/). Tool config lookups search the repo root and
+# every non-conventional directory carrying a pyproject.toml.
+def project_dirs(snapshot: Snapshot) -> list[str]:
+    dirs: list[str] = []
+    for path in snapshot.files:
+        if path.rsplit("/", 1)[-1] != "pyproject.toml":
+            continue
+        if set(path.split("/")[:-1]) & IGNORED_PROJECT_SEGMENTS:
+            continue
+        dirs.append(path.rsplit("/", 1)[0] if "/" in path else "")
+    return sorted(dirs, key=len)
+
+
+def project_file_toml(snapshot: Snapshot, name: str) -> Mapping[str, object]:
+    for directory in ["", *project_dirs(snapshot)]:
+        path = f"{directory}/{name}" if directory else name
+        config = file_toml(snapshot, path)
+        if config:
+            return config
+    return {}
+
+
+def project_file(snapshot: Snapshot, name: str) -> str | None:
+    for directory in ["", *project_dirs(snapshot)]:
+        path = f"{directory}/{name}" if directory else name
+        if path in snapshot.files:
+            return path
+    return None
+
+
 def pyproject_tool(snapshot: Snapshot, tool: str) -> Mapping[str, object]:
-    section = as_mapping(as_mapping(file_toml(snapshot, "pyproject.toml").get("tool")).get(tool))
-    return section
+    for directory in ["", *project_dirs(snapshot)]:
+        path = f"{directory}/pyproject.toml" if directory else "pyproject.toml"
+        section = as_mapping(as_mapping(file_toml(snapshot, path).get("tool")).get(tool))
+        if section:
+            return section
+    return {}
 
 
 def ty_contract(snapshot: Snapshot) -> TyContract:
-    config = file_toml(snapshot, "ty.toml") or pyproject_tool(snapshot, "ty")
+    config = project_file_toml(snapshot, "ty.toml") or pyproject_tool(snapshot, "ty")
     severities = dict(flag_severities(snapshot))
     for rule, level in as_mapping(config.get("rules")).items():
         if isinstance(level, str):
@@ -78,7 +124,11 @@ def ty_contract(snapshot: Snapshot) -> TyContract:
 
 
 def ty_segments(snapshot: Snapshot) -> list[str]:
-    return [segment for segment in snapshot_segments(snapshot) if re.search(r"\bty (?:check|server)\b", segment)]
+    return [
+        segment
+        for segment in snapshot_segments(snapshot)
+        if re.search(r"\bty (?:check|server)\b", segment)
+    ]
 
 
 def flag_severities(snapshot: Snapshot) -> dict[str, str]:
@@ -136,7 +186,9 @@ MYPY_STRICT_FLAGS = ("disallow_untyped_defs", "disallow_incomplete_defs", "check
 
 
 def mypy_strict(snapshot: Snapshot) -> bool:
-    if any(re.search(r"\bmypy\b[^\n]* --strict\b", segment) for segment in snapshot_segments(snapshot)):
+    if any(
+        re.search(r"\bmypy\b[^\n]* --strict\b", segment) for segment in snapshot_segments(snapshot)
+    ):
         return True
     section = pyproject_tool(snapshot, "mypy")
     if section.get("strict") is True:
@@ -148,7 +200,8 @@ def mypy_strict(snapshot: Snapshot) -> bool:
 
 def mypy_ini_strict(snapshot: Snapshot) -> bool:
     for name in ("mypy.ini", "setup.cfg"):
-        file = snapshot.files.get(name)
+        path = project_file(snapshot, name)
+        file = snapshot.files.get(path) if path is not None else None
         if file is None:
             continue
         parser = configparser.ConfigParser()
@@ -172,24 +225,37 @@ def mypy_pydantic_plugin(snapshot: Snapshot) -> bool:
     if isinstance(plugins, str) and "pydantic" in plugins:
         return True
     for name in ("mypy.ini", "setup.cfg"):
-        file = snapshot.files.get(name)
+        path = project_file(snapshot, name)
+        file = snapshot.files.get(path) if path is not None else None
         if file is not None and re.search(r"plugins\s*=.*pydantic", file.content):
             return True
     return False
 
 
 def pydantic_dependency(snapshot: Snapshot) -> bool:
-    project = as_mapping(file_toml(snapshot, "pyproject.toml").get("project"))
-    dependencies = project.get("dependencies")
-    if isinstance(dependencies, list) and any(
-        str(dependency).strip().lower().startswith("pydantic") for dependency in dependencies
-    ):
-        return True
+    for pyproject in project_pyprojects(snapshot):
+        project = as_mapping(pyproject.get("project"))
+        dependencies = project.get("dependencies")
+        if isinstance(dependencies, list) and any(
+            str(dependency).strip().lower().startswith("pydantic") for dependency in dependencies
+        ):
+            return True
     return False
 
 
+def project_pyprojects(snapshot: Snapshot) -> list[Mapping[str, object]]:
+    configs: list[Mapping[str, object]] = []
+    for directory in ["", *project_dirs(snapshot)]:
+        path = f"{directory}/pyproject.toml" if directory else "pyproject.toml"
+        config = file_toml(snapshot, path)
+        if config:
+            configs.append(config)
+    return configs
+
+
 def pyright_strict(snapshot: Snapshot) -> bool:
-    file = snapshot.files.get("pyrightconfig.json")
+    config_path = project_file(snapshot, "pyrightconfig.json")
+    file = snapshot.files.get(config_path) if config_path is not None else None
     if file is not None:
         try:
             parsed = json.loads(file.content)
@@ -201,8 +267,8 @@ def pyright_strict(snapshot: Snapshot) -> bool:
 
 
 def ruff_lint_config(snapshot: Snapshot) -> Mapping[str, object]:
-    for path in ("ruff.toml", ".ruff.toml"):
-        config = file_toml(snapshot, path)
+    for name in ("ruff.toml", ".ruff.toml"):
+        config = project_file_toml(snapshot, name)
         if config:
             return as_mapping(config.get("lint")) or config
     return as_mapping(pyproject_tool(snapshot, "ruff").get("lint"))
@@ -226,7 +292,8 @@ def coverage_fail_under(snapshot: Snapshot) -> float | None:
     value = report.get("fail_under")
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         return float(value)
-    file = snapshot.files.get(".coveragerc")
+    coveragerc = project_file(snapshot, ".coveragerc")
+    file = snapshot.files.get(coveragerc) if coveragerc is not None else None
     if file is not None:
         match = re.search(r"fail_under\s*=\s*(\d+(?:\.\d+)?)", file.content)
         if match is not None:
@@ -235,8 +302,10 @@ def coverage_fail_under(snapshot: Snapshot) -> float | None:
 
 
 def builds_package(snapshot: Snapshot) -> bool:
-    pyproject = file_toml(snapshot, "pyproject.toml")
-    return "build-system" in pyproject and "project" in pyproject
+    return any(
+        "build-system" in pyproject and "project" in pyproject
+        for pyproject in project_pyprojects(snapshot)
+    )
 
 
 def has_typed_marker(snapshot: Snapshot) -> bool:

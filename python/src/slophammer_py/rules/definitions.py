@@ -115,7 +115,9 @@ DEFAULT_DEFINITIONS: tuple[Definition, ...] = (
         title="Python format check required",
         severity="error",
         path=".github/workflows",
-        message="Python projects must verify formatting (ruff format --check or black --check) in CI",
+        message=(
+            "Python projects must verify formatting (ruff format --check or black --check) in CI"
+        ),
         description="Binding CI evidence must verify formatting without mutating files.",
     ),
     Definition(
@@ -210,7 +212,9 @@ DEFAULT_DEFINITIONS: tuple[Definition, ...] = (
         title="Complete Python scope required",
         severity="error",
         path="slophammer.yml",
-        message="Configured Python scope must cover all production files or exclude them with reasons",
+        message=(
+            "Configured Python scope must cover all production files or exclude them with reasons"
+        ),
         description=(
             "Every production Python file must be inside a configured scope or covered "
             "by a conventional or reasoned exclude, so narrowing scope cannot hide code."

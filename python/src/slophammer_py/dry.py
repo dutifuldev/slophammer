@@ -7,6 +7,7 @@ whitespace, comments, and layout tokens are invisible.
 from __future__ import annotations
 
 import io
+import itertools
 import token as token_types
 import tokenize as tokenizer
 from dataclasses import dataclass
@@ -97,7 +98,7 @@ def tokenize_file(file: RepoFile) -> list[TokenEntry]:
             if item.type in SKIPPED_TOKEN_TYPES:
                 continue
             tokens.append(TokenEntry(tag=token_tag(item), file=file.path, line=item.start[0]))
-    except (tokenizer.TokenizeError, SyntaxError, ValueError):
+    except (tokenizer.TokenError, SyntaxError, ValueError):
         return tokens
     return tokens
 
@@ -134,7 +135,7 @@ def matches_for_occurrences(
     seen: set[str] = set()
     matches: list[DryFinding] = []
     compacted = compact_occurrences(occurrences, window_size)
-    for left, right in zip(compacted, compacted[1:]):
+    for left, right in itertools.pairwise(compacted):
         match = copied_block_match(sequences, left, right, window_size)
         if match is not None and finding_key(match) not in seen:
             seen.add(finding_key(match))
@@ -180,9 +181,17 @@ def expand_token_match(
     left_tokens = sequences[left[0]]
     right_tokens = sequences[right[0]]
     same_sequence = left[0] == right[0]
-    left_start, right_start = expand_start(left_tokens, right_tokens, left, right, window_size, same_sequence)
+    left_start, right_start = expand_start(
+        left_tokens, right_tokens, left, right, window_size, same_sequence
+    )
     left_end, right_end = expand_end(
-        left_tokens, right_tokens, left, right, (left_start, right_start), window_size, same_sequence
+        left_tokens,
+        right_tokens,
+        left,
+        right,
+        (left_start, right_start),
+        window_size,
+        same_sequence,
     )
     if left_end - left_start < window_size:
         return None

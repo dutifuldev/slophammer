@@ -11,15 +11,20 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Mapping
 
 import yaml
 
 MAX_WORD_CHARACTER = re.compile(r"[A-Za-z0-9_-]")
 SYNTHETIC_REPO_EVIDENCE_PREFIX = "scripts/__repo_"
 RUNNER_FILE_NAMES = {"makefile", "taskfile.yml", "taskfile.yaml", "justfile"}
-RUNNER_COMMANDS = {"makefile": "make", "taskfile.yml": "task", "taskfile.yaml": "task", "justfile": "just"}
+RUNNER_COMMANDS = {
+    "makefile": "make",
+    "taskfile.yml": "task",
+    "taskfile.yaml": "task",
+    "justfile": "just",
+}
 
 
 @dataclass(frozen=True)
@@ -35,7 +40,10 @@ class Snapshot:
 
 
 def new_snapshot(root: str, files: list[RepoFile]) -> Snapshot:
-    by_path = {normalize_path(file.path): RepoFile(normalize_path(file.path), file.content) for file in files}
+    by_path = {
+        normalize_path(file.path): RepoFile(normalize_path(file.path), file.content)
+        for file in files
+    }
     return Snapshot(root=root, files=dict(sorted(by_path.items())))
 
 
@@ -54,7 +62,9 @@ def files_with_suffix(snapshot: Snapshot, suffix: str) -> list[RepoFile]:
 
 def files_named(snapshot: Snapshot, *names: str) -> list[RepoFile]:
     wanted = {name.lower() for name in names}
-    return [file for file in snapshot.files.values() if file.path.rsplit("/", 1)[-1].lower() in wanted]
+    return [
+        file for file in snapshot.files.values() if file.path.rsplit("/", 1)[-1].lower() in wanted
+    ]
 
 
 def workflow_files(snapshot: Snapshot) -> list[RepoFile]:
@@ -279,7 +289,10 @@ def step_workflow_commands(step: object, matrix_commands: list[str]) -> list[str
 
 def neutralized_entry(record: Mapping[str, object]) -> bool:
     continue_on_error = record.get("continue-on-error")
-    if continue_on_error is True or literal_expression_value(string_value(continue_on_error)) == "true":
+    if (
+        continue_on_error is True
+        or literal_expression_value(string_value(continue_on_error)) == "true"
+    ):
         return True
     condition = record.get("if")
     if condition is False:
@@ -381,7 +394,9 @@ def block_scalar(value: str) -> bool:
     return trimmed.startswith("|") or trimmed.startswith(">")
 
 
-def collect_indented_block(lines: list[str], start_index: int, parent_indent: int) -> tuple[str, int]:
+def collect_indented_block(
+    lines: list[str], start_index: int, parent_indent: int
+) -> tuple[str, int]:
     kept: list[str] = []
     block_indent: int | None = None
     index = start_index

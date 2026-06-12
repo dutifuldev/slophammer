@@ -132,6 +132,30 @@ typescript:
         - typescript/src/dry
     - from: typescript/src/repo
       allow: []
+python:
+  coverage:
+    threshold: 85
+    paths:
+      - python/src
+  complexity:
+    max: 8
+  dry:
+    max_findings: 0
+    paths:
+      - python/src
+    copied_blocks:
+      enabled: true
+      min_tokens: 100
+  mutation:
+    targets:
+      - python/src/slophammer_py/rules
+      - python/src/slophammer_py/repo.py
+  dependency_boundaries:
+    - from: python/src/slophammer_py/rules
+      allow:
+        - python/src/slophammer_py/config
+        - python/src/slophammer_py/core
+        - python/src/slophammer_py/repo
 rust:
   coverage:
     threshold: 85
