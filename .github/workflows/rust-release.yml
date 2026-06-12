@@ -135,6 +135,10 @@ jobs:
           slophammer-rs unsafe .. --format json
           slophammer-rs check .. --format json
 
+      - uses: astral-sh/setup-uv@v7
+      - name: Sync the Python implementation
+        working-directory: .
+        run: uv sync --frozen --directory python
       - name: Validate shared conformance
         working-directory: .
         run: |

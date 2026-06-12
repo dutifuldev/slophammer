@@ -490,6 +490,156 @@
       "message": "allow attributes in production Rust code must carry a reason",
       "description": "An #[allow(...)] attribute in production scope must carry an adjacent // reason comment or use #[expect(..., reason = \"...\")]; bare suppressions accumulate silently.",
       "status": "implemented"
+    },
+    {
+      "id": "py.project-required",
+      "title": "Python project metadata required",
+      "category": "python",
+      "severity": "error",
+      "path": "pyproject.toml",
+      "message": "Python projects must declare a pyproject.toml",
+      "description": "Production Python code needs project metadata in pyproject.toml.",
+      "status": "implemented"
+    },
+    {
+      "id": "py.typecheck-required",
+      "title": "Python typecheck required",
+      "category": "python",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Python projects must run a typechecker (ty, mypy, or pyright) in CI",
+      "description": "Binding CI evidence must invoke a Python typechecker.",
+      "status": "implemented"
+    },
+    {
+      "id": "py.types-strict-required",
+      "title": "Strict Python typing required",
+      "category": "python",
+      "severity": "error",
+      "path": "pyproject.toml",
+      "message": "Python typechecking must be strict",
+      "description": "The typechecker configuration must make annotations mandatory and must not be quietly weakened: no unreasoned demotion of stable default-error ty rules, error-on-warning enabled, the ignore-default correctness rules promoted, coded suppressions only, and Ruff ANN annotation coverage.",
+      "status": "implemented"
+    },
+    {
+      "id": "py.lint-required",
+      "title": "Python lint required",
+      "category": "python",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Python projects must run a linter (ruff check) in CI",
+      "description": "Binding CI evidence must invoke a Python linter.",
+      "status": "implemented"
+    },
+    {
+      "id": "py.format-required",
+      "title": "Python format check required",
+      "category": "python",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Python projects must verify formatting (ruff format --check or black --check) in CI",
+      "description": "Binding CI evidence must verify formatting without mutating files.",
+      "status": "implemented"
+    },
+    {
+      "id": "py.test-required",
+      "title": "Python tests required",
+      "category": "python",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Python projects must run tests (pytest) in CI",
+      "description": "Binding CI evidence must run the Python test suite.",
+      "status": "implemented"
+    },
+    {
+      "id": "py.coverage-required",
+      "title": "Python coverage gate required",
+      "category": "python",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Python projects must enforce a coverage gate of at least 85",
+      "description": "Binding CI evidence must enforce coverage, via --cov-fail-under or a fail_under coverage configuration of at least the configured threshold.",
+      "status": "implemented"
+    },
+    {
+      "id": "py.complexity-required",
+      "title": "Python complexity gate required",
+      "category": "python",
+      "severity": "error",
+      "path": "pyproject.toml",
+      "message": "Python projects must enforce complexity at most 8 (Ruff C901 or radon)",
+      "description": "Complexity must be capped at the configured maximum.",
+      "status": "implemented"
+    },
+    {
+      "id": "py.dry-required",
+      "title": "Python DRY check required",
+      "category": "python",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Python projects must declare a DRY check",
+      "description": "Binding CI evidence must run a duplication check (slophammer-py dry).",
+      "status": "implemented"
+    },
+    {
+      "id": "py.mutation-required",
+      "title": "Python mutation testing required",
+      "category": "python",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Python projects must declare mutation testing (mutmut or cosmic-ray)",
+      "description": "Binding CI evidence must declare a mutation testing tool.",
+      "status": "implemented"
+    },
+    {
+      "id": "py.suppressions-justified",
+      "title": "Justified Python suppressions required",
+      "category": "python",
+      "severity": "error",
+      "path": "",
+      "message": "Python suppressions must carry a reason: bare # noqa, # type: ignore without an error code, or uncommented # ty: ignore",
+      "description": "Suppression directives in production Python code need a stated reason; bare # type: ignore without an error code is itself a finding.",
+      "status": "implemented"
+    },
+    {
+      "id": "py.dependency-audit-required",
+      "title": "Python dependency audit required",
+      "category": "python",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Python projects must audit dependencies (pip-audit or uv audit) in CI",
+      "description": "Binding CI evidence must audit Python dependencies.",
+      "status": "implemented"
+    },
+    {
+      "id": "py.dependency-boundaries-required",
+      "title": "Python dependency boundaries required",
+      "category": "python",
+      "severity": "error",
+      "path": "",
+      "message": "Python imports must respect the configured dependency boundaries",
+      "description": "When python.dependency_boundaries is configured, imports crossing a boundary outside its allow list are findings.",
+      "status": "implemented"
+    },
+    {
+      "id": "py.typed-marker-required",
+      "title": "py.typed marker required",
+      "category": "python",
+      "severity": "error",
+      "path": "",
+      "message": "Published Python packages must ship a py.typed marker",
+      "description": "A project that builds a published package must ship the py.typed marker, or its checked types degrade to Any for every consumer.",
+      "status": "implemented"
+    },
+    {
+      "id": "py.scope-incomplete",
+      "title": "Complete Python scope required",
+      "category": "python",
+      "severity": "error",
+      "path": "slophammer.yml",
+      "message": "Configured Python scope must cover all production files or exclude them with reasons",
+      "description": "Every production Python file must be inside a configured scope or covered by a conventional or reasoned exclude, so narrowing scope cannot hide code.",
+      "status": "implemented"
     }
   ]
 }

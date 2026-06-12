@@ -168,6 +168,10 @@ jobs:
       - name: Validate TypeScript implementation
         run: npm run check
 
+      - uses: astral-sh/setup-uv@v7
+      - name: Sync the Python implementation
+        working-directory: .
+        run: uv sync --frozen --directory python
       - name: Validate shared conformance
         working-directory: .
         run: node scripts/check-conformance.mjs

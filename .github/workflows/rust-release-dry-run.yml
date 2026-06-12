@@ -69,4 +69,7 @@ jobs:
       - run: slophammer-rs unsafe .. --format json
       - run: npm ci
         working-directory: typescript
+      - uses: astral-sh/setup-uv@v7
+      - run: uv sync --frozen --directory python
+        working-directory: .
       - run: node ../scripts/check-conformance.mjs

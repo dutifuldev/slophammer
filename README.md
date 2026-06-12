@@ -15,7 +15,7 @@ linting, coverage gates, duplication budgets, and a structure humans can still
 review. It reports what is missing, and it exits with a stable code so the
 verdict can gate CI.
 
-This repository holds the product spec, three released implementations, the
+This repository holds the product spec, four released implementations, the
 shared test fixtures, and project templates — all in one place so agents can
 copy tested patterns from working code instead of inventing them.
 
@@ -28,6 +28,7 @@ toolchain; any of them can check a repository.
 go install github.com/dutifuldev/slophammer/go/cmd/slophammer-go@latest
 npm install -g slophammer-ts
 cargo install slophammer-rs --locked
+uv tool install slophammer-py
 ```
 
 Then point it at a repository:
@@ -52,6 +53,7 @@ exact version, ideally behind one variable so upgrades are a single line:
 go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.3.0 check .
 npx slophammer-ts@0.3.0 check .
 cargo install slophammer-rs --version 0.3.0 --locked
+uvx slophammer-py@0.3.0 check .
 ```
 
 The simplest CI integration is the bundled GitHub Action, which requires an
@@ -97,8 +99,9 @@ exact checker version you verified against in CI; do not install latest.
 ## What This Is
 
 - A small product spec for a repo quality checker.
-- Three released implementations of that spec: `slophammer-go`,
-  `slophammer-ts` on npm, and `slophammer-rs` on crates.io.
+- Four released implementations of that spec: `slophammer-go`,
+  `slophammer-ts` on npm, `slophammer-rs` on crates.io, and `slophammer-py`
+  on PyPI.
 - Go, TypeScript, and Python project templates with strict local checks.
 - A reference for project structure, testing, errors, reporting, and CI.
 - A source of patterns for agents working in different language ecosystems.
@@ -113,15 +116,15 @@ exact checker version you verified against in CI; do not install latest.
 ## The Checkers
 
 Slophammer is the standard; implementations carry short language-specific
-names. `slophammer-py` is planned, and the bare `slophammer` npm name is
-reserved for a future umbrella package.
+names. The bare `slophammer` npm name is reserved for a future umbrella
+package.
 
 | Language   | Command         | Status                                  |
 | ---------- | --------------- | --------------------------------------- |
 | Go         | `slophammer-go` | Released from this repository's tags     |
 | TypeScript | `slophammer-ts` | Released to npm                          |
 | Rust       | `slophammer-rs` | Released to crates.io                    |
-| Python     | `slophammer-py` | Planned; the Python work is a template   |
+| Python     | `slophammer-py` | Released to PyPI                         |
 
 The language suffix names the implementation and packaging target, not a hard
 limit on what the checker inspects. Each implementation is best at its native
@@ -224,9 +227,10 @@ for the full shape.
 
 ## Rule Set
 
-The shared registry contains 46 implemented rules: 4 repository rules, 12 Go
-rules, 15 TypeScript rules, and 15 Rust rules. Each executable prints the
-rules it implements: repo rules plus its native language rules.
+The shared registry contains 61 implemented rules: 4 repository rules, 12 Go
+rules, 15 TypeScript rules, 15 Python rules, and 15 Rust rules. Each
+executable prints the rules it implements: repo rules plus its native
+language rules.
 
 | Rule ID                             | Meaning                                                       |
 | ----------------------------------- | ------------------------------------------------------------- |
@@ -261,6 +265,21 @@ rules it implements: repo rules plus its native language rules.
 | `ts.dependency-boundaries-required` | TypeScript projects should obey configured import boundaries. |
 | `ts.scope-incomplete`               | Configured TypeScript scope must cover all production files.  |
 | `ts.suppressions-justified`         | Lint and type suppressions need a description.                |
+| `py.project-required` | Production Python code needs project metadata in pyproject.toml. |
+| `py.typecheck-required` | Binding CI evidence must invoke a Python typechecker. |
+| `py.types-strict-required` | The typechecker configuration must make annotations mandatory and must not be quietly weakened: no unreasoned demotion of stable default-error ty rules, error-on-warning enabled, the ignore-default correctness rules promoted, coded suppressions only, and Ruff ANN annotation coverage. |
+| `py.lint-required` | Binding CI evidence must invoke a Python linter. |
+| `py.format-required` | Binding CI evidence must verify formatting without mutating files. |
+| `py.test-required` | Binding CI evidence must run the Python test suite. |
+| `py.coverage-required` | Binding CI evidence must enforce coverage, via --cov-fail-under or a fail_under coverage configuration of at least the configured threshold. |
+| `py.complexity-required` | Complexity must be capped at the configured maximum. |
+| `py.dry-required` | Binding CI evidence must run a duplication check (slophammer-py dry). |
+| `py.mutation-required` | Binding CI evidence must declare a mutation testing tool. |
+| `py.suppressions-justified` | Suppression directives in production Python code need a stated reason; bare # type: ignore without an error code is itself a finding. |
+| `py.dependency-audit-required` | Binding CI evidence must audit Python dependencies. |
+| `py.dependency-boundaries-required` | When python.dependency_boundaries is configured, imports crossing a boundary outside its allow list are findings. |
+| `py.typed-marker-required` | A project that builds a published package must ship the py.typed marker, or its checked types degrade to Any for every consumer. |
+| `py.scope-incomplete` | Every production Python file must be inside a configured scope or covered by a conventional or reasoned exclude, so narrowing scope cannot hide code. |
 | `rust.manifest-required`            | Rust projects should include `Cargo.toml`.                    |
 | `rust.msrv-required`                | Rust projects should declare an MSRV.                         |
 | `rust.check-required`               | Rust projects should run `cargo check`.                       |

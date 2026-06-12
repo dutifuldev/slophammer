@@ -70,6 +70,10 @@ jobs:
           go run ./cmd/slophammer-go check ..
           go run ./cmd/slophammer-go check .. --execute
 
+      - uses: astral-sh/setup-uv@v7
+      - name: Sync the Python implementation
+        working-directory: .
+        run: uv sync --frozen --directory python
       - name: Validate shared conformance
         run: |
           npm ci --prefix typescript

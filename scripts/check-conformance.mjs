@@ -75,6 +75,27 @@ const rustFixtures = [
   "rust-neutralized-ci",
   "rust-unreachable-script",
 ];
+const pythonFixtures = [
+  ...repoFixtures,
+  "python-clean",
+  "python-bad-dependency",
+  "python-bare-suppression",
+  "python-carved-scope",
+  "python-demoted-rule",
+  "python-missing-audit",
+  "python-missing-complexity",
+  "python-missing-coverage",
+  "python-missing-dry",
+  "python-missing-format",
+  "python-missing-lint",
+  "python-missing-mutation",
+  "python-missing-project",
+  "python-missing-tests",
+  "python-missing-typecheck",
+  "python-neutralized-ci",
+  "python-soft-warnings",
+  "python-unreachable-script",
+];
 const rustErrorFixtures = ["rust-invalid-config", "rust-unknown-config"];
 const baselineFixtures = [
   { fixture: "adoption-baseline", code: 0 },
@@ -114,6 +135,26 @@ for (const fixture of typeScriptFixtures) {
       "json",
     ],
     cwd: path.join(root, "typescript"),
+  });
+}
+
+for (const fixture of pythonFixtures) {
+  assertFixture({
+    implementation: "python",
+    fixture,
+    command: "uv",
+    args: [
+      "run",
+      "--frozen",
+      "--directory",
+      "python",
+      "slophammer-py",
+      "check",
+      fixturePath(fixture),
+      "--format",
+      "json",
+    ],
+    cwd: root,
   });
 }
 
@@ -183,10 +224,25 @@ for (const { fixture, code } of baselineFixtures) {
     path.join(root, "rust"),
     [code],
   );
+  run(
+    "uv",
+    [
+      "run",
+      "--frozen",
+      "--directory",
+      "python",
+      "slophammer-py",
+      "check",
+      fixturePath(fixture),
+      "--baseline",
+    ],
+    root,
+    [code],
+  );
 }
 
 console.log(
-  `Conformance passed: ${String(goFixtures.length)} Go fixtures, ${String(typeScriptFixtures.length)} TypeScript fixtures, ${String(rustFixtures.length)} Rust fixtures, ${String(rustErrorFixtures.length)} Rust error fixtures, ${String(baselineFixtures.length)} baseline cases`,
+  `Conformance passed: ${String(goFixtures.length)} Go fixtures, ${String(typeScriptFixtures.length)} TypeScript fixtures, ${String(pythonFixtures.length)} Python fixtures, ${String(rustFixtures.length)} Rust fixtures, ${String(rustErrorFixtures.length)} Rust error fixtures, ${String(baselineFixtures.length)} baseline cases`,
 );
 
 function assertFixture({ implementation, fixture, command, args, cwd }) {

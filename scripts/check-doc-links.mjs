@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const skippedDirectories = new Set([
+  ".venv",
+  "mutants",
   ".git",
   "node_modules",
   "dist",

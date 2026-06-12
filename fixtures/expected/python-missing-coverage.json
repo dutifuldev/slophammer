@@ -1,0 +1,15 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "py.coverage-required",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Python projects must enforce a coverage gate of at least 85"
+    }
+  ],
+  "scope": {
+    "scanned": 2,
+    "production_files": 2
+  }
+}

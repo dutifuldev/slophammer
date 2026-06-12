@@ -84,6 +84,40 @@ TypeScript project.
 | `ts.scope-incomplete`                 | `error`  | `slophammer.yml`    | `Configured TypeScript scope must cover all production files or exclude them with reasons` |
 | `ts.suppressions-justified`           | `error`  | `.`                 | `lint and type suppressions in production TypeScript code must carry a description` |
 
+## Python Rules
+
+Python rules apply only when the target appears to be a Python project. A
+repo appears to be a Python project when it contains a non-conventional
+`pyproject.toml`, a `setup.py`, or production `.py` source. For Python paths,
+`migrations/` joins the conventional non-production list.
+
+The strict-typing rule judges tool configuration as evidence: ty severities
+in `ty.toml` or `[tool.ty]` plus invocation flags (no stable default-error
+rule demoted without a reasoned `python.typecheck.demotions` override,
+`error-on-warning` enabled, `missing-type-argument` and the `possibly-*`
+correctness rules promoted to error, `respect-type-ignore-comments`
+disabled), mypy `strict`/`disallow_untyped_defs` (with the pydantic plugin
+when pydantic is a dependency), or pyright strict mode — and in every case
+Ruff's ANN selection, so every production signature is annotated.
+
+| Rule ID | Severity | Finding path | Finding message |
+| ------- | -------- | ------------ | --------------- |
+| `py.project-required` | `error` | `pyproject.toml` | `Python projects must declare a pyproject.toml` |
+| `py.typecheck-required` | `error` | `.github/workflows` | `Python projects must run a typechecker (ty, mypy, or pyright) in CI` |
+| `py.types-strict-required` | `error` | `pyproject.toml` | `Python typechecking must be strict` |
+| `py.lint-required` | `error` | `.github/workflows` | `Python projects must run a linter (ruff check) in CI` |
+| `py.format-required` | `error` | `.github/workflows` | `Python projects must verify formatting (ruff format --check or black --check) in CI` |
+| `py.test-required` | `error` | `.github/workflows` | `Python projects must run tests (pytest) in CI` |
+| `py.coverage-required` | `error` | `.github/workflows` | `Python projects must enforce a coverage gate of at least 85` |
+| `py.complexity-required` | `error` | `pyproject.toml` | `Python projects must enforce complexity at most 8 (Ruff C901 or radon)` |
+| `py.dry-required` | `error` | `.github/workflows` | `Python projects must declare a DRY check` |
+| `py.mutation-required` | `error` | `.github/workflows` | `Python projects must declare mutation testing (mutmut or cosmic-ray)` |
+| `py.suppressions-justified` | `error` | `.` | `Python suppressions must carry a reason: bare # noqa, # type: ignore without an error code, or uncommented # ty: ignore` |
+| `py.dependency-audit-required` | `error` | `.github/workflows` | `Python projects must audit dependencies (pip-audit or uv audit) in CI` |
+| `py.dependency-boundaries-required` | `error` | `.` | `Python imports must respect the configured dependency boundaries` |
+| `py.typed-marker-required` | `error` | `.` | `Published Python packages must ship a py.typed marker` |
+| `py.scope-incomplete` | `error` | `slophammer.yml` | `Configured Python scope must cover all production files or exclude them with reasons` |
+
 ## Rust Rules
 
 Rust rules apply only when the target appears to be a Rust project. A repo

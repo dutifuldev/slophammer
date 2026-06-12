@@ -1,0 +1,22 @@
+name: CI
+on: [push]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - run: uv run ty check src
+        continue-on-error: true
+      - run: uv run ruff check .
+        continue-on-error: true
+      - run: uv run ruff format --check .
+        continue-on-error: true
+      - run: uv run pytest --cov=src --cov-fail-under=85
+        continue-on-error: true
+      - run: uv run slophammer-py dry .
+        continue-on-error: true
+      - run: uv run mutmut run
+        continue-on-error: true
+      - run: uv run pip-audit
+        continue-on-error: true
+      - run: uvx slophammer-py check .
+        continue-on-error: true
