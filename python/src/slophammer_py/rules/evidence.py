@@ -121,12 +121,13 @@ def coverage_report_segment(segment: str) -> bool:
     return re.search(tool_pattern("coverage") + r" report\b", segment) is not None
 
 
-# Only commands that evaluate the threshold count: pytest-cov reporting and
-# `coverage report` honor fail_under, a bare `coverage run` never does.
+# Only commands that evaluate the threshold count: pytest-cov collection and
+# `coverage report` honor fail_under; a bare `coverage run` never does, and
+# `--cov-report` is output selection, not collection.
 def has_coverage_run(snapshot: Snapshot) -> bool:
-    return any_segment(snapshot, tool_pattern("pytest") + r"\b[^\n]*--cov\b") or any_segment(
-        snapshot, tool_pattern("coverage") + r" report\b"
-    )
+    if any(pytest_cov_segment(segment) for segment in snapshot_segments(snapshot)):
+        return True
+    return any_segment(snapshot, tool_pattern("coverage") + r" report\b")
 
 
 def has_coverage_config_threshold(snapshot: Snapshot, threshold: int) -> bool:
@@ -137,9 +138,11 @@ def has_coverage_config_threshold(snapshot: Snapshot, threshold: int) -> bool:
 
 
 # radon cc is report-only and exits zero on complex code, so it is not a
-# gate; xenon is its gating frontend.
+# gate; xenon gates, but only with a strict absolute threshold — grade A or
+# B keeps cyclomatic complexity within the shared bound, anything looser is
+# a weakened gate.
 def has_complexity_command(snapshot: Snapshot) -> bool:
-    return any_segment(snapshot, tool_pattern("xenon"))
+    return any_segment(snapshot, tool_pattern("xenon") + r"\b[^\n]*--max-absolute[= ][ab]\b")
 
 
 def has_dry_command(snapshot: Snapshot) -> bool:

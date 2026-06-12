@@ -273,12 +273,21 @@ def pyright_strict(snapshot: Snapshot) -> bool:
     return pyproject_tool(snapshot, "pyright").get("typeCheckingMode") == "strict"
 
 
+# Each project directory is searched for the lint table itself: a root
+# [tool.ruff] with only formatting settings must not mask a nested
+# project's [tool.ruff.lint] configuration.
 def ruff_lint_config(snapshot: Snapshot) -> Mapping[str, object]:
-    for name in ("ruff.toml", ".ruff.toml"):
-        config = project_file_toml(snapshot, name)
-        if config:
-            return as_mapping(config.get("lint")) or config
-    return as_mapping(pyproject_tool(snapshot, "ruff").get("lint"))
+    for directory in dict.fromkeys(["", *project_dirs(snapshot)]):
+        prefix = f"{directory}/" if directory else ""
+        for name in ("ruff.toml", ".ruff.toml"):
+            config = file_toml(snapshot, f"{prefix}{name}")
+            if config:
+                return as_mapping(config.get("lint")) or config
+        pyproject = file_toml(snapshot, f"{prefix}pyproject.toml")
+        lint = as_mapping(as_mapping(as_mapping(pyproject.get("tool")).get("ruff")).get("lint"))
+        if lint:
+            return lint
+    return {}
 
 
 # A rule family counts as enforced only when selected and not ignored:

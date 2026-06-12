@@ -328,9 +328,12 @@ def binding_trigger_entry(name: str, value: object) -> bool:
     record = as_record(value)
     branches = record.get("branches")
     if branches is None:
-        # A tags-only push filter never fires for branch pushes, so it is a
-        # release trigger, not integration CI.
-        return "tags" not in record
+        # Defining only tags or tags-ignore stops the workflow from firing
+        # for branch pushes entirely, so it is a release trigger, not
+        # integration CI; a branches-ignore filter still fires for branches.
+        if "branches-ignore" in record:
+            return True
+        return "tags" not in record and "tags-ignore" not in record
     patterns = (
         [string_value(branch) for branch in branches]
         if isinstance(branches, list)

@@ -141,6 +141,19 @@ class TestTyContract:
         )
         assert "unresolved-attribute" in messages(files)
 
+    def test_root_format_only_ruff_does_not_mask_nested_lint(self):
+        files = clean_python_repo()
+        files["pyproject.toml"] = (
+            '[project]\nname = "root"\nversion = "0"\n[tool.ruff]\nline-length = 100\n'
+        )
+        files["pkg/pyproject.toml"] = (
+            '[project]\nname = "pkg"\nversion = "0"\n'
+            "[tool.ruff.lint]\n"
+            'select = ["E", "F", "ANN", "C90"]\n'
+            "[tool.ruff.lint.mccabe]\nmax-complexity = 8\n"
+        )
+        assert rule_ids(report_for(files, only=ONLY)) == []
+
     def test_missing_ann_selection_is_a_finding(self):
         files = clean_python_repo({"pyproject.toml": STRICT_PYPROJECT.replace('"ANN", ', "")})
         assert "ANN" in messages(files)

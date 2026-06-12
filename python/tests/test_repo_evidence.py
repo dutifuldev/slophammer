@@ -34,6 +34,13 @@ class TestBindingTriggers:
         assert not binding_workflow_triggers({"push": {"tags": ["v*"]}})
         assert binding_workflow_triggers({"push": {"tags": ["v*"], "branches": ["main"]}})
 
+    def test_tags_ignore_only_does_not_bind(self):
+        assert not binding_workflow_triggers({"push": {"tags-ignore": ["v0*"]}})
+
+    def test_branches_ignore_still_binds(self):
+        assert binding_workflow_triggers({"push": {"branches-ignore": ["wip/*"]}})
+        assert binding_workflow_triggers({"push": {"tags": ["v*"], "branches-ignore": ["wip/*"]}})
+
     def test_push_branch_filters(self):
         assert binding_workflow_triggers({"push": {"branches": ["main"]}})
         assert binding_workflow_triggers({"push": {"branches": ["release/*"]}})

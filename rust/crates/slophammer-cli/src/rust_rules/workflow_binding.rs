@@ -172,9 +172,13 @@ fn binding_trigger_entry(name: &str, value: &Value) -> bool {
 
 fn binding_push_filter(value: &Value) -> bool {
     let Some(branches) = value.get("branches") else {
-        // A tags-only push filter never fires for branch pushes, so it is a
-        // release trigger, not integration CI.
-        return value.get("tags").is_none();
+        // Defining only tags or tags-ignore stops the workflow from firing
+        // for branch pushes entirely, so it is a release trigger, not
+        // integration CI; a branches-ignore filter still fires for branches.
+        if value.get("branches-ignore").is_some() {
+            return true;
+        }
+        return value.get("tags").is_none() && value.get("tags-ignore").is_none();
     };
     match branches {
         Value::String(pattern) => integration_branch_pattern(pattern),

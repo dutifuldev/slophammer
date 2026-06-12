@@ -306,6 +306,19 @@ class TestGateRules:
         ids = rule_ids(report_for(files, only=["py.coverage-required"]))
         assert ids == []
 
+    def test_cov_report_flag_is_not_collection(self):
+        files = clean_python_repo(
+            {
+                "pyproject.toml": STRICT_PYPROJECT + "\n[tool.coverage.report]\nfail_under = 85\n",
+            }
+        )
+        files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
+            "uv run pytest --cov=src --cov-fail-under=85",
+            "uv run pytest --cov-report=xml",
+        )
+        ids = rule_ids(report_for(files, only=["py.coverage-required"]))
+        assert ids == ["py.coverage-required"]
+
     def test_pytest_without_coverage_still_satisfies_tests(self):
         files = clean_python_repo()
         ids = rule_ids(report_for(files, only=["py.test-required"]))
@@ -333,6 +346,12 @@ class TestGateRules:
         files[".github/workflows/ci.yml"] += "      - run: uv run xenon --max-absolute B src\n"
         ids = rule_ids(report_for(files, only=["py.complexity-required"]))
         assert ids == []
+
+    def test_permissive_xenon_threshold_is_not_a_gate(self):
+        files = clean_python_repo({"pyproject.toml": '[project]\nname = "demo"\nversion = "0"\n'})
+        files[".github/workflows/ci.yml"] += "      - run: uv run xenon --max-absolute F src\n"
+        ids = rule_ids(report_for(files, only=["py.complexity-required"]))
+        assert ids == ["py.complexity-required"]
 
     def test_report_only_radon_is_not_a_gate(self):
         files = clean_python_repo({"pyproject.toml": '[project]\nname = "demo"\nversion = "0"\n'})

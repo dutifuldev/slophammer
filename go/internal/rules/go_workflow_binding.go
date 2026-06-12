@@ -349,18 +349,22 @@ func bindingPushFilter(value *yaml.Node) bool {
 	if value == nil || value.Kind != yaml.MappingNode {
 		return true
 	}
-	tagsOnly := false
+	tagFiltered := false
+	branchesIgnored := false
 	for i := 0; i+1 < len(value.Content); i += 2 {
 		switch value.Content[i].Value {
 		case "branches":
 			return bindingBranchFilter(value.Content[i+1])
-		case "tags":
-			tagsOnly = true
+		case "branches-ignore":
+			branchesIgnored = true
+		case "tags", "tags-ignore":
+			tagFiltered = true
 		}
 	}
-	// A tags-only push filter never fires for branch pushes, so it is a
-	// release trigger, not integration CI.
-	return !tagsOnly
+	// Defining only tags or tags-ignore stops the workflow from firing for
+	// branch pushes entirely, so it is a release trigger, not integration
+	// CI; a branches-ignore filter still fires for branches.
+	return branchesIgnored || !tagFiltered
 }
 
 func bindingBranchFilter(branches *yaml.Node) bool {
