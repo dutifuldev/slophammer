@@ -676,8 +676,7 @@ func CheckMutation(ctx context.Context, options MutationOptions, out io.Writer, 
 		_, _ = fmt.Fprintln(errOut, "--target is required")
 		return 2
 	}
-	survived := 0
-	uncoveredChanged := 0
+	totals := mutationTotals{}
 	for _, target := range targets {
 		args := gotools.Mutate4Go.GoRunArgs(gotools.Latest, target)
 		if options.Scan {
@@ -691,24 +690,38 @@ func CheckMutation(ctx context.Context, options MutationOptions, out io.Writer, 
 			_, _ = fmt.Fprintf(errOut, "mutate4go failed for %s: %v\n", target, err)
 			return 2
 		}
-		survived += reportedCount(result.Stdout, "Survived: ")
-		changed := reportedCount(result.Stdout, "Changed mutation sites: ")
-		selected := reportedCount(result.Stdout, "Selected mutation sites: ")
-		if changed > selected {
-			uncoveredChanged += changed - selected
-		}
+		totals.add(result.Stdout)
 	}
 	if options.Scan {
 		return 0
 	}
-	if survived > 0 {
-		_, _ = fmt.Fprintf(errOut, "%d mutant(s) survived; strengthen the tests or refresh the manifest deliberately\n", survived)
+	return totals.gate(errOut)
+}
+
+type mutationTotals struct {
+	survived         int
+	uncoveredChanged int
+}
+
+func (t *mutationTotals) add(output []byte) {
+	t.survived += reportedCount(output, "Survived: ")
+	changed := reportedCount(output, "Changed mutation sites: ")
+	selected := reportedCount(output, "Selected mutation sites: ")
+	if changed > selected {
+		t.uncoveredChanged += changed - selected
+	}
+}
+
+// Survivors are new untested behavior in changed functions; changed sites
+// without test coverage never get mutated at all, so they would pass
+// silently. Both fail the gate.
+func (t mutationTotals) gate(errOut io.Writer) int {
+	if t.survived > 0 {
+		_, _ = fmt.Fprintf(errOut, "%d mutant(s) survived; strengthen the tests or refresh the manifest deliberately\n", t.survived)
 		return 1
 	}
-	// Changed sites that no test covers never get mutated, so they would
-	// pass silently; an untested change is a failing gate, not a skipped one.
-	if uncoveredChanged > 0 {
-		_, _ = fmt.Fprintf(errOut, "%d changed mutation site(s) have no test coverage; cover them before relying on the gate\n", uncoveredChanged)
+	if t.uncoveredChanged > 0 {
+		_, _ = fmt.Fprintf(errOut, "%d changed mutation site(s) have no test coverage; cover them before relying on the gate\n", t.uncoveredChanged)
 		return 1
 	}
 	return 0
