@@ -65,13 +65,10 @@ function scriptChecks(): readonly ScriptCheck[] {
       complexityCheck
     ),
     scriptCheck("dry", ruleIDs.tsDryRequired, "DRY check failed", dryCheck),
-    optionalScriptCheck(
-      "mutate",
-      ruleIDs.tsMutationRequired,
-      "mutation dry-run failed",
-      mutationCheck,
-      ["--dryRunOnly"]
-    )
+    // The static rule only credits executing mutation runs, so execute
+    // mode must run the real script: a forced dry run cannot fail on a
+    // surviving mutant.
+    optionalScriptCheck("mutate", ruleIDs.tsMutationRequired, "mutation gate failed", mutationCheck)
   ];
 }
 

@@ -301,12 +301,13 @@ describe("executeTypeScriptChecks package managers", () => {
 
     const findings = await executeTypeScriptChecks(root, runner);
 
-    expect(calls).toContain("npm run mutate -- --dryRunOnly");
+    expect(calls).toContain("npm run mutate");
+    expect(calls.join("\n")).not.toContain("--dryRunOnly");
     expect(findings[0]?.rule_id).toBe("ts.mutation-required");
-    expect(findings[0]?.message).toContain("mutation dry-run failed");
+    expect(findings[0]?.message).toContain("mutation gate failed");
   });
 
-  it("runs noncanonical pure mutation checks with dry-run arguments", async () => {
+  it("runs noncanonical pure mutation checks", async () => {
     const root = await packageFixture({ ...requiredScripts(), mutation: "stryker run" });
     const calls: string[] = [];
     const runner: Runner = {
@@ -318,7 +319,7 @@ describe("executeTypeScriptChecks package managers", () => {
 
     await executeTypeScriptChecks(root, runner);
 
-    expect(calls).toContain("npm run mutation -- --dryRunOnly");
+    expect(calls).toContain("npm run mutation");
   });
 
   it("does not run missing TypeScript mutation command placeholders", async () => {
@@ -337,7 +338,7 @@ describe("executeTypeScriptChecks package managers", () => {
     const findings = await executeTypeScriptChecks(root, runner);
 
     expect(findings).toEqual([]);
-    expect(calls).not.toContain("npm run mutate -- --dryRunOnly");
+    expect(calls.join("\n")).not.toContain("npm run mutate");
   });
 
   it("runs optional complexity checks when configured", async () => {

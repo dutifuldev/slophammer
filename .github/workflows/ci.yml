@@ -87,6 +87,14 @@ jobs:
       - run: go run ./cmd/slophammer-go dry ..
       - run: go run ./cmd/slophammer-go crap ..
       - run: go run ./cmd/slophammer-go mutate ..
+      - name: Require committed mutation stamps
+        run: |
+          # Manifests only move when a run earns the update, so a diff here
+          # means the PR is missing the stamp for its own changes.
+          git diff --exit-code -- internal || {
+            echo "mutate4go manifests changed: run 'slophammer-go mutate ..' locally and commit the updated stamps" >&2
+            exit 1
+          }
       - run: go run ./cmd/slophammer-go check ..
       - run: go run ./cmd/slophammer-go check .. --execute
 
