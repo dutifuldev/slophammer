@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/scope.rs
++++ delete ! in uncovered_production_dirs
+@@ -63,17 +63,17 @@
+ fn uncovered_production_dirs(
+     snapshot: &Snapshot,
+     config: &Config,
+     scopes: &[String],
+ ) -> Vec<String> {
+     let exclude_set = globset(&all_exclude_patterns(config));
+     let mut dirs: Vec<String> = production_rust_files(snapshot)
+         .into_iter()
+-        .filter(|path| !in_targets(path, scopes))
++        .filter(|path|  /* ~ changed by cargo-mutants ~ */in_targets(path, scopes))
+         .filter(|path| {
+             exclude_set
+                 .as_ref()
+                 .is_none_or(|set| !set.is_match(path.as_str()))
+         })
+         .map(|path| parent_dir(&path))
+         .collect();
+     dirs.sort();

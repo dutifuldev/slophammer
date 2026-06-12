@@ -1,0 +1,44 @@
+--- crates/slophammer-cli/src/rust_rules/mod.rs
++++ replace run_rule -> Vec<Finding> with vec![Default::default()]
+@@ -40,40 +40,17 @@
+     })
+ }
+ 
+ pub fn known_rule(rule_id: &str) -> bool {
+     find_definition(&default_definitions(), rule_id).is_some()
+ }
+ 
+ fn run_rule(rule_id: &str, snapshot: &Snapshot, config: &Config) -> Vec<Finding> {
+-    match rule_id {
+-        rule_ids::README_REQUIRED => repo_readme(snapshot),
+-        rule_ids::AGENTS_REQUIRED => repo_agents(snapshot),
+-        rule_ids::CI_REQUIRED => repo_ci(snapshot),
+-        rule_ids::SLOPHAMMER_CI_REQUIRED => repo_slophammer_ci(snapshot),
+-        rule_ids::RUST_MANIFEST_REQUIRED => rust_manifest(snapshot),
+-        rule_ids::RUST_MSRV_REQUIRED => rust_msrv(snapshot),
+-        rule_ids::RUST_CHECK_REQUIRED => cargo_command(snapshot, rule_id, "cargo check"),
+-        rule_ids::RUST_FMT_REQUIRED => rust_fmt(snapshot),
+-        rule_ids::RUST_CLIPPY_REQUIRED => rust_clippy(snapshot),
+-        rule_ids::RUST_TEST_REQUIRED => cargo_command(snapshot, rule_id, "cargo test"),
+-        rule_ids::RUST_COVERAGE_REQUIRED => rust_coverage(snapshot, config),
+-        rule_ids::RUST_COMPLEXITY_REQUIRED => rust_complexity(snapshot, config),
+-        rule_ids::RUST_DRY_REQUIRED => rust_dry_declaration(snapshot),
+-        rule_ids::RUST_MUTATION_REQUIRED => cargo_command(snapshot, rule_id, "cargo mutants"),
+-        rule_ids::RUST_UNSAFE_POLICY_REQUIRED => unsafe_policy::policy_findings(snapshot, config),
+-        rule_ids::RUST_DEPENDENCY_AUDIT_REQUIRED => rust_dependency_audit(snapshot),
+-        rule_ids::RUST_DEPENDENCY_BOUNDARIES_REQUIRED => {
+-            boundaries::boundary_findings(snapshot, config)
+-        }
+-        rule_ids::RUST_SUPPRESSIONS_JUSTIFIED => rust_suppressions(snapshot),
+-        rule_ids::RUST_SCOPE_INCOMPLETE => scope::scope_findings(snapshot, config),
+-        _ => Vec::new(),
+-    }
++    vec![Default::default()] /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn repo_readme(snapshot: &Snapshot) -> Vec<Finding> {
+     missing(
+         !snapshot.has_case_insensitive("README.md"),
+         rule_ids::README_REQUIRED,
+     )
+ }

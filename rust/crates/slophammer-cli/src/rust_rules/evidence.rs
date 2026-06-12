@@ -1,6 +1,18 @@
 use super::workflow_binding::binding_workflow_text;
 use crate::scan::Snapshot;
 
+/// Command segments split on newlines, `&&`, and `;`, so a flag can be
+/// associated with the command it modifies rather than the whole file.
+pub fn command_segments(snapshot: &Snapshot) -> Vec<String> {
+    command_text(snapshot)
+        .replace("\\\n", " ")
+        .split(['\n', ';'])
+        .flat_map(|line| line.split("&&"))
+        .map(|segment| segment.trim().to_owned())
+        .filter(|segment| !segment.is_empty())
+        .collect()
+}
+
 pub fn command_text(snapshot: &Snapshot) -> String {
     let workflow_text = workflow_evidence(snapshot);
     let candidates = candidate_files(snapshot);

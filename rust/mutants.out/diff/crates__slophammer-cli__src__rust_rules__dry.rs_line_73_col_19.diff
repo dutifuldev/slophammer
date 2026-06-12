@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/dry.rs
++++ replace != with == in duplicate_occurrence
+@@ -65,17 +65,17 @@
+ }
+ 
+ fn duplicate_occurrence(
+     previous: &Occurrence,
+     path: &str,
+     start: usize,
+     window_size: usize,
+ ) -> bool {
+-    previous.path != path || non_overlapping(previous.start, start, window_size)
++    previous.path == /* ~ changed by cargo-mutants ~ */ path || non_overlapping(previous.start, start, window_size)
+ }
+ 
+ fn non_overlapping(left: usize, right: usize, window_size: usize) -> bool {
+     left + window_size <= right || right + window_size <= left
+ }
+ 
+ fn tokens(content: &str) -> Vec<String> {
+     content

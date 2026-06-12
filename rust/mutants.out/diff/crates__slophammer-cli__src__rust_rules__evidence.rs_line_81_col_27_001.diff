@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/evidence.rs
++++ replace + with * in contains_word
+@@ -73,17 +73,17 @@
+         lowered => lowered.to_owned(),
+     }
+ }
+ 
+ fn contains_word(evidence: &str, word: &str) -> bool {
+     let bytes = evidence.as_bytes();
+     let mut start = 0;
+     while let Some(found) = evidence[start..].find(word) {
+-        let index = start + found;
++        let index = start * /* ~ changed by cargo-mutants ~ */ found;
+         if word_boundary(bytes, index, word.len()) {
+             return true;
+         }
+         start = index + 1;
+     }
+     false
+ }
+ 

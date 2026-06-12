@@ -1,0 +1,423 @@
+crates/slophammer-cli/src/main.rs:76:5: replace main -> ExitCode with Default::default()
+crates/slophammer-cli/src/main.rs:131:5: replace exit -> ExitCode with Default::default()
+crates/slophammer-cli/src/app.rs:217:5: replace expand_only_rule_ids -> Result<Vec<String>, AppError> with Ok(vec![])
+crates/slophammer-cli/src/app.rs:217:5: replace expand_only_rule_ids -> Result<Vec<String>, AppError> with Ok(vec![String::new()])
+crates/slophammer-cli/src/app.rs:217:5: replace expand_only_rule_ids -> Result<Vec<String>, AppError> with Ok(vec!["xyzzy".into()])
+crates/slophammer-cli/src/app.rs:221:27: delete ! in expand_only_rule_ids
+crates/slophammer-cli/src/app.rs:224:24: replace && with || in expand_only_rule_ids
+crates/slophammer-cli/src/app.rs:224:8: delete ! in expand_only_rule_ids
+crates/slophammer-cli/src/app.rs:229:27: delete ! in expand_only_rule_ids
+crates/slophammer-cli/src/app.rs:232:8: delete ! in expand_only_rule_ids
+crates/slophammer-cli/src/app.rs:239:5: replace command_root -> &str with ""
+crates/slophammer-cli/src/app.rs:239:5: replace command_root -> &str with "xyzzy"
+crates/slophammer-cli/src/app.rs:243:5: replace render_report -> Result<String, AppError> with Ok(String::new())
+crates/slophammer-cli/src/app.rs:243:5: replace render_report -> Result<String, AppError> with Ok("xyzzy".into())
+crates/slophammer-cli/src/app.rs:254:5: replace render_rules -> Result<String, serde_json::Error> with Ok(String::new())
+crates/slophammer-cli/src/app.rs:254:5: replace render_rules -> Result<String, serde_json::Error> with Ok("xyzzy".into())
+crates/slophammer-cli/src/baseline.rs:53:5: replace apply_check -> Result<(), BaselineError> with Ok(())
+crates/slophammer-cli/src/baseline.rs:61:8: delete ! in apply_check
+crates/slophammer-cli/src/baseline.rs:67:42: replace == with != in apply_check
+crates/slophammer-cli/src/baseline.rs:75:5: replace write -> Result<String, BaselineError> with Ok(String::new())
+crates/slophammer-cli/src/baseline.rs:75:5: replace write -> Result<String, BaselineError> with Ok("xyzzy".into())
+crates/slophammer-cli/src/baseline.rs:85:50: replace && with || in write
+crates/slophammer-cli/src/baseline.rs:85:29: replace && with || in write
+crates/slophammer-cli/src/baseline.rs:85:8: delete ! in write
+crates/slophammer-cli/src/baseline.rs:85:32: delete ! in write
+crates/slophammer-cli/src/baseline.rs:100:5: replace debt_line -> String with String::new()
+crates/slophammer-cli/src/baseline.rs:100:5: replace debt_line -> String with "xyzzy".into()
+crates/slophammer-cli/src/baseline.rs:105:37: replace - with + in debt_line
+crates/slophammer-cli/src/baseline.rs:105:37: replace - with / in debt_line
+crates/slophammer-cli/src/baseline.rs:110:5: replace read_baseline -> Result<BTreeSet<BaselineEntry>, BaselineError> with Ok(BTreeSet::new())
+crates/slophammer-cli/src/baseline.rs:112:23: replace match guard error.kind() == std::io::ErrorKind::NotFound with false in read_baseline
+crates/slophammer-cli/src/baseline.rs:112:36: replace == with != in read_baseline
+crates/slophammer-cli/src/baseline.rs:119:21: replace != with == in read_baseline
+crates/slophammer-cli/src/baseline.rs:145:5: replace write_summary -> String with String::new()
+crates/slophammer-cli/src/baseline.rs:145:5: replace write_summary -> String with "xyzzy".into()
+crates/slophammer-cli/src/config.rs:70:9: replace ExcludeEntry::pattern -> &str with ""
+crates/slophammer-cli/src/config.rs:70:9: replace ExcludeEntry::pattern -> &str with "xyzzy"
+crates/slophammer-cli/src/config.rs:77:9: replace ExcludeEntry::needs_reason -> bool with true
+crates/slophammer-cli/src/config.rs:81:9: replace ExcludeEntry::empty_reason -> bool with true
+crates/slophammer-cli/src/config.rs:88:5: replace conventional_exclude_pattern -> bool with false
+crates/slophammer-cli/src/config.rs:205:5: replace load -> Result<Config, ConfigError> with Ok(Default::default())
+crates/slophammer-cli/src/config.rs:216:5: replace parse -> Result<Config, ConfigError> with Ok(Default::default())
+crates/slophammer-cli/src/config.rs:233:5: replace validate_python_section -> Result<(), ConfigError> with Ok(())
+crates/slophammer-cli/src/config.rs:292:5: replace validate_value_keys -> Result<(), ConfigError> with Ok(())
+crates/slophammer-cli/src/config.rs:302:12: delete ! in validate_value_keys
+crates/slophammer-cli/src/config.rs:316:5: replace validate_value_entries -> Result<(), ConfigError> with Ok(())
+crates/slophammer-cli/src/config.rs:332:5: replace value_sequence -> Result<Option<&'a Vec<Value>>, ConfigError> with Ok(None)
+crates/slophammer-cli/src/config.rs:332:5: replace value_sequence -> Result<Option<&'a Vec<Value>>, ConfigError> with Ok(Some(Box::leak(Box::new(vec![]))))
+crates/slophammer-cli/src/config.rs:332:5: replace value_sequence -> Result<Option<&'a Vec<Value>>, ConfigError> with Ok(Some(Box::leak(Box::new(vec![Default::default()]))))
+crates/slophammer-cli/src/config.rs:359:5: replace validate -> Result<(), ConfigError> with Ok(())
+crates/slophammer-cli/src/config.rs:360:26: replace && with || in validate
+crates/slophammer-cli/src/config.rs:372:22: replace < with == in validate
+crates/slophammer-cli/src/config.rs:372:22: replace < with > in validate
+crates/slophammer-cli/src/config.rs:372:22: replace < with <= in validate
+crates/slophammer-cli/src/config.rs:379:37: replace > with == in validate
+crates/slophammer-cli/src/config.rs:379:37: replace > with < in validate
+crates/slophammer-cli/src/config.rs:379:37: replace > with >= in validate
+crates/slophammer-cli/src/config.rs:386:29: replace != with == in validate
+crates/slophammer-cli/src/config.rs:392:41: replace == with != in validate
+crates/slophammer-cli/src/config.rs:459:5: replace apply_rule_config with ()
+crates/slophammer-cli/src/config.rs:467:5: replace rule_severity -> Option<RuleSeverity> with None
+crates/slophammer-cli/src/config.rs:471:5: replace rust_targets -> Vec<String> with vec![]
+crates/slophammer-cli/src/config.rs:471:5: replace rust_targets -> Vec<String> with vec![String::new()]
+crates/slophammer-cli/src/config.rs:471:5: replace rust_targets -> Vec<String> with vec!["xyzzy".into()]
+crates/slophammer-cli/src/config.rs:493:5: replace exclude_patterns -> Vec<String> with vec![]
+crates/slophammer-cli/src/config.rs:493:5: replace exclude_patterns -> Vec<String> with vec![String::new()]
+crates/slophammer-cli/src/config.rs:493:5: replace exclude_patterns -> Vec<String> with vec!["xyzzy".into()]
+crates/slophammer-cli/src/config.rs:500:5: replace rust_coverage_threshold -> u32 with 0
+crates/slophammer-cli/src/config.rs:500:5: replace rust_coverage_threshold -> u32 with 1
+crates/slophammer-cli/src/config.rs:508:5: replace rust_dry_paths -> Vec<String> with vec![]
+crates/slophammer-cli/src/config.rs:508:5: replace rust_dry_paths -> Vec<String> with vec![String::new()]
+crates/slophammer-cli/src/config.rs:508:5: replace rust_dry_paths -> Vec<String> with vec!["xyzzy".into()]
+crates/slophammer-cli/src/config.rs:532:5: replace rust_dry_min_tokens -> usize with 0
+crates/slophammer-cli/src/config.rs:532:5: replace rust_dry_min_tokens -> usize with 1
+crates/slophammer-cli/src/config.rs:542:5: replace rust_dry_copied_blocks_enabled -> bool with true
+crates/slophammer-cli/src/config.rs:542:5: replace rust_dry_copied_blocks_enabled -> bool with false
+crates/slophammer-cli/src/core.rs:17:9: replace <impl fmt::Display for Severity>::fmt -> fmt::Result with Ok(Default::default())
+crates/slophammer-cli/src/core.rs:58:13: delete field path from struct Self expression in Finding::with_message
+crates/slophammer-cli/src/core.rs:59:13: delete field message from struct Self expression in Finding::with_message
+crates/slophammer-cli/src/core.rs:99:5: replace find_definition -> Option<&'a RuleDefinition> with None
+crates/slophammer-cli/src/core.rs:101:42: replace == with != in find_definition
+crates/slophammer-cli/src/exec.rs:49:5: replace execute_rust_checks -> Vec<Finding> with vec![]
+crates/slophammer-cli/src/exec.rs:62:5: replace execute_workspace -> Vec<Finding> with vec![]
+crates/slophammer-cli/src/exec.rs:125:38: replace || with && in execute_workspace
+crates/slophammer-cli/src/exec.rs:125:74: replace == with != in execute_workspace
+crates/slophammer-cli/src/exec.rs:137:5: replace run_check -> Option<Finding> with None
+crates/slophammer-cli/src/exec.rs:138:23: replace match guard output.status == 0 with true in run_check
+crates/slophammer-cli/src/exec.rs:138:23: replace match guard output.status == 0 with false in run_check
+crates/slophammer-cli/src/exec.rs:138:37: replace == with != in run_check
+crates/slophammer-cli/src/exec.rs:169:5: replace rust_workspace_roots -> Vec<String> with vec![]
+crates/slophammer-cli/src/exec.rs:173:24: delete ! in rust_workspace_roots
+crates/slophammer-cli/src/exec.rs:173:58: delete ! in rust_workspace_roots
+crates/slophammer-cli/src/exec.rs:176:35: replace == with != in rust_workspace_roots
+crates/slophammer-cli/src/exec.rs:183:24: delete ! in rust_workspace_roots
+crates/slophammer-cli/src/exec.rs:189:5: replace has_parent_root -> bool with true
+crates/slophammer-cli/src/report.rs:26:5: replace write_json -> Result<String, ReportError> with Ok(String::new())
+crates/slophammer-cli/src/report.rs:26:5: replace write_json -> Result<String, ReportError> with Ok("xyzzy".into())
+crates/slophammer-cli/src/report.rs:30:5: replace write_text -> String with String::new()
+crates/slophammer-cli/src/report.rs:30:5: replace write_text -> String with "xyzzy".into()
+crates/slophammer-cli/src/report.rs:46:5: replace scope_line -> String with "xyzzy".into()
+crates/slophammer-cli/src/report.rs:56:5: replace write_sarif -> Result<String, ReportError> with Ok(String::new())
+crates/slophammer-cli/src/report.rs:56:5: replace write_sarif -> Result<String, ReportError> with Ok("xyzzy".into())
+crates/slophammer-cli/src/report.rs:174:5: replace sarif_results -> Vec<SarifResult> with vec![]
+crates/slophammer-cli/src/report.rs:197:5: replace sarif_level -> &'static str with ""
+crates/slophammer-cli/src/report.rs:197:5: replace sarif_level -> &'static str with "xyzzy"
+crates/slophammer-cli/src/report.rs:204:5: replace sarif_locations -> Vec<SarifLocation> with vec![]
+crates/slophammer-cli/src/rust_rules/mod.rs:19:5: replace run_rules -> Vec<Finding> with vec![]
+crates/slophammer-cli/src/rust_rules/mod.rs:21:34: replace || with && in run_rules
+crates/slophammer-cli/src/rust_rules/mod.rs:21:78: replace == with != in run_rules
+crates/slophammer-cli/src/rust_rules/mod.rs:35:5: replace explain -> Option<String> with None
+crates/slophammer-cli/src/rust_rules/mod.rs:35:5: replace explain -> Option<String> with Some(String::new())
+crates/slophammer-cli/src/rust_rules/mod.rs:35:5: replace explain -> Option<String> with Some("xyzzy".into())
+crates/slophammer-cli/src/rust_rules/mod.rs:44:5: replace known_rule -> bool with true
+crates/slophammer-cli/src/rust_rules/mod.rs:44:5: replace known_rule -> bool with false
+crates/slophammer-cli/src/rust_rules/mod.rs:48:5: replace run_rule -> Vec<Finding> with vec![]
+crates/slophammer-cli/src/rust_rules/mod.rs:49:9: delete match arm rule_ids::README_REQUIRED in run_rule
+crates/slophammer-cli/src/rust_rules/mod.rs:55:9: delete match arm rule_ids::RUST_CHECK_REQUIRED in run_rule
+crates/slophammer-cli/src/rust_rules/mod.rs:63:9: delete match arm rule_ids::RUST_UNSAFE_POLICY_REQUIRED in run_rule
+crates/slophammer-cli/src/rust_rules/mod.rs:65:9: delete match arm rule_ids::RUST_DEPENDENCY_BOUNDARIES_REQUIRED in run_rule
+crates/slophammer-cli/src/rust_rules/mod.rs:75:5: replace repo_readme -> Vec<Finding> with vec![]
+crates/slophammer-cli/src/rust_rules/mod.rs:76:9: delete ! in repo_readme
+crates/slophammer-cli/src/rust_rules/mod.rs:83:9: delete ! in repo_agents
+crates/slophammer-cli/src/rust_rules/mod.rs:89:13: delete ! in repo_ci
+crates/slophammer-cli/src/rust_rules/mod.rs:98:20: replace && with || in repo_slophammer_ci
+crates/slophammer-cli/src/rust_rules/mod.rs:98:23: delete ! in repo_slophammer_ci
+crates/slophammer-cli/src/rust_rules/mod.rs:104:5: replace slophammer_invocation -> bool with false
+crates/slophammer-cli/src/rust_rules/mod.rs:118:5: replace invocation_with_check -> bool with false
+crates/slophammer-cli/src/rust_rules/mod.rs:119:33: replace + with - in invocation_with_check
+crates/slophammer-cli/src/rust_rules/mod.rs:133:35: replace && with || in rust_manifest
+crates/slophammer-cli/src/rust_rules/mod.rs:140:35: replace && with || in rust_msrv
+crates/slophammer-cli/src/rust_rules/mod.rs:140:38: delete ! in rust_msrv
+crates/slophammer-cli/src/rust_rules/mod.rs:146:5: replace cargo_command -> Vec<Finding> with vec![]
+crates/slophammer-cli/src/rust_rules/mod.rs:147:35: replace && with || in cargo_command
+crates/slophammer-cli/src/rust_rules/mod.rs:147:38: delete ! in cargo_command
+crates/slophammer-cli/src/rust_rules/mod.rs:156:13: replace && with || in rust_fmt
+crates/slophammer-cli/src/rust_rules/mod.rs:156:16: delete ! in rust_fmt
+crates/slophammer-cli/src/rust_rules/mod.rs:165:13: replace && with || in rust_clippy
+crates/slophammer-cli/src/rust_rules/mod.rs:165:16: delete ! in rust_clippy
+crates/slophammer-cli/src/rust_rules/mod.rs:166:54: replace || with && in rust_clippy
+crates/slophammer-cli/src/rust_rules/mod.rs:174:35: replace && with || in rust_coverage
+crates/slophammer-cli/src/rust_rules/mod.rs:174:38: delete ! in rust_coverage
+crates/slophammer-cli/src/rust_rules/mod.rs:181:35: replace && with || in rust_complexity
+crates/slophammer-cli/src/rust_rules/mod.rs:181:38: delete ! in rust_complexity
+crates/slophammer-cli/src/rust_rules/mod.rs:189:13: replace && with || in rust_dry_declaration
+crates/slophammer-cli/src/rust_rules/mod.rs:189:16: delete ! in rust_dry_declaration
+crates/slophammer-cli/src/rust_rules/mod.rs:198:13: replace && with || in rust_dependency_audit
+crates/slophammer-cli/src/rust_rules/mod.rs:198:16: delete ! in rust_dependency_audit
+crates/slophammer-cli/src/rust_rules/mod.rs:198:51: replace || with && in rust_dependency_audit
+crates/slophammer-cli/src/rust_rules/mod.rs:204:5: replace missing -> Vec<Finding> with vec![]
+crates/slophammer-cli/src/rust_rules/mod.rs:212:5: replace is_rust_project -> bool with false
+crates/slophammer-cli/src/rust_rules/mod.rs:213:9: replace || with && in is_rust_project
+crates/slophammer-cli/src/rust_rules/mod.rs:212:5: delete ! in is_rust_project
+crates/slophammer-cli/src/rust_rules/mod.rs:221:5: replace rust_manifests -> Vec<&str> with vec![]
+crates/slophammer-cli/src/rust_rules/mod.rs:225:56: delete ! in rust_manifests
+crates/slophammer-cli/src/rust_rules/mod.rs:230:5: replace has_msrv -> bool with false
+crates/slophammer-cli/src/rust_rules/mod.rs:238:9: replace || with && in has_msrv
+crates/slophammer-cli/src/rust_rules/mod.rs:235:9: replace || with && in has_msrv
+crates/slophammer-cli/src/rust_rules/mod.rs:233:61: delete ! in has_msrv
+crates/slophammer-cli/src/rust_rules/mod.rs:244:5: replace toolchain_declares_version -> bool with false
+crates/slophammer-cli/src/rust_rules/mod.rs:248:24: delete ! in toolchain_declares_version
+crates/slophammer-cli/src/rust_rules/mod.rs:259:5: replace has_coverage_gate -> bool with false
+crates/slophammer-cli/src/rust_rules/mod.rs:263:40: replace >= with < in has_coverage_gate
+crates/slophammer-cli/src/rust_rules/mod.rs:267:5: replace coverage_thresholds -> Vec<f64> with vec![]
+crates/slophammer-cli/src/rust_rules/mod.rs:267:5: replace coverage_thresholds -> Vec<f64> with vec![0.0]
+crates/slophammer-cli/src/rust_rules/mod.rs:267:5: replace coverage_thresholds -> Vec<f64> with vec![1.0]
+crates/slophammer-cli/src/rust_rules/mod.rs:267:5: replace coverage_thresholds -> Vec<f64> with vec![-1.0]
+crates/slophammer-cli/src/rust_rules/mod.rs:270:12: delete ! in coverage_thresholds
+crates/slophammer-cli/src/rust_rules/mod.rs:278:24: replace + with - in coverage_thresholds
+crates/slophammer-cli/src/rust_rules/mod.rs:278:24: replace + with * in coverage_thresholds
+crates/slophammer-cli/src/rust_rules/mod.rs:288:5: replace numeric_prefix -> Option<f64> with None
+crates/slophammer-cli/src/rust_rules/mod.rs:288:5: replace numeric_prefix -> Option<f64> with Some(0.0)
+crates/slophammer-cli/src/rust_rules/mod.rs:288:5: replace numeric_prefix -> Option<f64> with Some(1.0)
+crates/slophammer-cli/src/rust_rules/mod.rs:288:5: replace numeric_prefix -> Option<f64> with Some(-1.0)
+crates/slophammer-cli/src/rust_rules/mod.rs:289:37: replace == with != in numeric_prefix
+crates/slophammer-cli/src/rust_rules/mod.rs:289:50: replace == with != in numeric_prefix
+crates/slophammer-cli/src/rust_rules/mod.rs:291:46: replace || with && in numeric_prefix
+crates/slophammer-cli/src/rust_rules/mod.rs:301:5: replace has_complexity_limit -> bool with false
+crates/slophammer-cli/src/rust_rules/mod.rs:306:9: replace || with && in has_complexity_limit
+crates/slophammer-cli/src/rust_rules/mod.rs:305:60: replace <= with > in has_complexity_limit
+crates/slophammer-cli/src/rust_rules/mod.rs:333:5: replace strip_inline_comment -> &str with ""
+crates/slophammer-cli/src/rust_rules/mod.rs:333:5: replace strip_inline_comment -> &str with "xyzzy"
+crates/slophammer-cli/src/rust_rules/mod.rs:349:5: replace ignored_project_path -> bool with true
+crates/slophammer-cli/src/scan.rs:22:9: replace Snapshot::file -> Option<&RepoFile> with None
+crates/slophammer-cli/src/scan.rs:26:9: replace Snapshot::has_case_insensitive -> bool with true
+crates/slophammer-cli/src/scan.rs:26:9: replace Snapshot::has_case_insensitive -> bool with false
+crates/slophammer-cli/src/scan.rs:28:28: delete ! in Snapshot::has_case_insensitive
+crates/slophammer-cli/src/scan.rs:33:9: replace Snapshot::has_workflow -> bool with true
+crates/slophammer-cli/src/scan.rs:33:9: replace Snapshot::has_workflow -> bool with false
+crates/slophammer-cli/src/scan.rs:38:5: replace active_workflow_path -> bool with true
+crates/slophammer-cli/src/scan.rs:38:5: replace active_workflow_path -> bool with false
+crates/slophammer-cli/src/scan.rs:41:25: replace && with || in active_workflow_path
+crates/slophammer-cli/src/scan.rs:41:5: delete ! in active_workflow_path
+crates/slophammer-cli/src/scan.rs:41:52: replace || with && in active_workflow_path
+crates/slophammer-cli/src/scan.rs:56:8: delete ! in scan_repo
+crates/slophammer-cli/src/scan.rs:65:31: delete ! in scan_repo
+crates/slophammer-cli/src/scan.rs:70:12: delete ! in scan_repo
+crates/slophammer-cli/src/scan.rs:84:5: replace relative_path -> Result<Option<String>, ScanError> with Ok(None)
+crates/slophammer-cli/src/scan.rs:84:5: replace relative_path -> Result<Option<String>, ScanError> with Ok(Some(String::new()))
+crates/slophammer-cli/src/scan.rs:84:5: replace relative_path -> Result<Option<String>, ScanError> with Ok(Some("xyzzy".into()))
+crates/slophammer-cli/src/scan.rs:93:5: replace ignored_entry -> bool with true
+crates/slophammer-cli/src/rust_rules/boundaries.rs:10:5: replace boundary_findings -> Vec<Finding> with vec![]
+crates/slophammer-cli/src/rust_rules/boundaries.rs:10:8: delete ! in boundary_findings
+crates/slophammer-cli/src/rust_rules/boundaries.rs:30:5: replace check_boundary -> Vec<Finding> with vec![]
+crates/slophammer-cli/src/rust_rules/boundaries.rs:48:24: delete ! in check_boundary
+crates/slophammer-cli/src/rust_rules/boundaries.rs:70:5: replace dependency_paths -> Vec<DependencyPath> with vec![]
+crates/slophammer-cli/src/rust_rules/boundaries.rs:83:5: replace dependency_paths_in_item -> Vec<DependencyPath> with vec![]
+crates/slophammer-cli/src/rust_rules/boundaries.rs:98:5: replace dependency_path -> Option<DependencyPath> with None
+crates/slophammer-cli/src/rust_rules/boundaries.rs:111:5: replace direct_dependency_path -> Option<String> with None
+crates/slophammer-cli/src/rust_rules/boundaries.rs:111:5: replace direct_dependency_path -> Option<String> with Some(String::new())
+crates/slophammer-cli/src/rust_rules/boundaries.rs:111:5: replace direct_dependency_path -> Option<String> with Some("xyzzy".into())
+crates/slophammer-cli/src/rust_rules/boundaries.rs:126:5: replace dependency_is_workspace -> bool with false
+crates/slophammer-cli/src/rust_rules/boundaries.rs:141:5: replace workspace_dependency_paths -> BTreeMap<String, DependencyPath> with BTreeMap::new()
+crates/slophammer-cli/src/rust_rules/boundaries.rs:156:5: replace workspace_manifest -> Option<(String, DocumentMut)> with None
+crates/slophammer-cli/src/rust_rules/boundaries.rs:156:5: replace workspace_manifest -> Option<(String, DocumentMut)> with Some((String::new(), Default::default()))
+crates/slophammer-cli/src/rust_rules/boundaries.rs:156:5: replace workspace_manifest -> Option<(String, DocumentMut)> with Some(("xyzzy".into(), Default::default()))
+crates/slophammer-cli/src/rust_rules/boundaries.rs:168:5: replace ancestor_manifest_paths -> Vec<String> with vec![]
+crates/slophammer-cli/src/rust_rules/boundaries.rs:168:5: replace ancestor_manifest_paths -> Vec<String> with vec![String::new()]
+crates/slophammer-cli/src/rust_rules/boundaries.rs:168:5: replace ancestor_manifest_paths -> Vec<String> with vec!["xyzzy".into()]
+crates/slophammer-cli/src/rust_rules/boundaries.rs:184:5: replace manifest_dir -> String with "xyzzy".into()
+crates/slophammer-cli/src/rust_rules/boundaries.rs:195:5: replace workspace_dependency_paths_in_item -> BTreeMap<String, DependencyPath> with BTreeMap::new()
+crates/slophammer-cli/src/rust_rules/boundaries.rs:215:5: replace manifest_path -> String with String::new()
+crates/slophammer-cli/src/rust_rules/boundaries.rs:215:5: replace manifest_path -> String with "xyzzy".into()
+crates/slophammer-cli/src/rust_rules/boundaries.rs:216:12: replace == with != in manifest_path
+crates/slophammer-cli/src/rust_rules/boundaries.rs:224:5: replace resolve_dependency_path -> Option<String> with None
+crates/slophammer-cli/src/rust_rules/boundaries.rs:224:5: replace resolve_dependency_path -> Option<String> with Some(String::new())
+crates/slophammer-cli/src/rust_rules/boundaries.rs:224:5: replace resolve_dependency_path -> Option<String> with Some("xyzzy".into())
+crates/slophammer-cli/src/rust_rules/boundaries.rs:225:24: replace == with != in resolve_dependency_path
+crates/slophammer-cli/src/rust_rules/boundaries.rs:228:17: replace match guard path.is_empty() with true in resolve_dependency_path
+crates/slophammer-cli/src/rust_rules/boundaries.rs:234:5: replace repo_dir -> String with String::new()
+crates/slophammer-cli/src/rust_rules/boundaries.rs:234:5: replace repo_dir -> String with "xyzzy".into()
+crates/slophammer-cli/src/rust_rules/boundaries.rs:238:38: replace == with != in repo_dir
+crates/slophammer-cli/src/rust_rules/boundaries.rs:246:5: replace normalize_path -> PathBuf with Default::default()
+crates/slophammer-cli/src/rust_rules/boundaries.rs:260:5: replace local_repo_path -> bool with false
+crates/slophammer-cli/src/rust_rules/boundaries.rs:264:5: replace allowed -> bool with true
+crates/slophammer-cli/src/rust_rules/boundaries.rs:264:5: replace allowed -> bool with false
+crates/slophammer-cli/src/rust_rules/boundaries.rs:267:40: replace || with && in allowed
+crates/slophammer-cli/src/rust_rules/boundaries.rs:267:29: replace == with != in allowed
+crates/slophammer-cli/src/rust_rules/definitions.rs:26:5: replace default_definitions -> Vec<RuleDefinition> with vec![]
+crates/slophammer-cli/src/rust_rules/definitions.rs:201:9: delete match arm rule_ids::RUST_CHECK_REQUIRED in definition
+crates/slophammer-cli/src/rust_rules/definitions.rs:209:9: delete match arm rule_ids::RUST_UNSAFE_POLICY_REQUIRED in definition
+crates/slophammer-cli/src/rust_rules/definitions.rs:211:9: delete match arm rule_ids::RUST_DEPENDENCY_BOUNDARIES_REQUIRED in definition
+crates/slophammer-cli/src/rust_rules/dry.rs:9:5: replace dry_findings -> Vec<Finding> with vec![]
+crates/slophammer-cli/src/rust_rules/dry.rs:9:8: delete ! in dry_findings
+crates/slophammer-cli/src/rust_rules/dry.rs:14:25: replace > with == in dry_findings
+crates/slophammer-cli/src/rust_rules/dry.rs:14:25: replace > with < in dry_findings
+crates/slophammer-cli/src/rust_rules/dry.rs:22:5: replace copied_block_findings -> Vec<Finding> with vec![]
+crates/slophammer-cli/src/rust_rules/dry.rs:22:19: replace == with != in copied_block_findings
+crates/slophammer-cli/src/rust_rules/dry.rs:32:25: replace < with > in copied_block_findings
+crates/slophammer-cli/src/rust_rules/dry.rs:73:5: replace duplicate_occurrence -> bool with false
+crates/slophammer-cli/src/rust_rules/dry.rs:73:27: replace || with && in duplicate_occurrence
+crates/slophammer-cli/src/rust_rules/dry.rs:77:5: replace non_overlapping -> bool with false
+crates/slophammer-cli/src/rust_rules/dry.rs:77:33: replace || with && in non_overlapping
+crates/slophammer-cli/src/rust_rules/dry.rs:77:24: replace <= with > in non_overlapping
+crates/slophammer-cli/src/rust_rules/dry.rs:77:10: replace + with - in non_overlapping
+crates/slophammer-cli/src/rust_rules/dry.rs:81:5: replace tokens -> Vec<String> with vec![]
+crates/slophammer-cli/src/rust_rules/dry.rs:81:5: replace tokens -> Vec<String> with vec![String::new()]
+crates/slophammer-cli/src/rust_rules/dry.rs:81:5: replace tokens -> Vec<String> with vec!["xyzzy".into()]
+crates/slophammer-cli/src/rust_rules/dry.rs:82:27: delete ! in tokens
+crates/slophammer-cli/src/rust_rules/dry.rs:82:56: replace || with && in tokens
+crates/slophammer-cli/src/rust_rules/dry.rs:82:62: replace == with != in tokens
+crates/slophammer-cli/src/rust_rules/dry.rs:83:24: delete ! in tokens
+crates/slophammer-cli/src/rust_rules/evidence.rs:5:5: replace command_text -> String with String::new()
+crates/slophammer-cli/src/rust_rules/evidence.rs:5:5: replace command_text -> String with "xyzzy".into()
+crates/slophammer-cli/src/rust_rules/evidence.rs:16:5: replace workflow_evidence -> String with String::new()
+crates/slophammer-cli/src/rust_rules/evidence.rs:16:5: replace workflow_evidence -> String with "xyzzy".into()
+crates/slophammer-cli/src/rust_rules/evidence.rs:36:5: replace candidate_files -> Vec<CandidateFile> with vec![]
+crates/slophammer-cli/src/rust_rules/evidence.rs:48:5: replace reachable_contents -> String with String::new()
+crates/slophammer-cli/src/rust_rules/evidence.rs:48:5: replace reachable_contents -> String with "xyzzy".into()
+crates/slophammer-cli/src/rust_rules/evidence.rs:57:5: replace candidate_path -> bool with false
+crates/slophammer-cli/src/rust_rules/evidence.rs:62:9: replace || with && in candidate_path
+crates/slophammer-cli/src/rust_rules/evidence.rs:68:5: replace candidate_reference -> String with String::new()
+crates/slophammer-cli/src/rust_rules/evidence.rs:68:5: replace candidate_reference -> String with "xyzzy".into()
+crates/slophammer-cli/src/rust_rules/evidence.rs:78:5: replace contains_word -> bool with true
+crates/slophammer-cli/src/rust_rules/evidence.rs:78:5: replace contains_word -> bool with false
+crates/slophammer-cli/src/rust_rules/evidence.rs:81:27: replace + with - in contains_word
+crates/slophammer-cli/src/rust_rules/evidence.rs:91:5: replace word_boundary -> bool with false
+crates/slophammer-cli/src/rust_rules/evidence.rs:91:18: replace && with || in word_boundary
+crates/slophammer-cli/src/rust_rules/evidence.rs:91:14: replace > with == in word_boundary
+crates/slophammer-cli/src/rust_rules/evidence.rs:91:14: replace > with >= in word_boundary
+crates/slophammer-cli/src/rust_rules/evidence.rs:91:43: replace - with + in word_boundary
+crates/slophammer-cli/src/rust_rules/evidence.rs:91:43: replace - with / in word_boundary
+crates/slophammer-cli/src/rust_rules/evidence.rs:94:21: replace + with - in word_boundary
+crates/slophammer-cli/src/rust_rules/evidence.rs:94:21: replace + with * in word_boundary
+crates/slophammer-cli/src/rust_rules/evidence.rs:95:24: replace || with && in word_boundary
+crates/slophammer-cli/src/rust_rules/evidence.rs:95:9: replace >= with < in word_boundary
+crates/slophammer-cli/src/rust_rules/evidence.rs:95:27: delete ! in word_boundary
+crates/slophammer-cli/src/rust_rules/evidence.rs:99:5: replace word_byte -> bool with true
+crates/slophammer-cli/src/rust_rules/evidence.rs:99:44: replace == with != in word_byte
+crates/slophammer-cli/src/rust_rules/evidence.rs:99:61: replace == with != in word_byte
+crates/slophammer-cli/src/rust_rules/evidence.rs:103:5: replace active_workflow_path -> bool with true
+crates/slophammer-cli/src/rust_rules/evidence.rs:103:5: replace active_workflow_path -> bool with false
+crates/slophammer-cli/src/rust_rules/evidence.rs:106:25: replace && with || in active_workflow_path
+crates/slophammer-cli/src/rust_rules/evidence.rs:106:5: delete ! in active_workflow_path
+crates/slophammer-cli/src/rust_rules/evidence.rs:106:52: replace || with && in active_workflow_path
+crates/slophammer-cli/src/rust_rules/evidence.rs:110:5: replace normalized_content -> String with String::new()
+crates/slophammer-cli/src/rust_rules/evidence.rs:110:5: replace normalized_content -> String with "xyzzy".into()
+crates/slophammer-cli/src/rust_rules/evidence.rs:123:5: replace strip_comment -> Option<&str> with None
+crates/slophammer-cli/src/rust_rules/evidence.rs:123:5: replace strip_comment -> Option<&str> with Some("")
+crates/slophammer-cli/src/rust_rules/evidence.rs:123:5: replace strip_comment -> Option<&str> with Some("xyzzy")
+crates/slophammer-cli/src/rust_rules/scope.rs:12:5: replace scope_findings -> Vec<Finding> with vec![]
+crates/slophammer-cli/src/rust_rules/scope.rs:35:5: replace scope_counts -> Option<(usize, usize)> with None
+crates/slophammer-cli/src/rust_rules/scope.rs:35:5: replace scope_counts -> Option<(usize, usize)> with Some((0, 0))
+crates/slophammer-cli/src/rust_rules/scope.rs:35:5: replace scope_counts -> Option<(usize, usize)> with Some((0, 1))
+crates/slophammer-cli/src/rust_rules/scope.rs:35:5: replace scope_counts -> Option<(usize, usize)> with Some((1, 0))
+crates/slophammer-cli/src/rust_rules/scope.rs:35:5: replace scope_counts -> Option<(usize, usize)> with Some((1, 1))
+crates/slophammer-cli/src/rust_rules/scope.rs:50:5: replace configured_scopes -> Vec<String> with vec![]
+crates/slophammer-cli/src/rust_rules/scope.rs:50:5: replace configured_scopes -> Vec<String> with vec![String::new()]
+crates/slophammer-cli/src/rust_rules/scope.rs:50:5: replace configured_scopes -> Vec<String> with vec!["xyzzy".into()]
+crates/slophammer-cli/src/rust_rules/scope.rs:68:5: replace uncovered_production_dirs -> Vec<String> with vec![]
+crates/slophammer-cli/src/rust_rules/scope.rs:68:5: replace uncovered_production_dirs -> Vec<String> with vec![String::new()]
+crates/slophammer-cli/src/rust_rules/scope.rs:68:5: replace uncovered_production_dirs -> Vec<String> with vec!["xyzzy".into()]
+crates/slophammer-cli/src/rust_rules/scope.rs:71:24: delete ! in uncovered_production_dirs
+crates/slophammer-cli/src/rust_rules/scope.rs:75:35: delete ! in uncovered_production_dirs
+crates/slophammer-cli/src/rust_rules/scope.rs:85:5: replace all_exclude_patterns -> Vec<String> with vec![]
+crates/slophammer-cli/src/rust_rules/scope.rs:85:5: replace all_exclude_patterns -> Vec<String> with vec![String::new()]
+crates/slophammer-cli/src/rust_rules/scope.rs:85:5: replace all_exclude_patterns -> Vec<String> with vec!["xyzzy".into()]
+crates/slophammer-cli/src/rust_rules/scope.rs:97:5: replace production_rust_files -> Vec<String> with vec![]
+crates/slophammer-cli/src/rust_rules/scope.rs:97:5: replace production_rust_files -> Vec<String> with vec![String::new()]
+crates/slophammer-cli/src/rust_rules/scope.rs:97:5: replace production_rust_files -> Vec<String> with vec!["xyzzy".into()]
+crates/slophammer-cli/src/rust_rules/scope.rs:101:24: delete ! in production_rust_files
+crates/slophammer-cli/src/rust_rules/scope.rs:109:5: replace conventional_path -> bool with true
+crates/slophammer-cli/src/rust_rules/scope.rs:137:5: replace rust_files -> Vec<String> with vec![]
+crates/slophammer-cli/src/rust_rules/scope.rs:137:5: replace rust_files -> Vec<String> with vec![String::new()]
+crates/slophammer-cli/src/rust_rules/scope.rs:137:5: replace rust_files -> Vec<String> with vec!["xyzzy".into()]
+crates/slophammer-cli/src/rust_rules/scope.rs:143:24: delete ! in rust_files
+crates/slophammer-cli/src/rust_rules/scope.rs:154:5: replace configured_rust_files -> Vec<String> with vec![]
+crates/slophammer-cli/src/rust_rules/scope.rs:154:5: replace configured_rust_files -> Vec<String> with vec![String::new()]
+crates/slophammer-cli/src/rust_rules/scope.rs:154:5: replace configured_rust_files -> Vec<String> with vec!["xyzzy".into()]
+crates/slophammer-cli/src/rust_rules/scope.rs:162:5: replace dry_rust_files -> Vec<String> with vec![]
+crates/slophammer-cli/src/rust_rules/scope.rs:162:5: replace dry_rust_files -> Vec<String> with vec![String::new()]
+crates/slophammer-cli/src/rust_rules/scope.rs:162:5: replace dry_rust_files -> Vec<String> with vec!["xyzzy".into()]
+crates/slophammer-cli/src/rust_rules/scope.rs:170:5: replace in_targets -> bool with true
+crates/slophammer-cli/src/rust_rules/scope.rs:170:5: replace in_targets -> bool with false
+crates/slophammer-cli/src/rust_rules/scope.rs:171:9: replace || with && in in_targets
+crates/slophammer-cli/src/rust_rules/scope.rs:173:53: replace || with && in in_targets
+crates/slophammer-cli/src/rust_rules/scope.rs:173:24: replace == with != in in_targets
+crates/slophammer-cli/src/rust_rules/scope.rs:173:39: replace == with != in in_targets
+crates/slophammer-cli/src/rust_rules/scope.rs:178:5: replace default_excluded -> bool with true
+crates/slophammer-cli/src/rust_rules/scope.rs:187:5: replace globset -> Option<GlobSet> with None
+crates/slophammer-cli/src/rust_rules/scope.rs:187:5: replace globset -> Option<GlobSet> with Some(Default::default())
+crates/slophammer-cli/src/rust_rules/suppressions.rs:11:5: replace suppression_findings -> Vec<Finding> with vec![]
+crates/slophammer-cli/src/rust_rules/suppressions.rs:13:12: delete ! in suppression_findings
+crates/slophammer-cli/src/rust_rules/suppressions.rs:24:5: replace production_rust_path -> bool with true
+crates/slophammer-cli/src/rust_rules/suppressions.rs:24:5: replace production_rust_path -> bool with false
+crates/slophammer-cli/src/rust_rules/suppressions.rs:28:9: replace && with || in production_rust_path
+crates/slophammer-cli/src/rust_rules/suppressions.rs:27:9: replace && with || in production_rust_path
+crates/slophammer-cli/src/rust_rules/suppressions.rs:26:9: replace && with || in production_rust_path
+crates/slophammer-cli/src/rust_rules/suppressions.rs:25:9: replace && with || in production_rust_path
+crates/slophammer-cli/src/rust_rules/suppressions.rs:25:12: delete ! in production_rust_path
+crates/slophammer-cli/src/rust_rules/suppressions.rs:26:12: delete ! in production_rust_path
+crates/slophammer-cli/src/rust_rules/suppressions.rs:27:12: delete ! in production_rust_path
+crates/slophammer-cli/src/rust_rules/suppressions.rs:28:12: delete ! in production_rust_path
+crates/slophammer-cli/src/rust_rules/suppressions.rs:32:5: replace bare_suppression_line -> Option<usize> with None
+crates/slophammer-cli/src/rust_rules/suppressions.rs:32:5: replace bare_suppression_line -> Option<usize> with Some(0)
+crates/slophammer-cli/src/rust_rules/suppressions.rs:32:5: replace bare_suppression_line -> Option<usize> with Some(1)
+crates/slophammer-cli/src/rust_rules/suppressions.rs:39:31: replace + with - in bare_suppression_line
+crates/slophammer-cli/src/rust_rules/suppressions.rs:39:31: replace + with * in bare_suppression_line
+crates/slophammer-cli/src/rust_rules/suppressions.rs:47:5: replace bare_allow_attribute -> bool with true
+crates/slophammer-cli/src/rust_rules/suppressions.rs:47:5: replace bare_allow_attribute -> bool with false
+crates/slophammer-cli/src/rust_rules/suppressions.rs:47:41: replace && with || in bare_allow_attribute
+crates/slophammer-cli/src/rust_rules/suppressions.rs:47:8: delete ! in bare_allow_attribute
+crates/slophammer-cli/src/rust_rules/suppressions.rs:47:44: delete ! in bare_allow_attribute
+crates/slophammer-cli/src/rust_rules/suppressions.rs:50:58: replace && with || in bare_allow_attribute
+crates/slophammer-cli/src/rust_rules/suppressions.rs:50:31: replace && with || in bare_allow_attribute
+crates/slophammer-cli/src/rust_rules/suppressions.rs:50:5: delete ! in bare_allow_attribute
+crates/slophammer-cli/src/rust_rules/suppressions.rs:50:34: delete ! in bare_allow_attribute
+crates/slophammer-cli/src/rust_rules/suppressions.rs:50:61: delete ! in bare_allow_attribute
+crates/slophammer-cli/src/rust_rules/unsafe_policy.rs:9:5: replace policy_findings -> Vec<Finding> with vec![]
+crates/slophammer-cli/src/rust_rules/unsafe_policy.rs:9:8: delete ! in policy_findings
+crates/slophammer-cli/src/rust_rules/unsafe_policy.rs:29:5: replace forbid_findings -> Vec<Finding> with vec![]
+crates/slophammer-cli/src/rust_rules/unsafe_policy.rs:31:24: delete ! in forbid_findings
+crates/slophammer-cli/src/rust_rules/unsafe_policy.rs:37:5: replace documented_findings -> Vec<Finding> with vec![]
+crates/slophammer-cli/src/rust_rules/unsafe_policy.rs:39:24: delete ! in documented_findings
+crates/slophammer-cli/src/rust_rules/unsafe_policy.rs:51:5: replace unsafe_paths -> Vec<String> with vec![]
+crates/slophammer-cli/src/rust_rules/unsafe_policy.rs:51:5: replace unsafe_paths -> Vec<String> with vec![String::new()]
+crates/slophammer-cli/src/rust_rules/unsafe_policy.rs:51:5: replace unsafe_paths -> Vec<String> with vec!["xyzzy".into()]
+crates/slophammer-cli/src/rust_rules/unsafe_policy.rs:62:5: replace file_contains_unsafe -> bool with true
+crates/slophammer-cli/src/rust_rules/unsafe_policy.rs:62:5: replace file_contains_unsafe -> bool with false
+crates/slophammer-cli/src/rust_rules/unsafe_policy.rs:71:5: replace unsafe_allowed -> bool with true
+crates/slophammer-cli/src/rust_rules/unsafe_policy.rs:71:5: replace unsafe_allowed -> bool with false
+crates/slophammer-cli/src/rust_rules/unsafe_policy.rs:77:17: delete ! in unsafe_allowed
+crates/slophammer-cli/src/rust_rules/unsafe_policy.rs:78:44: replace || with && in unsafe_allowed
+crates/slophammer-cli/src/rust_rules/unsafe_policy.rs:78:30: replace == with != in unsafe_allowed
+crates/slophammer-cli/src/rust_rules/unsafe_policy.rs:90:9: replace <impl Visit<'ast> for UnsafeVisitor>::visit_expr_unsafe with ()
+crates/slophammer-cli/src/rust_rules/unsafe_policy.rs:95:9: replace <impl Visit<'ast> for UnsafeVisitor>::visit_item_fn with ()
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:9:5: replace binding_workflow_text -> Option<String> with None
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:9:5: replace binding_workflow_text -> Option<String> with Some(String::new())
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:9:5: replace binding_workflow_text -> Option<String> with Some("xyzzy".into())
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:15:8: delete ! in binding_workflow_text
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:28:5: replace workflow_triggers -> Option<&Value> with None
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:28:5: replace workflow_triggers -> Option<&Value> with Some(Box::leak(Box::new(Default::default())))
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:33:5: replace collect_job_evidence with ()
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:46:5: replace collect_step_evidence with ()
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:50:12: delete ! in collect_step_evidence
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:60:38: delete ! in collect_step_evidence
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:71:5: replace direct_matrix_command -> bool with false
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:75:43: replace == with != in direct_matrix_command
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:79:5: replace job_matrix_commands -> Vec<String> with vec![]
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:79:5: replace job_matrix_commands -> Vec<String> with vec![String::new()]
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:79:5: replace job_matrix_commands -> Vec<String> with vec!["xyzzy".into()]
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:99:5: replace sequence_strings -> Vec<String> with vec![]
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:99:5: replace sequence_strings -> Vec<String> with vec![String::new()]
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:99:5: replace sequence_strings -> Vec<String> with vec!["xyzzy".into()]
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:115:5: replace neutralized -> bool with true
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:115:5: replace neutralized -> bool with false
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:122:5: replace literal_bool -> bool with true
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:122:5: replace literal_bool -> bool with false
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:123:9: delete match arm Some(Value::Bool(actual)) in literal_bool
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:123:46: replace == with != in literal_bool
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:130:5: replace literal_bool_text -> bool with true
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:137:13: replace == with != in literal_bool_text
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:144:5: replace binding_triggers -> bool with true
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:144:5: replace binding_triggers -> bool with false
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:146:9: delete match arm Some(Value::Sequence(names)) in binding_triggers
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:150:9: delete match arm Some(Value::Mapping(entries)) in binding_triggers
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:159:5: replace binding_trigger_name -> bool with false
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:166:5: replace binding_trigger_entry -> bool with true
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:166:5: replace binding_trigger_entry -> bool with false
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:167:9: delete match arm "pull_request" | "pull_request_target" | "merge_group" | "schedule" in binding_trigger_entry
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:174:5: replace binding_push_filter -> bool with true
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:181:44: replace && with || in binding_push_filter
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:185:9: delete match arm Value::Sequence(patterns) in binding_push_filter
+crates/slophammer-cli/src/rust_rules/workflow_binding.rs:194:5: replace integration_branch_pattern -> bool with true

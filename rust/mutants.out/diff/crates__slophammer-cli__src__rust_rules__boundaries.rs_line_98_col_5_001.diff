@@ -1,0 +1,30 @@
+--- crates/slophammer-cli/src/rust_rules/boundaries.rs
++++ replace dependency_path -> Option<DependencyPath> with Some(Default::default())
+@@ -90,26 +90,17 @@
+ }
+ 
+ fn dependency_path(
+     name: &str,
+     item: &Item,
+     direct_base: &str,
+     workspace_paths: &BTreeMap<String, DependencyPath>,
+ ) -> Option<DependencyPath> {
+-    if let Some(path) = direct_dependency_path(item) {
+-        return Some(DependencyPath {
+-            base: repo_dir(direct_base),
+-            path,
+-        });
+-    }
+-    if dependency_is_workspace(item) {
+-        return workspace_paths.get(name).cloned();
+-    }
+-    None
++    Some(Default::default()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn direct_dependency_path(item: &Item) -> Option<String> {
+     if let Some(value) = item.as_value() {
+         if let Some(inline) = value.as_inline_table() {
+             return inline
+                 .get("path")
+                 .and_then(|path| path.as_str())

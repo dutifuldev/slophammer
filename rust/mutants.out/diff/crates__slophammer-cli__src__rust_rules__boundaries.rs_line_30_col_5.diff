@@ -1,0 +1,47 @@
+--- crates/slophammer-cli/src/rust_rules/boundaries.rs
++++ replace check_boundary -> Vec<Finding> with vec![]
+@@ -22,43 +22,17 @@
+     }
+     rust.dependency_boundaries
+         .iter()
+         .flat_map(|boundary| check_boundary(snapshot, boundary))
+         .collect()
+ }
+ 
+ fn check_boundary(snapshot: &Snapshot, boundary: &DependencyBoundary) -> Vec<Finding> {
+-    let manifest_path = manifest_path(&boundary.from);
+-    let Some(file) = snapshot.file(&manifest_path) else {
+-        return vec![Finding::at_path(
+-            definition(rule_ids::RUST_DEPENDENCY_BOUNDARIES_REQUIRED),
+-            manifest_path,
+-        )];
+-    };
+-    let Ok(document) = file.content.parse::<DocumentMut>() else {
+-        return vec![Finding::at_path(
+-            definition(rule_ids::RUST_DEPENDENCY_BOUNDARIES_REQUIRED),
+-            file.path.clone(),
+-        )];
+-    };
+-    let workspace_paths = workspace_dependency_paths(snapshot, &boundary.from);
+-    dependency_paths(&document, &boundary.from, &workspace_paths)
+-        .into_iter()
+-        .filter_map(|dependency| resolve_dependency_path(&dependency.base, &dependency.path))
+-        .filter(|path| local_repo_path(snapshot, path))
+-        .filter(|path| !allowed(boundary, path))
+-        .map(|path| {
+-            Finding::with_message(
+-                definition(rule_ids::RUST_DEPENDENCY_BOUNDARIES_REQUIRED),
+-                file.path.clone(),
+-                format!("Rust dependency boundary forbids dependency on {path}"),
+-            )
+-        })
+-        .collect()
++    vec![] /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ #[derive(Clone, Debug, Eq, PartialEq)]
+ struct DependencyPath {
+     base: String,
+     path: String,
+ }
+ 

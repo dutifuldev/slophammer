@@ -1,0 +1,76 @@
+--- crates/slophammer-cli/src/config.rs
++++ replace validate_python_section -> Result<(), ConfigError> with Ok(())
+@@ -225,72 +225,17 @@
+     validate(&config)?;
+     Ok(config)
+ }
+ 
+ /// The shared python section is enforced by the Python checker but
+ /// shape-validated by every implementation, so typos in shared config fail
+ /// everywhere. Key trees mirror specs/CONFIG.md.
+ fn validate_python_section(value: &Value) -> Result<(), ConfigError> {
+-    let allowed = [
+-        "coverage",
+-        "complexity",
+-        "dry",
+-        "mutation",
+-        "dependency_boundaries",
+-        "typecheck",
+-    ];
+-    validate_value_keys(value, "python", &allowed)?;
+-    let Some(mapping) = value.as_mapping() else {
+-        return Ok(());
+-    };
+-    if let Some(coverage) = mapping.get("coverage") {
+-        validate_value_keys(
+-            coverage,
+-            "python.coverage",
+-            &["threshold", "paths", "exclude"],
+-        )?;
+-        validate_value_excludes(coverage.get("exclude"), "python.coverage.exclude")?;
+-    }
+-    if let Some(complexity) = mapping.get("complexity") {
+-        validate_value_keys(complexity, "python.complexity", &["max"])?;
+-    }
+-    if let Some(dry) = mapping.get("dry") {
+-        validate_value_keys(
+-            dry,
+-            "python.dry",
+-            &["max_findings", "paths", "exclude", "copied_blocks"],
+-        )?;
+-        validate_value_excludes(dry.get("exclude"), "python.dry.exclude")?;
+-        if let Some(copied) = dry.get("copied_blocks") {
+-            validate_value_keys(
+-                copied,
+-                "python.dry.copied_blocks",
+-                &["enabled", "min_tokens"],
+-            )?;
+-        }
+-    }
+-    if let Some(mutation) = mapping.get("mutation") {
+-        validate_value_keys(mutation, "python.mutation", &["targets", "exclude"])?;
+-        validate_value_excludes(mutation.get("exclude"), "python.mutation.exclude")?;
+-    }
+-    validate_value_entries(
+-        mapping.get("dependency_boundaries"),
+-        "python.dependency_boundaries",
+-        &["from", "allow"],
+-    )?;
+-    if let Some(typecheck) = mapping.get("typecheck") {
+-        validate_value_keys(typecheck, "python.typecheck", &["demotions"])?;
+-        validate_value_entries(
+-            typecheck.get("demotions"),
+-            "python.typecheck.demotions",
+-            &["rule", "reason"],
+-        )?;
+-    }
+-    Ok(())
++    Ok(()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn validate_value_keys(value: &Value, field: &str, allowed: &[&str]) -> Result<(), ConfigError> {
+     let Some(mapping) = value.as_mapping() else {
+         if matches!(value, Value::Null) {
+             return Ok(());
+         }
+         return Err(ConfigError::Validation(format!(

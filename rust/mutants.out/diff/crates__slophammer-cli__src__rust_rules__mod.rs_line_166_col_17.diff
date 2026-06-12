@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/mod.rs
++++ replace && with || in rust_clippy
+@@ -158,17 +158,17 @@
+     )
+ }
+ 
+ fn rust_clippy(snapshot: &Snapshot) -> Vec<Finding> {
+     let evidence = evidence::command_text(snapshot);
+     missing(
+         is_rust_project(snapshot)
+             && !(evidence.contains("cargo clippy")
+-                && (evidence.contains("-d warnings") || evidence.contains("--deny warnings"))),
++                || /* ~ changed by cargo-mutants ~ */ (evidence.contains("-d warnings") || evidence.contains("--deny warnings"))),
+         rule_ids::RUST_CLIPPY_REQUIRED,
+     )
+ }
+ 
+ fn rust_coverage(snapshot: &Snapshot, config: &Config) -> Vec<Finding> {
+     let threshold = crate::config::rust_coverage_threshold(config);
+     missing(
+         is_rust_project(snapshot) && !has_coverage_gate(snapshot, threshold),

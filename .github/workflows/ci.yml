@@ -86,7 +86,7 @@ jobs:
       - run: ./scripts/check-go-install.sh
       - run: go run ./cmd/slophammer-go dry ..
       - run: go run ./cmd/slophammer-go crap ..
-      - run: go run ./cmd/slophammer-go mutate .. --scan
+      - run: go run ./cmd/slophammer-go mutate ..
       - run: go run ./cmd/slophammer-go check ..
       - run: go run ./cmd/slophammer-go check .. --execute
 
@@ -165,7 +165,7 @@ jobs:
       - run: uv sync --frozen --directory ../python
       - run: npm ci
       - run: npm run check
-      - run: npm run mutate:scan
+      - run: npm run mutate
       - run: node ../scripts/check-conformance.mjs
 
   python-implementation:
@@ -181,7 +181,7 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ty check src
       - run: uv run pytest --cov=src/slophammer --cov-fail-under=85
-      - run: uv run mutmut run
+      - run: uv run mutmut run && uv run python scripts/check-mutation.py --min-kill-rate 74
       - name: Audit dependencies
         run: |
           uv export --frozen --no-emit-project -o /tmp/requirements.txt
@@ -227,7 +227,21 @@ jobs:
       - run: cargo test --workspace --all-targets
       - run: cargo llvm-cov --workspace --fail-under-lines 85
       - run: cargo audit
-      - run: cargo mutants --workspace --list
+      - name: Mutation testing on changed code
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=50 origin main
+          base="$(git merge-base origin/main HEAD || echo "")"
+          if [ -z "$base" ] || [ "$base" = "$(git rev-parse HEAD)" ]; then
+            echo "no changed code to mutate"
+            exit 0
+          fi
+          git diff "$base"...HEAD -- . > /tmp/pr.diff
+          if [ ! -s /tmp/pr.diff ]; then
+            echo "no changed code to mutate"
+            exit 0
+          fi
+          cargo mutants --workspace --timeout 120 --in-diff /tmp/pr.diff
       - run: scripts/publish-crate.sh --tag "${{ steps.rust-package.outputs.tag }}" --dry-run
       - run: scripts/test-packaged-crate.sh
       - run: scripts/install-packaged-cli.sh

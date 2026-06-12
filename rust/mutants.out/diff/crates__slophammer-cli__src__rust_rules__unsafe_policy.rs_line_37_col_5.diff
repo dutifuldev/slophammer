@@ -1,0 +1,31 @@
+--- crates/slophammer-cli/src/rust_rules/unsafe_policy.rs
++++ replace documented_findings -> Vec<Finding> with vec![]
+@@ -29,27 +29,17 @@
+     unsafe_paths(snapshot, config)
+         .into_iter()
+         .filter(|path| !unsafe_allowed(config, path))
+         .map(|path| Finding::at_path(definition(rule_ids::RUST_UNSAFE_POLICY_REQUIRED), path))
+         .collect()
+ }
+ 
+ fn documented_findings(snapshot: &Snapshot, config: &Config) -> Vec<Finding> {
+-    unsafe_paths(snapshot, config)
+-        .into_iter()
+-        .filter(|path| !unsafe_allowed(config, path))
+-        .map(|path| {
+-            Finding::with_message(
+-                definition(rule_ids::RUST_UNSAFE_POLICY_REQUIRED),
+-                path,
+-                "Rust unsafe code must be documented with an allow entry",
+-            )
+-        })
+-        .collect()
++    vec![] /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn unsafe_paths(snapshot: &Snapshot, config: &Config) -> Vec<String> {
+     scope::configured_rust_files(snapshot, config)
+         .into_iter()
+         .filter(|path| {
+             snapshot
+                 .file(path)

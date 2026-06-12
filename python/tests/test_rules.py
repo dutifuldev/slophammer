@@ -353,6 +353,15 @@ class TestGateRules:
         ids = rule_ids(report_for(files, only=["py.coverage-required"]))
         assert ids == ["py.coverage-required"]
 
+    def test_cannot_fail_mutation_forms_are_not_evidence(self):
+        for weak in ("uv run mutmut results", "uv run mutmut run --dry-run"):
+            files = clean_python_repo()
+            files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
+                "uv run mutmut run", weak
+            )
+            ids = rule_ids(report_for(files, only=["py.mutation-required"]))
+            assert ids == ["py.mutation-required"], weak
+
     def test_module_spelling_pip_audit_counts(self):
         files = clean_python_repo()
         files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(

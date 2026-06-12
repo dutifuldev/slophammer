@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/mod.rs
++++ delete ! in rust_suppressions
+@@ -117,17 +117,17 @@
+ fn invocation_with_check(evidence: &str, binary: &str) -> bool {
+     evidence.match_indices(binary).any(|(index, _)| {
+         let window_end = (index + 160).min(evidence.len());
+         evidence[index..window_end].contains(" check")
+     })
+ }
+ 
+ fn rust_suppressions(snapshot: &Snapshot) -> Vec<Finding> {
+-    if !is_rust_project(snapshot) {
++    if  /* ~ changed by cargo-mutants ~ */is_rust_project(snapshot) {
+         return Vec::new();
+     }
+     suppressions::suppression_findings(snapshot)
+ }
+ 
+ fn rust_manifest(snapshot: &Snapshot) -> Vec<Finding> {
+     missing(
+         is_rust_project(snapshot) && rust_manifests(snapshot).is_empty(),

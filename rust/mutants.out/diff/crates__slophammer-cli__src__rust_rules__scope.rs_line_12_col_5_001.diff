@@ -1,0 +1,37 @@
+--- crates/slophammer-cli/src/rust_rules/scope.rs
++++ replace scope_findings -> Vec<Finding> with vec![Default::default()]
+@@ -4,33 +4,17 @@
+ use crate::scan::Snapshot;
+ use globset::{Glob, GlobSet, GlobSetBuilder};
+ 
+ /// Configured scope must account for every production Rust file: each one is
+ /// either inside a configured paths/targets scope or covered by an exclude
+ /// (conventional or reasoned). Anything else is a finding, so narrowing scope
+ /// cannot hide code from checking.
+ pub fn scope_findings(snapshot: &Snapshot, config: &Config) -> Vec<Finding> {
+-    let Some(rust) = &config.rust else {
+-        return Vec::new();
+-    };
+-    let scopes = configured_scopes(rust);
+-    if scopes.is_empty() {
+-        return Vec::new();
+-    }
+-    let uncovered = uncovered_production_dirs(snapshot, config, &scopes);
+-    if uncovered.is_empty() {
+-        return Vec::new();
+-    }
+-    let template = definition(rule_ids::RUST_SCOPE_INCOMPLETE);
+-    vec![Finding::with_message(
+-        template,
+-        template.path,
+-        format!("{}: {}", template.message, uncovered.join(", ")),
+-    )]
++    vec![Default::default()] /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Scope coverage counts for the report: production files the configured
+ /// scope covers versus all production files. None when no scope is
+ /// configured.
+ pub fn scope_counts(snapshot: &Snapshot, config: &Config) -> Option<(usize, usize)> {
+     let rust = config.rust.as_ref()?;
+     let scopes = configured_scopes(rust);

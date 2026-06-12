@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/scope.rs
++++ replace || with && in in_targets
+@@ -165,17 +165,17 @@
+         &crate::config::rust_dry_exclude(config),
+     )
+ }
+ 
+ fn in_targets(path: &str, targets: &[String]) -> bool {
+     targets.is_empty()
+         || targets.iter().any(|target| {
+             let normalized = target.trim_end_matches('/');
+-            normalized == "." || path == normalized || path.starts_with(&format!("{normalized}/"))
++            normalized == "." && /* ~ changed by cargo-mutants ~ */ path == normalized || path.starts_with(&format!("{normalized}/"))
+         })
+ }
+ 
+ fn default_excluded(path: &str) -> bool {
+     path.starts_with("fixtures/")
+         || path.starts_with("templates/")
+         || path.contains("/fixtures/")
+         || path.contains("/target/")

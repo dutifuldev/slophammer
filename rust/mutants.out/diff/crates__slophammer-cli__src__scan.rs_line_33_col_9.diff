@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/scan.rs
++++ replace Snapshot::has_workflow -> bool with true
+@@ -25,17 +25,17 @@
+     pub fn has_case_insensitive(&self, filename: &str) -> bool {
+         self.files
+             .keys()
+             .filter(|path| !path.contains('/'))
+             .any(|path| path.eq_ignore_ascii_case(filename))
+     }
+ 
+     pub fn has_workflow(&self) -> bool {
+-        self.files.keys().any(|path| active_workflow_path(path))
++        true /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ fn active_workflow_path(path: &str) -> bool {
+     let Some(name) = path.strip_prefix(".github/workflows/") else {
+         return false;
+     };
+     !name.contains('/') && (name.ends_with(".yml") || name.ends_with(".yaml"))

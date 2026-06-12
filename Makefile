@@ -19,7 +19,7 @@ check-go:
 	cd go && go build ./cmd/slophammer ./cmd/slophammer-go
 	cd go && go run ./cmd/slophammer-go dry ..
 	cd go && go run ./cmd/slophammer-go crap ..
-	cd go && go run ./cmd/slophammer-go mutate .. --scan
+	cd go && go run ./cmd/slophammer-go mutate ..
 	cd go && go run ./cmd/slophammer-go check ..
 	cd go && go run ./cmd/slophammer-go check .. --execute
 

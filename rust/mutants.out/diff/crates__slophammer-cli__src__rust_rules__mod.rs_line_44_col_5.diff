@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/mod.rs
++++ replace known_rule -> bool with true
+@@ -36,17 +36,17 @@
+         format!(
+             "{}\n{}\nseverity: {}\npath: {}\n",
+             definition.id, definition.description, definition.severity, definition.path
+         )
+     })
+ }
+ 
+ pub fn known_rule(rule_id: &str) -> bool {
+-    find_definition(&default_definitions(), rule_id).is_some()
++    true /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn run_rule(rule_id: &str, snapshot: &Snapshot, config: &Config) -> Vec<Finding> {
+     match rule_id {
+         rule_ids::README_REQUIRED => repo_readme(snapshot),
+         rule_ids::AGENTS_REQUIRED => repo_agents(snapshot),
+         rule_ids::CI_REQUIRED => repo_ci(snapshot),
+         rule_ids::SLOPHAMMER_CI_REQUIRED => repo_slophammer_ci(snapshot),

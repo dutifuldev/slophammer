@@ -1,0 +1,24 @@
+--- crates/slophammer-cli/src/rust_rules/workflow_binding.rs
++++ replace neutralized -> bool with false
+@@ -107,20 +107,17 @@
+         })
+         .unwrap_or_default()
+ }
+ 
+ /// A job or step is neutralized when it cannot run or cannot fail: a literal
+ /// false `if:` condition or a literal `continue-on-error: true`. Non-literal
+ /// expressions stay credited; the checker ships no expression evaluator.
+ fn neutralized(entry: &Value) -> bool {
+-    if literal_bool(entry.get("continue-on-error"), true) {
+-        return true;
+-    }
+-    literal_bool(entry.get("if"), false)
++    false /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn literal_bool(value: Option<&Value>, wanted: bool) -> bool {
+     match value {
+         Some(Value::Bool(actual)) => *actual == wanted,
+         Some(Value::String(text)) => literal_bool_text(text, wanted),
+         _ => false,
+     }

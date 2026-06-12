@@ -1,0 +1,25 @@
+--- crates/slophammer-cli/src/rust_rules/workflow_binding.rs
++++ replace direct_matrix_command -> bool with true
+@@ -63,21 +63,17 @@
+     }
+     evidence.push(run.to_owned());
+ }
+ 
+ /// A run consisting solely of the matrix.command expression expands to the
+ /// job's matrix command values, mirroring the raw-text evidence that the
+ /// structural filter would otherwise drop.
+ fn direct_matrix_command(run: &str) -> bool {
+-    let trimmed = run.trim();
+-    trimmed
+-        .strip_prefix("${{")
+-        .and_then(|rest| rest.strip_suffix("}}"))
+-        .is_some_and(|inner| inner.trim() == "matrix.command")
++    true /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn job_matrix_commands(job: &Value) -> Vec<String> {
+     let Some(matrix) = job
+         .get("strategy")
+         .and_then(|strategy| strategy.get("matrix"))
+     else {
+         return Vec::new();

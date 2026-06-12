@@ -676,6 +676,7 @@ func CheckMutation(ctx context.Context, options MutationOptions, out io.Writer, 
 		_, _ = fmt.Fprintln(errOut, "--target is required")
 		return 2
 	}
+	survived := 0
 	for _, target := range targets {
 		args := gotools.Mutate4Go.GoRunArgs(gotools.Latest, target)
 		if options.Scan {
@@ -689,8 +690,32 @@ func CheckMutation(ctx context.Context, options MutationOptions, out io.Writer, 
 			_, _ = fmt.Fprintf(errOut, "mutate4go failed for %s: %v\n", target, err)
 			return 2
 		}
+		survived += survivedMutants(result.Stdout)
+	}
+	if survived > 0 {
+		_, _ = fmt.Fprintf(errOut, "%d mutant(s) survived; strengthen the tests or refresh the manifest deliberately\n", survived)
+		return 1
 	}
 	return 0
+}
+
+// A mutation run that reports survivors is a failing gate: the executing
+// mode mutates only functions changed since their manifest stamp, so any
+// survivor is new, untested behavior.
+func survivedMutants(output []byte) int {
+	survived := 0
+	for _, line := range strings.Split(string(output), "\n") {
+		trimmed := strings.TrimSpace(line)
+		value, found := strings.CutPrefix(trimmed, "Survived: ")
+		if !found {
+			continue
+		}
+		count, err := strconv.Atoi(strings.TrimSpace(value))
+		if err == nil {
+			survived += count
+		}
+	}
+	return survived
 }
 
 func CountDRYCandidates(report []byte) (int, error) {

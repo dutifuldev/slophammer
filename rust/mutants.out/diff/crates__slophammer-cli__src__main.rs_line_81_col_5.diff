@@ -1,0 +1,57 @@
+--- crates/slophammer-cli/src/main.rs
++++ replace run -> AppResult with Default::default()
+@@ -73,53 +73,17 @@
+ }
+ 
+ fn main() -> ExitCode {
+     let cli = Cli::parse();
+     exit(run(cli.command))
+ }
+ 
+ fn run(command: Command) -> AppResult {
+-    match command {
+-        Command::Check {
+-            path,
+-            format,
+-            execute,
+-            only_rule_ids,
+-            baseline,
+-            baseline_write,
+-        } => app::check(CheckOptions {
+-            root: path,
+-            format: format.into(),
+-            execute,
+-            only_rule_ids,
+-            baseline: baseline_mode(baseline, baseline_write),
+-        }),
+-        Command::Explain { rule_id } => app::explain(&rule_id),
+-        Command::Rules { format } => app::rules(format.into()),
+-        Command::Dry {
+-            path,
+-            format,
+-            max_findings,
+-        } => app::dry(DirectOptions {
+-            root: path,
+-            format: format.into(),
+-            max_findings,
+-        }),
+-        Command::Boundaries { path, format } => app::boundaries(DirectOptions {
+-            root: path,
+-            format: format.into(),
+-            max_findings: None,
+-        }),
+-        Command::Unsafe { path, format } => app::unsafe_policy(DirectOptions {
+-            root: path,
+-            format: format.into(),
+-            max_findings: None,
+-        }),
+-    }
++    Default::default() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn baseline_mode(baseline: bool, baseline_write: bool) -> baseline::BaselineMode {
+     if baseline_write {
+         baseline::BaselineMode::Write
+     } else if baseline {
+         baseline::BaselineMode::Check
+     } else {

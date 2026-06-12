@@ -1,0 +1,275 @@
+
+*** crates/slophammer-cli/src/report.rs:158:5: replace sarif_rules -> Vec<SarifRule> with vec![]
+
+*** mutation diff:
+--- crates/slophammer-cli/src/report.rs
++++ replace sarif_rules -> Vec<SarifRule> with vec![]
+@@ -150,29 +150,17 @@
+                 },
+             },
+             results: sarif_results(&report.findings),
+         }],
+     }
+ }
+ 
+ fn sarif_rules(findings: &[Finding]) -> Vec<SarifRule> {
+-    let mut seen = std::collections::BTreeSet::new();
+-    let mut rules = Vec::new();
+-    for finding in findings {
+-        if seen.insert(finding.rule_id.clone()) {
+-            rules.push(SarifRule {
+-                id: finding.rule_id.clone(),
+-                short_description: SarifMessage {
+-                    text: finding.message.clone(),
+-                },
+-            });
+-        }
+-    }
+-    rules
++    vec![] /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn sarif_results(findings: &[Finding]) -> Vec<SarifResult> {
+     findings
+         .iter()
+         .map(|finding| SarifResult {
+             rule_id: finding.rule_id.clone(),
+             level: sarif_level(finding.severity),
+
+
+*** /home/bob/.rustup/toolchains/stable-aarch64-unknown-linux-gnu/bin/cargo test --no-run --verbose --package=slophammer-rs@0.3.0
+       Fresh unicode-ident v1.0.24
+       Fresh memchr v2.8.1
+       Fresh utf8parse v0.2.2
+       Fresh is_terminal_polyfill v1.70.2
+       Fresh equivalent v1.0.2
+       Fresh hashbrown v0.17.1
+       Fresh colorchoice v1.0.5
+       Fresh anstyle v1.0.14
+       Fresh anstyle-query v1.1.5
+       Fresh regex-syntax v0.8.10
+       Fresh heck v0.5.0
+       Fresh aho-corasick v1.1.4
+       Fresh anstyle-parse v1.0.0
+       Fresh indexmap v2.14.0
+       Fresh bstr v1.12.1
+       Fresh strsim v0.11.1
+       Fresh clap_lex v1.1.0
+       Fresh same-file v1.0.6
+       Fresh itoa v1.0.18
+       Fresh log v0.4.32
+       Fresh serde_core v1.0.228
+       Fresh crossbeam-utils v0.8.21
+       Fresh regex-automata v0.4.14
+       Fresh anstream v1.0.0
+       Fresh proc-macro2 v1.0.106
+       Fresh winnow v1.0.3
+       Fresh zmij v1.0.21
+       Fresh libc v0.2.186
+       Fresh walkdir v2.5.0
+       Fresh linux-raw-sys v0.12.1
+       Fresh toml_writer v1.1.1+spec-1.1.0
+       Fresh toml_datetime v0.7.5+spec-1.1.0
+       Fresh bitflags v2.13.0
+       Fresh ryu v1.0.23
+       Fresh cfg-if v1.0.4
+       Fresh crossbeam-epoch v0.9.18
+       Fresh globset v0.4.18
+       Fresh toml_parser v1.1.2+spec-1.1.0
+       Fresh clap_builder v4.6.0
+       Fresh quote v1.0.45
+       Fresh winnow v0.7.15
+       Fresh libyaml-rs v0.3.0
+       Fresh getrandom v0.4.2
+       Fresh camino v1.2.2
+       Fresh rustix v1.1.4
+       Fresh serde_json v1.0.150
+       Fresh fastrand v2.4.1
+       Fresh once_cell v1.21.4
+       Fresh crossbeam-deque v0.8.6
+       Fresh syn v2.0.117
+       Fresh toml_edit v0.23.10+spec-1.0.0
+       Fresh tempfile v3.27.0
+       Fresh serde_derive v1.0.228
+       Fresh clap_derive v4.6.1
+       Fresh thiserror-impl v2.0.18
+       Fresh ignore v0.4.26
+       Fresh serde v1.0.228
+       Fresh clap v4.6.1
+       Fresh thiserror v2.0.18
+       Fresh yaml_serde v0.10.4
+       Dirty slophammer-rs v0.3.0 (/tmp/cargo-mutants-rust-89s9kK.tmp/crates/slophammer-cli): the file `crates/slophammer-cli/src/report.rs` has changed (1781267888.807847152s, 1s after last build at 1781267887.279846144s)
+   Compiling slophammer-rs v0.3.0 (/tmp/cargo-mutants-rust-89s9kK.tmp/crates/slophammer-cli)
+     Running `/home/bob/.rustup/toolchains/stable-aarch64-unknown-linux-gnu/bin/rustc --crate-name slophammer_rs --edition=2024 crates/slophammer-cli/src/main.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=692dd60ce4a91235 -C extra-filename=-c3a800629f8bc1eb --out-dir /tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps --extern camino=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libcamino-2014f95ed4aa656e.rlib --extern clap=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libclap-3e1d8dbd42257920.rlib --extern globset=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libglobset-df34ff480f534705.rlib --extern ignore=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libignore-f2cb21606a57d846.rlib --extern serde=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libserde-60583f22ed38d6b8.rlib --extern serde_json=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libserde_json-93ac085c3ebb1a50.rlib --extern syn=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libsyn-435700cfedf2e318.rlib --extern tempfile=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libtempfile-69d946ab9f332d8e.rlib --extern thiserror=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libthiserror-848f54786d621def.rlib --extern toml_edit=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libtoml_edit-9bdeadd08d2c37c0.rlib --extern yaml_serde=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libyaml_serde-65164af57e8beaf6.rlib`
+     Running `/home/bob/.rustup/toolchains/stable-aarch64-unknown-linux-gnu/bin/rustc --crate-name slophammer_rs --edition=2024 crates/slophammer-cli/src/main.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type bin --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=c5ca586e84369ade -C extra-filename=-0cbb3951a8ccb87e --out-dir /tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps --extern camino=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libcamino-2014f95ed4aa656e.rlib --extern clap=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libclap-3e1d8dbd42257920.rlib --extern globset=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libglobset-df34ff480f534705.rlib --extern ignore=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libignore-f2cb21606a57d846.rlib --extern serde=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libserde-60583f22ed38d6b8.rlib --extern serde_json=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libserde_json-93ac085c3ebb1a50.rlib --extern syn=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libsyn-435700cfedf2e318.rlib --extern thiserror=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libthiserror-848f54786d621def.rlib --extern toml_edit=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libtoml_edit-9bdeadd08d2c37c0.rlib --extern yaml_serde=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libyaml_serde-65164af57e8beaf6.rlib`
+warning: unused variable: `findings`
+   --> crates/slophammer-cli/src/report.rs:157:16
+    |
+157 | fn sarif_rules(findings: &[Finding]) -> Vec<SarifRule> {
+    |                ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_findings`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `slophammer-rs` (bin "slophammer-rs") generated 1 warning (run `cargo fix --bin "slophammer-rs" -p slophammer-rs` to apply 1 suggestion)
+warning: `slophammer-rs` (bin "slophammer-rs" test) generated 1 warning (1 duplicate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.36s
+  Executable `/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/slophammer_rs-c3a800629f8bc1eb`
+  Executable `/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/cli-a89ade302020f4f3`
+
+*** result: Success
+
+*** /home/bob/.rustup/toolchains/stable-aarch64-unknown-linux-gnu/bin/cargo test --verbose --package=slophammer-rs@0.3.0
+       Fresh unicode-ident v1.0.24
+       Fresh memchr v2.8.1
+       Fresh utf8parse v0.2.2
+       Fresh hashbrown v0.17.1
+       Fresh colorchoice v1.0.5
+       Fresh regex-syntax v0.8.10
+       Fresh anstyle v1.0.14
+       Fresh equivalent v1.0.2
+       Fresh is_terminal_polyfill v1.70.2
+       Fresh anstyle-query v1.1.5
+       Fresh same-file v1.0.6
+       Fresh strsim v0.11.1
+       Fresh aho-corasick v1.1.4
+       Fresh anstyle-parse v1.0.0
+       Fresh indexmap v2.14.0
+       Fresh bstr v1.12.1
+       Fresh itoa v1.0.18
+       Fresh log v0.4.32
+       Fresh clap_lex v1.1.0
+       Fresh winnow v1.0.3
+       Fresh serde_core v1.0.228
+       Fresh crossbeam-utils v0.8.21
+       Fresh regex-automata v0.4.14
+       Fresh proc-macro2 v1.0.106
+       Fresh anstream v1.0.0
+       Fresh heck v0.5.0
+       Fresh toml_parser v1.1.2+spec-1.1.0
+       Fresh zmij v1.0.21
+       Fresh libc v0.2.186
+       Fresh walkdir v2.5.0
+       Fresh toml_datetime v0.7.5+spec-1.1.0
+       Fresh winnow v0.7.15
+       Fresh ryu v1.0.23
+       Fresh bitflags v2.13.0
+       Fresh libyaml-rs v0.3.0
+       Fresh crossbeam-epoch v0.9.18
+       Fresh globset v0.4.18
+       Fresh quote v1.0.45
+       Fresh clap_builder v4.6.0
+       Fresh toml_writer v1.1.1+spec-1.1.0
+       Fresh cfg-if v1.0.4
+       Fresh linux-raw-sys v0.12.1
+       Fresh camino v1.2.2
+       Fresh serde_json v1.0.150
+       Fresh once_cell v1.21.4
+       Fresh fastrand v2.4.1
+       Fresh crossbeam-deque v0.8.6
+       Fresh toml_edit v0.23.10+spec-1.0.0
+       Fresh rustix v1.1.4
+       Fresh getrandom v0.4.2
+       Fresh syn v2.0.117
+       Fresh serde_derive v1.0.228
+       Fresh thiserror-impl v2.0.18
+       Fresh clap_derive v4.6.1
+       Fresh ignore v0.4.26
+       Fresh tempfile v3.27.0
+       Fresh serde v1.0.228
+       Fresh thiserror v2.0.18
+       Fresh clap v4.6.1
+       Fresh yaml_serde v0.10.4
+warning: unused variable: `findings`
+   --> crates/slophammer-cli/src/report.rs:157:16
+    |
+157 | fn sarif_rules(findings: &[Finding]) -> Vec<SarifRule> {
+    |                ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_findings`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+       Fresh slophammer-rs v0.3.0 (/tmp/cargo-mutants-rust-89s9kK.tmp/crates/slophammer-cli)
+warning: `slophammer-rs` (bin "slophammer-rs" test) generated 1 warning (run `cargo fix --bin "slophammer-rs" -p slophammer-rs --tests` to apply 1 suggestion)
+warning: `slophammer-rs` (bin "slophammer-rs") generated 1 warning (1 duplicate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running `/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/slophammer_rs-c3a800629f8bc1eb`
+
+running 63 tests
+test app::tests::empty_only_rules_are_an_error ... ok
+test app::tests::unknown_only_rule_is_error ... ok
+test app::tests::rules_and_explain_are_available ... ok
+test baseline::tests::baselined_findings_stop_affecting_ok ... ok
+test baseline::tests::write_refuses_malformed_existing_baseline ... ok
+test baseline::tests::stale_entries_are_an_error ... ok
+test baseline::tests::new_findings_keep_failing ... ok
+test baseline::tests::write_refuses_supersets ... ok
+test config::tests::rejects_unknown_rust_keys ... ok
+test config::tests::rejects_unknown_rule_config_keys ... ok
+test config::tests::disabled_rules_require_a_reason ... ok
+test config::tests::applies_rule_severity_overrides ... ok
+test config::tests::rejects_weak_complexity_and_dry_budget ... ok
+test config::tests::rejects_malformed_python_shapes ... ok
+test config::tests::rejects_weak_rust_coverage ... ok
+test report::tests::writes_sarif_reports ... ok
+test report::tests::sorts_findings ... ok
+test exec::tests::execute_failures_become_findings ... ok
+test config::tests::rejects_unknown_python_keys ... ok
+test exec::tests::only_rule_filter_limits_execute_checks ... ok
+test baseline::tests::write_records_and_shrinks ... ok
+test config::tests::parses_full_rust_config ... ok
+test report::tests::writes_text_reports ... ok
+test rust_rules::boundaries::tests::resolves_parent_paths ... ok
+test rust_rules::dry::tests::disabled_copied_blocks_suppresses_findings ... ok
+test rust_rules::dry::tests::tokenizes_rust_source ... ok
+test report::tests::writes_json_reports ... ok
+test rust_rules::boundaries::tests::allowed_inherited_workspace_path_dependencies_pass ... ok
+test rust_rules::evidence::tests::only_direct_workflow_children_are_active_evidence ... ok
+test rust_rules::dry::tests::detects_same_file_copied_blocks ... ok
+test rust_rules::boundaries::tests::inherited_workspace_path_dependencies_are_checked ... ok
+test rust_rules::suppressions::tests::bare_allow_in_production_code_is_a_finding ... ok
+test rust_rules::suppressions::tests::test_scope_is_exempt ... ok
+test rust_rules::suppressions::tests::justified_and_expect_suppressions_pass ... ok
+test rust_rules::evidence::tests::referenced_scripts_are_evidence_one_hop_deep ... ok
+test rust_rules::scope::tests::mutation_targets_extend_configured_scope ... ok
+test rust_rules::tests::configured_complexity_policy_satisfies_complexity_rule ... ok
+test rust_rules::tests::plain_rust_toolchain_pin_satisfies_msrv_rule ... ok
+test rust_rules::evidence::tests::unreferenced_scripts_are_not_evidence ... ok
+test rust_rules::tests::accepts_stricter_coverage_thresholds ... ok
+test rust_rules::evidence::tests::makefiles_need_a_make_invocation ... ok
+test rust_rules::tests::missing_rust_checks_are_reported ... ok
+test rust_rules::unsafe_policy::tests::missing_policy_is_a_finding ... ok
+test rust_rules::workflow_binding::tests::neutralized_steps_and_jobs_are_dropped ... ok
+test rust_rules::workflow_binding::tests::unparseable_workflows_fall_back_to_raw ... ok
+test rust_rules::workflow_binding::tests::neutralized_workflow_contributes_no_evidence ... ok
+test rust_rules::workflow_binding::tests::tag_only_push_triggers_do_not_bind ... ok
+test rust_rules::workflow_binding::tests::non_literal_expressions_stay_credited ... ok
+test rust_rules::workflow_binding::tests::matrix_commands_expand_into_evidence ... ok
+test rust_rules::workflow_binding::tests::surviving_steps_contribute_runs_and_uses ... ok
+test scan::tests::detects_workflow_paths ... ok
+test scan::tests::ignores_nested_archived_workflow_paths ... ok
+test rust_rules::scope::tests::mutation_excludes_cover_out_of_scope_production_files ... ok
+test rust_rules::unsafe_policy::tests::detects_unsafe_blocks ... ok
+test rust_rules::unsafe_policy::tests::allow_documented_requires_allow_entry ... ok
+test rust_rules::unsafe_policy::tests::allow_entry_suppresses_forbidden_unsafe ... ok
+test app::tests::check_applies_rule_severity_overrides ... ok
+test app::tests::only_rules_accept_comma_separated_ids ... ok
+test exec::tests::passing_execute_checks_are_clean ... ok
+test app::tests::config_error_fixtures_return_error_code ... ok
+test app::tests::clean_fixture_has_no_findings ... ok
+test app::tests::direct_commands_use_report_contract ... ok
+test app::tests::rust_failure_fixtures_report_findings ... ok
+
+test result: ok. 63 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running `/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/cli-a89ade302020f4f3`
+
+running 5 tests
+test cli_exposes_version ... ok
+test cli_reports_config_errors ... ok
+test cli_reports_findings_exit_code ... ok
+test cli_checks_clean_fixture ... ok
+test cli_exposes_direct_commands_and_rules ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+
+*** result: Success

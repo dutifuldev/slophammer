@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/workflow_binding.rs
++++ replace || with && in integration_branch_pattern
+@@ -186,17 +186,17 @@
+             .iter()
+             .filter_map(Value::as_str)
+             .any(integration_branch_pattern),
+         _ => true,
+     }
+ }
+ 
+ fn integration_branch_pattern(pattern: &str) -> bool {
+-    pattern.contains('*') || matches!(pattern, "main" | "master" | "trunk" | "develop")
++    pattern.contains('*') && /* ~ changed by cargo-mutants ~ */ matches!(pattern, "main" | "master" | "trunk" | "develop")
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+ 
+     #[test]
+     fn neutralized_workflow_contributes_no_evidence() {

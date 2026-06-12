@@ -1,0 +1,33 @@
+--- crates/slophammer-cli/src/app.rs
++++ replace rules -> AppResult with Default::default()
+@@ -104,29 +104,17 @@
+             code: EXIT_ERROR,
+             stdout: String::new(),
+             stderr: format!("unknown rule: {rule_id}\n"),
+         },
+     }
+ }
+ 
+ pub fn rules(format: OutputFormat) -> AppResult {
+-    let definitions = crate::rust_rules::default_definitions();
+-    match render_rules(format, &definitions) {
+-        Ok(stdout) => AppResult {
+-            code: EXIT_OK,
+-            stdout,
+-            stderr: String::new(),
+-        },
+-        Err(error) => AppResult {
+-            code: EXIT_ERROR,
+-            stdout: String::new(),
+-            stderr: format!("rules failed: {error}\n"),
+-        },
+-    }
++    Default::default() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn check_inner(options: CheckOptions, runner: &impl Runner) -> Result<AppResult, AppError> {
+     let only_rule_ids = expand_only_rule_ids(&options.only_rule_ids)?;
+     let snapshot = scan_repo(command_root(&options.root))?;
+     let config = crate::config::load(&snapshot)?;
+     let mut findings = crate::rust_rules::run_rules(&snapshot, &config, &only_rule_ids);
+     if options.execute {

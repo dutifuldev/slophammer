@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/baseline.rs
++++ replace == with != in apply_check
+@@ -59,17 +59,17 @@
+         }
+     }
+     if !unmatched.is_empty() {
+         return Err(BaselineError::Stale(joined(&unmatched)));
+     }
+     report.ok = report
+         .findings
+         .iter()
+-        .all(|finding| finding.baselined == Some(true));
++        .all(|finding| finding.baselined != /* ~ changed by cargo-mutants ~ */ Some(true));
+     Ok(())
+ }
+ 
+ /// Records current findings as the baseline. Refuses to write a superset of
+ /// an existing baseline and prints the added and removed entries, so debt is
+ /// recorded once, reviewed, and only ever reduced.
+ pub fn write(root: &Path, report: &Report) -> Result<String, BaselineError> {
+     let current: BTreeSet<BaselineEntry> = report.findings.iter().map(entry_of).collect();

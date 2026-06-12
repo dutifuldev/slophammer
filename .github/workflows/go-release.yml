@@ -74,6 +74,10 @@ jobs:
       - name: Sync the Python implementation
         working-directory: .
         run: uv sync --frozen --directory python
+      - name: Mutation gate on changes since the last stamp
+        working-directory: go
+        run: go run ./cmd/slophammer-go mutate ..
+
       - name: Validate shared conformance
         run: |
           npm ci --prefix typescript

@@ -1,0 +1,24 @@
+--- crates/slophammer-cli/src/app.rs
++++ replace render_rules -> Result<String, serde_json::Error> with Ok("xyzzy".into())
+@@ -246,20 +246,17 @@
+         OutputFormat::Sarif => Ok(write_sarif(report)?),
+     }
+ }
+ 
+ fn render_rules(
+     format: OutputFormat,
+     definitions: &[RuleDefinition],
+ ) -> Result<String, serde_json::Error> {
+-    match format {
+-        OutputFormat::Text | OutputFormat::Sarif => Ok(rules_text(definitions)),
+-        OutputFormat::Json => Ok(format!("{}\n", serde_json::to_string_pretty(definitions)?)),
+-    }
++    Ok("xyzzy".into()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn rules_text(definitions: &[RuleDefinition]) -> String {
+     let mut output = String::from("RULE ID\tCATEGORY\tSEVERITY\tSTATUS\tTOOL\n");
+     for definition in definitions {
+         output.push_str(&format!(
+             "{}\t{}\t{}\t{}\t{}\n",
+             definition.id,

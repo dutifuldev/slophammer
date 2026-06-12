@@ -1,0 +1,25 @@
+--- crates/slophammer-cli/src/exec.rs
++++ replace has_parent_root -> bool with false
+@@ -181,21 +181,17 @@
+     roots
+         .iter()
+         .filter(|root| !has_parent_root(root, &roots))
+         .cloned()
+         .collect()
+ }
+ 
+ fn has_parent_root(root: &str, roots: &[String]) -> bool {
+-    !root.is_empty()
+-        && roots.iter().any(|candidate| {
+-            candidate != root
+-                && (candidate.is_empty() || root.starts_with(&format!("{candidate}/")))
+-        })
++    false /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn prefixed_path(root: &str, path: &str) -> String {
+     if root.is_empty() {
+         path.to_owned()
+     } else {
+         format!("{root}/{path}")
+     }

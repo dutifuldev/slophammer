@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/app.rs
++++ replace command_root -> &str with "xyzzy"
+@@ -231,17 +231,17 @@
+         .collect();
+     if !unknown.is_empty() {
+         return Err(AppError::UnknownRule(unknown.join(", ")));
+     }
+     Ok(expanded)
+ }
+ 
+ fn command_root(root: &str) -> &str {
+-    if root.is_empty() { "." } else { root }
++    "xyzzy" /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn render_report(format: OutputFormat, report: &Report) -> Result<String, AppError> {
+     match format {
+         OutputFormat::Text => Ok(write_text(report)),
+         OutputFormat::Json => Ok(write_json(report)?),
+         OutputFormat::Sarif => Ok(write_sarif(report)?),
+     }

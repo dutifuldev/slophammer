@@ -30,6 +30,7 @@ const goFixtures = [
   "go-missing-tests",
   "go-missing-vet",
   "go-neutralized-ci",
+  "go-scan-mutation",
   "go-unreachable-script",
 ];
 const typeScriptFixtures = [
@@ -52,6 +53,7 @@ const typeScriptFixtures = [
   "typescript-missing-typecheck",
   "typescript-missing-unsafe-types",
   "typescript-neutralized-ci",
+  "typescript-dryrun-mutation",
   "typescript-unreachable-script",
   "adoption-before",
   "adoption-after",
@@ -73,6 +75,7 @@ const rustFixtures = [
   "rust-missing-tests",
   "rust-unsafe",
   "rust-neutralized-ci",
+  "rust-list-mutation",
   "rust-unreachable-script",
 ];
 const pythonFixtures = [
@@ -94,6 +97,7 @@ const pythonFixtures = [
   "python-missing-typecheck",
   "python-neutralized-ci",
   "python-relative-imports",
+  "python-results-mutation",
   "python-soft-warnings",
   "python-unreachable-script",
 ];

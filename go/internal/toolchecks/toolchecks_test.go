@@ -974,6 +974,33 @@ func TestCheckMutationRunsMutate4GoScan(t *testing.T) {
 	}
 }
 
+func TestCheckMutationFailsOnSurvivors(t *testing.T) {
+	runner := &fakeRunner{output: []byte("Mutation Report\n===============\nKilled: 4\nSurvived: 3\nUncovered: 0\n")}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckMutation(context.Background(), MutationOptions{Root: "/repo", Target: "main.go"}, &out, &errOut, runner)
+
+	if code != 1 {
+		t.Fatalf("code = %d, want 1", code)
+	}
+	if !bytes.Contains(errOut.Bytes(), []byte("3 mutant(s) survived")) {
+		t.Fatalf("errOut = %q, want survivor message", errOut.String())
+	}
+}
+
+func TestCheckMutationPassesWithoutSurvivors(t *testing.T) {
+	runner := &fakeRunner{output: []byte("Killed: 5\nSurvived: 0\n")}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckMutation(context.Background(), MutationOptions{Root: "/repo", Target: "main.go"}, &out, &errOut, runner)
+
+	if code != 0 {
+		t.Fatalf("code = %d, want 0; errOut=%s", code, errOut.String())
+	}
+}
+
 func TestCheckMutationRunsConfiguredTargets(t *testing.T) {
 	runner := &fakeRunner{}
 	var out bytes.Buffer

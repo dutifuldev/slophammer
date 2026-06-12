@@ -376,7 +376,7 @@ static RUST_MUTATION_REQUIRED: RuleDefinition = RuleDefinition {
     severity: Severity::Error,
     path: ".github/workflows",
     message: "Rust projects must declare mutation testing",
-    description: "Rust projects should declare mutation testing, normally through cargo-mutants.",
+    description: "Rust projects should declare mutation testing, normally through cargo-mutants. Only executing invocations count: list, scan, and dry-run forms cannot fail on a surviving mutant and are not evidence.",
     tool: Some("cargo mutants"),
     status: "implemented",
 };

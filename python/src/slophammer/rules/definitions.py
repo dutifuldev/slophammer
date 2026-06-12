@@ -165,7 +165,11 @@ DEFAULT_DEFINITIONS: tuple[Definition, ...] = (
         severity="error",
         path=".github/workflows",
         message="Python projects must declare mutation testing (mutmut or cosmic-ray)",
-        description="Binding CI evidence must declare a mutation testing tool.",
+        description=(
+            "Binding CI evidence must declare a mutation testing tool. Only "
+            "executing invocations count: list, scan, and dry-run forms cannot "
+            "fail on a surviving mutant and are not evidence."
+        ),
     ),
     Definition(
         id=PY_SUPPRESSIONS,

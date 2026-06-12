@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/workflow_binding.rs
++++ delete ! in collect_step_evidence
+@@ -42,17 +42,17 @@
+     }
+ }
+ 
+ fn collect_step_evidence(step: &Value, matrix_commands: &[String], evidence: &mut Vec<String>) {
+     if neutralized(step) {
+         return;
+     }
+     if let Some(uses) = step.get("uses").and_then(Value::as_str) {
+-        if !uses.trim().is_empty() {
++        if  /* ~ changed by cargo-mutants ~ */uses.trim().is_empty() {
+             evidence.push(format!("uses: {uses}"));
+         }
+     }
+     let Some(run) = step.get("run").and_then(Value::as_str) else {
+         return;
+     };
+     if run.trim().is_empty() {
+         return;

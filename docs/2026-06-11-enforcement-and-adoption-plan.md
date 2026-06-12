@@ -341,7 +341,7 @@ checker and the multi-language dispatcher — comes later.
 
 ## Follow-up: Mutation Reality
 
-10. [ ] Make mutation testing real in every ecosystem.
+10. [x] Make mutation testing real in every ecosystem.
 
    Three of the four implementations never execute a mutant: Go CI runs
    `mutate --scan` (site counting, with a threshold warning nothing acts
@@ -360,20 +360,27 @@ checker and the multi-language dispatcher — comes later.
      (`cargo mutants --in-diff`, Stryker `--incremental`) count, because
      they can fail.
    - Own gates run real mutants per PR, fast form per tool: full mutmut
-     for Python (seconds), `cargo mutants --in-diff` for Rust, Stryker
-     incremental with a `thresholds.break` floor for TypeScript, and the
-     executing `mutate` mode on the configured targets for Go (the scan
-     threshold warning becomes fatal).
+     for Python behind a kill-rate floor, `cargo mutants --in-diff` for
+     Rust, a full Stryker run with a `thresholds.break` floor for
+     TypeScript (the whole run takes about five minutes, so incremental
+     caching is unnecessary), and the executing `mutate` mode for Go,
+     which is natively incremental: committed in-source manifests record
+     per-function tested states, only changed functions re-mutate, and
+     any survivor fails the gate.
    - Full-sweep mutation runs are `workflow_dispatch` workflows per
      implementation, dispatched on demand — correctly non-binding under
      the shared trigger semantics, since a dispatched diagnostic is not a
-     gate. The release workflows run the full sweep as part of release
-     validation, so every release is preceded by one with a human
-     watching.
-   - Python's surviving mutants (~548 at last run) get triaged enough to
-     set an honest initial kill-rate floor; a configurable
-     `mutation.minimum_kill_rate` ratchet (baseline-style, only rises) is
-     designed in a follow-up once per-tool reporting is understood.
+     gate; it may run red until the baselined debt is triaged. Release
+     workflows gate on changes instead: Rust mutates the diff since the
+     previous release tag, Go re-tests functions changed since their
+     manifest stamps, and Python and TypeScript run their full gates,
+     which already pass their floors.
+   - Initial floors record today's honest state and only rise: Python at
+     74 (74.8% measured), TypeScript break at 44 (45.4% measured), Rust
+     and Go gating new code at zero survivors while existing debt (184
+     missed Rust mutants, the stamped Go baseline) is triaged over time.
+     A configurable `mutation.minimum_kill_rate` ratchet remains a
+     follow-up.
 
    Done when: every implementation's CI executes mutants on PRs and fails
    on the tool's native gate, the matchers reject cannot-fail forms with

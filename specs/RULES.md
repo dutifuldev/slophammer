@@ -34,6 +34,12 @@ through `make`, `task`, or `just`), following script-to-script references one
 level deep. `package.json` scripts count only when invoked by name from
 binding evidence, with one level of chained run-script references.
 
+Mutation evidence must be able to fail: list, scan, and dry-run forms
+(`cargo mutants --list`, `mutate --scan`, `stryker --dryRunOnly`,
+`mutmut results`) enumerate or validate without executing a single mutant,
+so they are not mutation-testing evidence. Diff-scoped and incremental
+executing forms count.
+
 Accepted limitations: expressions are only neutralizing when literal — the
 checkers ship no expression evaluator, so a non-literal always-false
 condition stays credited. Reusable workflows (`uses:` at the job level) stay

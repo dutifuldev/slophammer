@@ -1,0 +1,15 @@
+{
+  "name": "typescript-clean-fixture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "format": "prettier --check .",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "dry": "slophammer-ts dry .",
+    "mutate": "stryker run --dryRunOnly",
+    "check": "npm run format && npm run lint && npm run typecheck && npm test && npm run coverage && npm run dry && npm run mutate"
+  }
+}

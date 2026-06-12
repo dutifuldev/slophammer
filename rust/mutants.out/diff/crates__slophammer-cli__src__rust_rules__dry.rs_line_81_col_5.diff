@@ -1,0 +1,25 @@
+--- crates/slophammer-cli/src/rust_rules/dry.rs
++++ replace tokens -> Vec<String> with vec![]
+@@ -73,21 +73,17 @@
+     previous.path != path || non_overlapping(previous.start, start, window_size)
+ }
+ 
+ fn non_overlapping(left: usize, right: usize, window_size: usize) -> bool {
+     left + window_size <= right || right + window_size <= left
+ }
+ 
+ fn tokens(content: &str) -> Vec<String> {
+-    content
+-        .split(|ch: char| !(ch.is_ascii_alphanumeric() || ch == '_'))
+-        .filter(|part| !part.is_empty())
+-        .map(str::to_ascii_lowercase)
+-        .collect()
++    vec![] /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+     use crate::config::{CopiedBlocks, RustConfig, RustDry};
+     use crate::scan::{RepoFile, Snapshot};
+     use std::collections::BTreeMap;

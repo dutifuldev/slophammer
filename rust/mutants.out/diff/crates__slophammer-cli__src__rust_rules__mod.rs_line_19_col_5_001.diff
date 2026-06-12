@@ -1,0 +1,33 @@
+--- crates/slophammer-cli/src/rust_rules/mod.rs
++++ replace run_rules -> Vec<Finding> with vec![Default::default()]
+@@ -11,29 +11,17 @@
+ use crate::core::{Finding, find_definition};
+ use crate::scan::Snapshot;
+ use definitions::definition;
+ pub use definitions::{default_definitions, rule_ids};
+ pub use dry::dry_findings;
+ pub use scope::scope_counts;
+ 
+ pub fn run_rules(snapshot: &Snapshot, config: &Config, only_rule_ids: &[String]) -> Vec<Finding> {
+-    let definitions = default_definitions();
+-    let wanted = |rule_id: &str| {
+-        only_rule_ids.is_empty() || only_rule_ids.iter().any(|wanted| wanted == rule_id)
+-    };
+-    let mut findings = Vec::new();
+-    for rule_id in definitions
+-        .iter()
+-        .map(|item| item.id)
+-        .filter(|id| wanted(id))
+-    {
+-        findings.extend(run_rule(rule_id, snapshot, config));
+-    }
+-    findings
++    vec![Default::default()] /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ pub fn explain(rule_id: &str) -> Option<String> {
+     find_definition(&default_definitions(), rule_id).map(|definition| {
+         format!(
+             "{}\n{}\nseverity: {}\npath: {}\n",
+             definition.id, definition.description, definition.severity, definition.path
+         )

@@ -1,0 +1,30 @@
+--- crates/slophammer-cli/src/rust_rules/workflow_binding.rs
++++ replace sequence_strings -> Vec<String> with vec!["xyzzy".into()]
+@@ -91,26 +91,17 @@
+                 .filter_map(Value::as_str)
+                 .map(str::to_owned),
+         );
+     }
+     commands
+ }
+ 
+ fn sequence_strings(value: Option<&Value>) -> Vec<String> {
+-    value
+-        .and_then(Value::as_sequence)
+-        .map(|items| {
+-            items
+-                .iter()
+-                .filter_map(Value::as_str)
+-                .map(str::to_owned)
+-                .collect()
+-        })
+-        .unwrap_or_default()
++    vec!["xyzzy".into()] /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// A job or step is neutralized when it cannot run or cannot fail: a literal
+ /// false `if:` condition or a literal `continue-on-error: true`. Non-literal
+ /// expressions stay credited; the checker ships no expression evaluator.
+ fn neutralized(entry: &Value) -> bool {
+     if literal_bool(entry.get("continue-on-error"), true) {
+         return true;

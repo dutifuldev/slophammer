@@ -1,0 +1,31 @@
+--- crates/slophammer-cli/src/rust_rules/mod.rs
++++ replace slophammer_invocation -> bool with false
+@@ -96,27 +96,17 @@
+         snapshot.file("slophammer.yml").is_some() || snapshot.file("slophammer.yaml").is_some();
+     missing(
+         has_config && !slophammer_invocation(&evidence::command_text(snapshot)),
+         rule_ids::SLOPHAMMER_CI_REQUIRED,
+     )
+ }
+ 
+ fn slophammer_invocation(evidence: &str) -> bool {
+-    if evidence.contains("uses: dutifuldev/slophammer@") {
+-        return true;
+-    }
+-    [
+-        "slophammer-go",
+-        "slophammer-ts",
+-        "slophammer-rs",
+-        "slophammer-py",
+-    ]
+-    .iter()
+-    .any(|binary| invocation_with_check(evidence, binary))
++    false /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn invocation_with_check(evidence: &str, binary: &str) -> bool {
+     evidence.match_indices(binary).any(|(index, _)| {
+         let window_end = (index + 160).min(evidence.len());
+         evidence[index..window_end].contains(" check")
+     })
+ }

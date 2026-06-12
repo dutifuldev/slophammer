@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/mod.rs
++++ delete match arm rule_ids::RUST_SCOPE_INCOMPLETE in run_rule
+@@ -61,17 +61,17 @@
+         rule_ids::RUST_DRY_REQUIRED => rust_dry_declaration(snapshot),
+         rule_ids::RUST_MUTATION_REQUIRED => cargo_command(snapshot, rule_id, "cargo mutants"),
+         rule_ids::RUST_UNSAFE_POLICY_REQUIRED => unsafe_policy::policy_findings(snapshot, config),
+         rule_ids::RUST_DEPENDENCY_AUDIT_REQUIRED => rust_dependency_audit(snapshot),
+         rule_ids::RUST_DEPENDENCY_BOUNDARIES_REQUIRED => {
+             boundaries::boundary_findings(snapshot, config)
+         }
+         rule_ids::RUST_SUPPRESSIONS_JUSTIFIED => rust_suppressions(snapshot),
+-        rule_ids::RUST_SCOPE_INCOMPLETE => scope::scope_findings(snapshot, config),
++         /* ~ changed by cargo-mutants ~ */
+         _ => Vec::new(),
+     }
+ }
+ 
+ fn repo_readme(snapshot: &Snapshot) -> Vec<Finding> {
+     missing(
+         !snapshot.has_case_insensitive("README.md"),
+         rule_ids::README_REQUIRED,

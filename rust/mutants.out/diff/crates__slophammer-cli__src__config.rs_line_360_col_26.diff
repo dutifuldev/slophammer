@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/config.rs
++++ replace && with || in validate
+@@ -352,17 +352,17 @@
+         }
+         validate_value_keys(entry, &format!("{field}[{index}]"), &["pattern", "reason"])?;
+     }
+     Ok(())
+ }
+ 
+ fn validate(config: &Config) -> Result<(), ConfigError> {
+     for (rule_id, rule) in &config.rules {
+-        if rule.disabled && rule.reason.as_deref().unwrap_or("").trim().is_empty() {
++        if rule.disabled || /* ~ changed by cargo-mutants ~ */ rule.reason.as_deref().unwrap_or("").trim().is_empty() {
+             return Err(ConfigError::Validation(format!(
+                 "rules.{rule_id}.reason is required when disabled is true"
+             )));
+         }
+     }
+     let Some(rust) = &config.rust else {
+         return Ok(());
+     };

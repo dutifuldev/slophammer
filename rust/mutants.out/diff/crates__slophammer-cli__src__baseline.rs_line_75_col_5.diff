@@ -1,0 +1,42 @@
+--- crates/slophammer-cli/src/baseline.rs
++++ replace write -> Result<String, BaselineError> with Ok(String::new())
+@@ -67,38 +67,17 @@
+         .all(|finding| finding.baselined == Some(true));
+     Ok(())
+ }
+ 
+ /// Records current findings as the baseline. Refuses to write a superset of
+ /// an existing baseline and prints the added and removed entries, so debt is
+ /// recorded once, reviewed, and only ever reduced.
+ pub fn write(root: &Path, report: &Report) -> Result<String, BaselineError> {
+-    let current: BTreeSet<BaselineEntry> = report.findings.iter().map(entry_of).collect();
+-    // Only a missing baseline counts as the initial-write case; a present but
+-    // malformed baseline propagates its error instead of being replaced.
+-    let previous = match read_baseline(root) {
+-        Ok(previous) => previous,
+-        Err(BaselineError::Missing) => BTreeSet::new(),
+-        Err(error) => return Err(error),
+-    };
+-    let added: BTreeSet<_> = current.difference(&previous).cloned().collect();
+-    let removed: BTreeSet<_> = previous.difference(&current).cloned().collect();
+-    if !previous.is_empty() && !added.is_empty() && removed.is_empty() {
+-        return Err(BaselineError::Superset(joined(&added)));
+-    }
+-    let file = BaselineFile {
+-        version: 1,
+-        findings: current.iter().cloned().collect(),
+-    };
+-    let serialized = serde_json::to_string_pretty(&file)
+-        .map_err(|error| BaselineError::Write(error.to_string()))?;
+-    std::fs::write(root.join(BASELINE_FILE), format!("{serialized}\n"))
+-        .map_err(|error| BaselineError::Write(error.to_string()))?;
+-    Ok(write_summary(current.len(), &added, &removed))
++    Ok(String::new()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ pub fn debt_line(report: &Report) -> String {
+     let baselined = report
+         .findings
+         .iter()
+         .filter(|finding| finding.baselined == Some(true))
+         .count();

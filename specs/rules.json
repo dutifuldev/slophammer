@@ -135,7 +135,7 @@
       "severity": "error",
       "path": ".github/workflows",
       "message": "Go projects must declare mutate4go",
-      "description": "Go projects should declare mutate4go in an inspectable workflow or script.",
+      "description": "Go projects should declare mutate4go in an inspectable workflow or script. Only executing invocations count: list, scan, and dry-run forms cannot fail on a surviving mutant and are not evidence.",
       "tool": "mutate4go",
       "status": "implemented"
     },
@@ -296,7 +296,7 @@
       "severity": "error",
       "path": ".github/workflows",
       "message": "TypeScript projects must declare mutation testing",
-      "description": "TypeScript projects should declare TypeScript mutation testing, normally through StrykerJS.",
+      "description": "TypeScript projects should declare TypeScript mutation testing, normally through StrykerJS. Only executing invocations count: list, scan, and dry-run forms cannot fail on a surviving mutant and are not evidence.",
       "tool": "stryker",
       "status": "implemented"
     },
@@ -436,7 +436,7 @@
       "severity": "error",
       "path": ".github/workflows",
       "message": "Rust projects must declare mutation testing",
-      "description": "Rust projects should declare mutation testing, normally through cargo-mutants.",
+      "description": "Rust projects should declare mutation testing, normally through cargo-mutants. Only executing invocations count: list, scan, and dry-run forms cannot fail on a surviving mutant and are not evidence.",
       "tool": "cargo mutants",
       "status": "implemented"
     },
@@ -588,7 +588,7 @@
       "severity": "error",
       "path": ".github/workflows",
       "message": "Python projects must declare mutation testing (mutmut or cosmic-ray)",
-      "description": "Binding CI evidence must declare a mutation testing tool.",
+      "description": "Binding CI evidence must declare a mutation testing tool. Only executing invocations count: list, scan, and dry-run forms cannot fail on a surviving mutant and are not evidence.",
       "status": "implemented"
     },
     {

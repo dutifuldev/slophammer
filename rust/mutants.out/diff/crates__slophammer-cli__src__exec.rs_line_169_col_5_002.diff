@@ -1,0 +1,37 @@
+--- crates/slophammer-cli/src/exec.rs
++++ replace rust_workspace_roots -> Vec<String> with vec!["xyzzy".into()]
+@@ -161,33 +161,17 @@
+         .find(|line| !line.is_empty())
+         .unwrap_or("command exited non-zero")
+         .chars()
+         .take(240)
+         .collect()
+ }
+ 
+ fn rust_workspace_roots(snapshot: &Snapshot) -> Vec<String> {
+-    let mut roots: Vec<String> = snapshot
+-        .files
+-        .keys()
+-        .filter(|path| path.ends_with("Cargo.toml"))
+-        .filter(|path| !path.starts_with("fixtures/") && !path.starts_with("templates/"))
+-        .filter_map(|path| {
+-            path.strip_suffix("/Cargo.toml")
+-                .or_else(|| (path == "Cargo.toml").then_some(""))
+-        })
+-        .map(str::to_owned)
+-        .collect();
+-    roots.sort();
+-    roots
+-        .iter()
+-        .filter(|root| !has_parent_root(root, &roots))
+-        .cloned()
+-        .collect()
++    vec!["xyzzy".into()] /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn has_parent_root(root: &str, roots: &[String]) -> bool {
+     !root.is_empty()
+         && roots.iter().any(|candidate| {
+             candidate != root
+                 && (candidate.is_empty() || root.starts_with(&format!("{candidate}/")))
+         })

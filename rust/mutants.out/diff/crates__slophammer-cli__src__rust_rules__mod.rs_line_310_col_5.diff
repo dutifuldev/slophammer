@@ -1,0 +1,40 @@
+--- crates/slophammer-cli/src/rust_rules/mod.rs
++++ replace has_clippy_complexity_limit -> bool with true
+@@ -302,36 +302,17 @@
+         .rust
+         .as_ref()
+         .and_then(|rust| rust.complexity.as_ref())
+         .is_some_and(|complexity| complexity.cognitive_max <= 8)
+         || has_clippy_complexity_limit(snapshot)
+ }
+ 
+ fn has_clippy_complexity_limit(snapshot: &Snapshot) -> bool {
+-    snapshot
+-        .files
+-        .values()
+-        .filter(|file| {
+-            file.path.ends_with("clippy.toml")
+-                || file.path.ends_with(".clippy.toml")
+-                || file.path.ends_with("rust/clippy.toml")
+-        })
+-        .any(|file| {
+-            let normalized = file.content.to_ascii_lowercase();
+-            normalized.contains("cognitive-complexity-threshold")
+-                && numeric_limit_at_most(&normalized, 8)
+-        })
+-        || snapshot.files.values().any(|file| {
+-            rust_source_path(&file.path)
+-                && file
+-                    .content
+-                    .to_ascii_lowercase()
+-                    .contains("clippy::cognitive_complexity")
+-        })
++    true /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn strip_inline_comment(line: &str) -> &str {
+     line.split('#').next().unwrap_or(line)
+ }
+ 
+ fn numeric_limit_at_most(content: &str, maximum: u32) -> bool {
+     content

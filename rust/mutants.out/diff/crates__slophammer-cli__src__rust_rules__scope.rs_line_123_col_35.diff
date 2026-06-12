@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/scope.rs
++++ replace || with && in conventional_path
+@@ -115,17 +115,17 @@
+         "build",
+         "coverage",
+         "target",
+         "node_modules",
+         "vendor",
+         "scripts",
+         "benches",
+     ];
+-    if path.ends_with("_test.rs") || path.contains("generated") {
++    if path.ends_with("_test.rs") && /* ~ changed by cargo-mutants ~ */ path.contains("generated") {
+         return true;
+     }
+     path.split('/').any(|segment| DIRS.contains(&segment))
+ }
+ 
+ fn parent_dir(path: &str) -> String {
+     match path.rsplit_once('/') {
+         Some((dir, _)) => dir.to_owned(),

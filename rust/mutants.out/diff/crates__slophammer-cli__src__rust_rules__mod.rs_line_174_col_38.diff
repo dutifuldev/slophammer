@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/mod.rs
++++ delete ! in rust_coverage
+@@ -166,17 +166,17 @@
+                 && (evidence.contains("-d warnings") || evidence.contains("--deny warnings"))),
+         rule_ids::RUST_CLIPPY_REQUIRED,
+     )
+ }
+ 
+ fn rust_coverage(snapshot: &Snapshot, config: &Config) -> Vec<Finding> {
+     let threshold = crate::config::rust_coverage_threshold(config);
+     missing(
+-        is_rust_project(snapshot) && !has_coverage_gate(snapshot, threshold),
++        is_rust_project(snapshot) &&  /* ~ changed by cargo-mutants ~ */has_coverage_gate(snapshot, threshold),
+         rule_ids::RUST_COVERAGE_REQUIRED,
+     )
+ }
+ 
+ fn rust_complexity(snapshot: &Snapshot, config: &Config) -> Vec<Finding> {
+     missing(
+         is_rust_project(snapshot) && !has_complexity_limit(snapshot, config),
+         rule_ids::RUST_COMPLEXITY_REQUIRED,

@@ -1,0 +1,70 @@
+crates/slophammer-cli/src/main.rs:81:5: replace run -> AppResult with Default::default()
+crates/slophammer-cli/src/main.rs:140:9: replace <impl From<FormatArg> for OutputFormat>::from -> Self with Default::default()
+crates/slophammer-cli/src/app.rs:56:5: replace check -> AppResult with Default::default()
+crates/slophammer-cli/src/app.rs:60:5: replace check_with_runner -> AppResult with Default::default()
+crates/slophammer-cli/src/app.rs:71:5: replace dry -> AppResult with Default::default()
+crates/slophammer-cli/src/app.rs:77:5: replace boundaries -> AppResult with Default::default()
+crates/slophammer-cli/src/app.rs:87:5: replace unsafe_policy -> AppResult with Default::default()
+crates/slophammer-cli/src/app.rs:97:5: replace explain -> AppResult with Default::default()
+crates/slophammer-cli/src/app.rs:112:5: replace rules -> AppResult with Default::default()
+crates/slophammer-cli/src/app.rs:128:5: replace check_inner -> Result<AppResult, AppError> with Ok(Default::default())
+crates/slophammer-cli/src/app.rs:157:5: replace finish_check -> Result<AppResult, AppError> with Ok(Default::default())
+crates/slophammer-cli/src/app.rs:189:5: replace direct -> AppResult with Default::default()
+crates/slophammer-cli/src/app.rs:203:5: replace direct_inner -> Result<AppResult, AppError> with Ok(Default::default())
+crates/slophammer-cli/src/baseline.rs:110:5: replace read_baseline -> Result<BTreeSet<BaselineEntry>, BaselineError> with Ok(BTreeSet::from_iter([Default::default()]))
+crates/slophammer-cli/src/baseline.rs:126:5: replace entry_of -> BaselineEntry with Default::default()
+crates/slophammer-cli/src/config.rs:34:9: replace <impl From<RuleSeverity> for Severity>::from -> Self with Default::default()
+crates/slophammer-cli/src/config.rs:467:5: replace rule_severity -> Option<RuleSeverity> with Some(Default::default())
+crates/slophammer-cli/src/core.rs:46:9: replace Finding::at_path -> Self with Default::default()
+crates/slophammer-cli/src/core.rs:57:9: replace Finding::with_message -> Self with Default::default()
+crates/slophammer-cli/src/core.rs:99:5: replace find_definition -> Option<&'a RuleDefinition> with Some(Box::leak(Box::new(Default::default())))
+crates/slophammer-cli/src/exec.rs:30:9: replace <impl Runner for RealRunner>::run -> Result<CommandOutput, ExecError> with Ok(Default::default())
+crates/slophammer-cli/src/exec.rs:49:5: replace execute_rust_checks -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/exec.rs:62:5: replace execute_workspace -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/exec.rs:137:5: replace run_check -> Option<Finding> with Some(Default::default())
+crates/slophammer-cli/src/report.rs:12:5: replace new_report -> Report with Default::default()
+crates/slophammer-cli/src/report.rs:142:5: replace sarif_report -> SarifLog with Default::default()
+crates/slophammer-cli/src/report.rs:158:5: replace sarif_rules -> Vec<SarifRule> with vec![Default::default()]
+crates/slophammer-cli/src/report.rs:174:5: replace sarif_results -> Vec<SarifResult> with vec![Default::default()]
+crates/slophammer-cli/src/report.rs:189:5: replace sarif_suppressions -> Vec<SarifSuppression> with vec![Default::default()]
+crates/slophammer-cli/src/report.rs:204:5: replace sarif_locations -> Vec<SarifLocation> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/mod.rs:19:5: replace run_rules -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/mod.rs:48:5: replace run_rule -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/mod.rs:75:5: replace repo_readme -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/mod.rs:82:5: replace repo_agents -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/mod.rs:89:5: replace repo_ci -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/mod.rs:95:5: replace repo_slophammer_ci -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/mod.rs:125:5: replace rust_suppressions -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/mod.rs:132:5: replace rust_manifest -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/mod.rs:139:5: replace rust_msrv -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/mod.rs:146:5: replace cargo_command -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/mod.rs:153:5: replace rust_fmt -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/mod.rs:162:5: replace rust_clippy -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/mod.rs:172:5: replace rust_coverage -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/mod.rs:180:5: replace rust_complexity -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/mod.rs:187:5: replace rust_dry_declaration -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/mod.rs:195:5: replace rust_dependency_audit -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/mod.rs:204:5: replace missing -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/scan.rs:22:9: replace Snapshot::file -> Option<&RepoFile> with Some(Box::leak(Box::new(Default::default())))
+crates/slophammer-cli/src/scan.rs:55:5: replace scan_repo -> Result<Snapshot, ScanError> with Ok(Default::default())
+crates/slophammer-cli/src/rust_rules/boundaries.rs:10:5: replace boundary_findings -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/boundaries.rs:30:5: replace check_boundary -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/boundaries.rs:70:5: replace dependency_paths -> Vec<DependencyPath> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/boundaries.rs:83:5: replace dependency_paths_in_item -> Vec<DependencyPath> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/boundaries.rs:98:5: replace dependency_path -> Option<DependencyPath> with Some(Default::default())
+crates/slophammer-cli/src/rust_rules/boundaries.rs:141:5: replace workspace_dependency_paths -> BTreeMap<String, DependencyPath> with BTreeMap::from_iter([(String::new(), Default::default())])
+crates/slophammer-cli/src/rust_rules/boundaries.rs:141:5: replace workspace_dependency_paths -> BTreeMap<String, DependencyPath> with BTreeMap::from_iter([("xyzzy".into(), Default::default())])
+crates/slophammer-cli/src/rust_rules/boundaries.rs:195:5: replace workspace_dependency_paths_in_item -> BTreeMap<String, DependencyPath> with BTreeMap::from_iter([(String::new(), Default::default())])
+crates/slophammer-cli/src/rust_rules/boundaries.rs:195:5: replace workspace_dependency_paths_in_item -> BTreeMap<String, DependencyPath> with BTreeMap::from_iter([("xyzzy".into(), Default::default())])
+crates/slophammer-cli/src/rust_rules/definitions.rs:26:5: replace default_definitions -> Vec<RuleDefinition> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/definitions.rs:195:5: replace definition -> &'static RuleDefinition with Box::leak(Box::new(Default::default()))
+crates/slophammer-cli/src/rust_rules/definitions.rs:227:5: replace rust_definition -> RuleDefinition with Default::default()
+crates/slophammer-cli/src/rust_rules/dry.rs:9:5: replace dry_findings -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/dry.rs:22:5: replace copied_block_findings -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/evidence.rs:36:5: replace candidate_files -> Vec<CandidateFile> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/scope.rs:12:5: replace scope_findings -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/suppressions.rs:11:5: replace suppression_findings -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/suppressions.rs:54:5: replace suppression_finding -> Finding with Default::default()
+crates/slophammer-cli/src/rust_rules/unsafe_policy.rs:9:5: replace policy_findings -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/unsafe_policy.rs:29:5: replace forbid_findings -> Vec<Finding> with vec![Default::default()]
+crates/slophammer-cli/src/rust_rules/unsafe_policy.rs:37:5: replace documented_findings -> Vec<Finding> with vec![Default::default()]

@@ -1,0 +1,32 @@
+--- crates/slophammer-cli/src/rust_rules/boundaries.rs
++++ replace workspace_dependency_paths -> BTreeMap<String, DependencyPath> with BTreeMap::from_iter([(String::new(), Default::default())])
+@@ -133,28 +133,17 @@
+     }
+     item.as_table()
+         .and_then(|table| table.get("workspace"))
+         .and_then(Item::as_bool)
+         .unwrap_or(false)
+ }
+ 
+ fn workspace_dependency_paths(snapshot: &Snapshot, from: &str) -> BTreeMap<String, DependencyPath> {
+-    let Some((manifest_path, document)) = workspace_manifest(snapshot, from) else {
+-        return BTreeMap::new();
+-    };
+-    let base = manifest_dir(&manifest_path);
+-    let Some(dependencies) = document
+-        .get("workspace")
+-        .and_then(Item::as_table)
+-        .and_then(|workspace| workspace.get("dependencies"))
+-    else {
+-        return BTreeMap::new();
+-    };
+-    workspace_dependency_paths_in_item(Some(dependencies), &base)
++    BTreeMap::from_iter([(String::new(), Default::default())]) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn workspace_manifest(snapshot: &Snapshot, from: &str) -> Option<(String, DocumentMut)> {
+     ancestor_manifest_paths(from)
+         .into_iter()
+         .filter_map(|path| {
+             let file = snapshot.file(&path)?;
+             let document = file.content.parse::<DocumentMut>().ok()?;

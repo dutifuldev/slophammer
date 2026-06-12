@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/mod.rs
++++ replace rust_source_path -> bool with false
+@@ -337,17 +337,17 @@
+     content
+         .split(|ch: char| !ch.is_ascii_digit())
+         .filter(|part| !part.is_empty())
+         .filter_map(|part| part.parse::<u32>().ok())
+         .any(|value| value <= maximum)
+ }
+ 
+ fn rust_source_path(path: &str) -> bool {
+-    path.ends_with(".rs")
++    false /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn ignored_project_path(path: &str) -> bool {
+     path.starts_with("fixtures/")
+         || path.starts_with("templates/")
+         || path.contains("/fixtures/")
+         || path.contains("/target/")
+         || path.contains("/node_modules/")

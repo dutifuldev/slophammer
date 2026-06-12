@@ -1,0 +1,25 @@
+--- crates/slophammer-cli/src/main.rs
++++ replace exit -> ExitCode with Default::default()
+@@ -123,21 +123,17 @@
+     } else if baseline {
+         baseline::BaselineMode::Check
+     } else {
+         baseline::BaselineMode::Off
+     }
+ }
+ 
+ fn exit(result: AppResult) -> ExitCode {
+-    let mut stdout = io::stdout();
+-    let mut stderr = io::stderr();
+-    let _ = stdout.write_all(result.stdout.as_bytes());
+-    let _ = stderr.write_all(result.stderr.as_bytes());
+-    ExitCode::from(u8::try_from(result.code).unwrap_or(2))
++    Default::default() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ impl From<FormatArg> for OutputFormat {
+     fn from(value: FormatArg) -> Self {
+         match value {
+             FormatArg::Text => Self::Text,
+             FormatArg::Json => Self::Json,
+             FormatArg::Sarif => Self::Sarif,

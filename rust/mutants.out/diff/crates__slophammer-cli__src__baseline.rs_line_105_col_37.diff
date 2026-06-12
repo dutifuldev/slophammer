@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/baseline.rs
++++ replace - with + in debt_line
+@@ -97,17 +97,17 @@
+ }
+ 
+ pub fn debt_line(report: &Report) -> String {
+     let baselined = report
+         .findings
+         .iter()
+         .filter(|finding| finding.baselined == Some(true))
+         .count();
+-    let new = report.findings.len() - baselined;
++    let new = report.findings.len() + /* ~ changed by cargo-mutants ~ */ baselined;
+     format!("{baselined} findings baselined; {new} new\n")
+ }
+ 
+ fn read_baseline(root: &Path) -> Result<BTreeSet<BaselineEntry>, BaselineError> {
+     let content = match std::fs::read_to_string(root.join(BASELINE_FILE)) {
+         Ok(content) => content,
+         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+             return Err(BaselineError::Missing);

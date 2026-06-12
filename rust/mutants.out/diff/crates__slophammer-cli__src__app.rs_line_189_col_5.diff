@@ -1,0 +1,28 @@
+--- crates/slophammer-cli/src/app.rs
++++ replace direct -> AppResult with Default::default()
+@@ -181,24 +181,17 @@
+         stderr: String::new(),
+     })
+ }
+ 
+ fn direct(
+     options: DirectOptions,
+     check: impl FnOnce(&Snapshot, &Config, usize) -> Vec<Finding>,
+ ) -> AppResult {
+-    match direct_inner(options, check) {
+-        Ok(result) => result,
+-        Err(error) => AppResult {
+-            code: EXIT_ERROR,
+-            stdout: String::new(),
+-            stderr: format!("check failed: {error}\n"),
+-        },
+-    }
++    Default::default() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn direct_inner(
+     options: DirectOptions,
+     check: impl FnOnce(&Snapshot, &Config, usize) -> Vec<Finding>,
+ ) -> Result<AppResult, AppError> {
+     let snapshot = scan_repo(command_root(&options.root))?;
+     let config = crate::config::load(&snapshot)?;

@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/evidence.rs
++++ replace == with != in word_byte
+@@ -91,17 +91,17 @@
+     if index > 0 && word_byte(bytes[index - 1]) {
+         return false;
+     }
+     let end = index + length;
+     end >= bytes.len() || !word_byte(bytes[end])
+ }
+ 
+ fn word_byte(value: u8) -> bool {
+-    value.is_ascii_alphanumeric() || value == b'_' || value == b'-'
++    value.is_ascii_alphanumeric() || value != /* ~ changed by cargo-mutants ~ */ b'_' || value == b'-'
+ }
+ 
+ fn active_workflow_path(path: &str) -> bool {
+     let Some(name) = path.strip_prefix(".github/workflows/") else {
+         return false;
+     };
+     !name.contains('/') && (name.ends_with(".yml") || name.ends_with(".yaml"))
+ }

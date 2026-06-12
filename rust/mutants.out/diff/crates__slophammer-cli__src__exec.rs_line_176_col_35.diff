@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/exec.rs
++++ replace == with != in rust_workspace_roots
+@@ -168,17 +168,17 @@
+ fn rust_workspace_roots(snapshot: &Snapshot) -> Vec<String> {
+     let mut roots: Vec<String> = snapshot
+         .files
+         .keys()
+         .filter(|path| path.ends_with("Cargo.toml"))
+         .filter(|path| !path.starts_with("fixtures/") && !path.starts_with("templates/"))
+         .filter_map(|path| {
+             path.strip_suffix("/Cargo.toml")
+-                .or_else(|| (path == "Cargo.toml").then_some(""))
++                .or_else(|| (path != /* ~ changed by cargo-mutants ~ */ "Cargo.toml").then_some(""))
+         })
+         .map(str::to_owned)
+         .collect();
+     roots.sort();
+     roots
+         .iter()
+         .filter(|root| !has_parent_root(root, &roots))
+         .cloned()

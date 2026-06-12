@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/dry.rs
++++ replace < with == in copied_block_findings
+@@ -24,17 +24,17 @@
+     }
+     let mut seen: BTreeMap<Vec<String>, Vec<Occurrence>> = BTreeMap::new();
+     let mut findings = Vec::new();
+     for path in scope::dry_rust_files(snapshot, config) {
+         let Some(file) = snapshot.file(&path) else {
+             continue;
+         };
+         let tokens = tokens(&file.content);
+-        if tokens.len() < min_tokens {
++        if tokens.len() == /* ~ changed by cargo-mutants ~ */ min_tokens {
+             continue;
+         }
+         for (start, window) in tokens.windows(min_tokens).enumerate() {
+             let key = window.to_vec();
+             let occurrences = seen.entry(key).or_default();
+             if let Some(first) = occurrences
+                 .iter()
+                 .find(|occurrence| duplicate_occurrence(occurrence, &path, start, min_tokens))

@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/mod.rs
++++ delete ! in numeric_limit_at_most
+@@ -330,17 +330,17 @@
+ }
+ 
+ fn strip_inline_comment(line: &str) -> &str {
+     line.split('#').next().unwrap_or(line)
+ }
+ 
+ fn numeric_limit_at_most(content: &str, maximum: u32) -> bool {
+     content
+-        .split(|ch: char| !ch.is_ascii_digit())
++        .split(|ch: char|  /* ~ changed by cargo-mutants ~ */ch.is_ascii_digit())
+         .filter(|part| !part.is_empty())
+         .filter_map(|part| part.parse::<u32>().ok())
+         .any(|value| value <= maximum)
+ }
+ 
+ fn rust_source_path(path: &str) -> bool {
+     path.ends_with(".rs")
+ }

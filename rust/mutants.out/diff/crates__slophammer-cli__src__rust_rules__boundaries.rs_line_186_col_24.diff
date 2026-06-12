@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/boundaries.rs
++++ delete ! in manifest_dir
+@@ -178,17 +178,17 @@
+             .unwrap_or_else(|| ".".to_owned());
+     }
+     paths
+ }
+ 
+ fn manifest_dir(manifest_path: &str) -> String {
+     manifest_path
+         .strip_suffix("/Cargo.toml")
+-        .filter(|path| !path.is_empty())
++        .filter(|path|  /* ~ changed by cargo-mutants ~ */path.is_empty())
+         .map(str::to_owned)
+         .unwrap_or_else(|| ".".to_owned())
+ }
+ 
+ fn workspace_dependency_paths_in_item(
+     item: Option<&Item>,
+     base: &str,
+ ) -> BTreeMap<String, DependencyPath> {

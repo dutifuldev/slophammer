@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/suppressions.rs
++++ delete ! in production_rust_path
+@@ -17,17 +17,17 @@
+             findings.push(suppression_finding(&file.path, line));
+         }
+     }
+     findings
+ }
+ 
+ fn production_rust_path(path: &str) -> bool {
+     path.ends_with(".rs")
+-        && !path.ends_with("_test.rs")
++        &&  /* ~ changed by cargo-mutants ~ */path.ends_with("_test.rs")
+         && !path.starts_with("tests/")
+         && !path.contains("/tests/")
+         && !super::ignored_project_path(path)
+ }
+ 
+ fn bare_suppression_line(content: &str) -> Option<usize> {
+     let mut previous_line_is_comment = false;
+     for (index, line) in content.lines().enumerate() {

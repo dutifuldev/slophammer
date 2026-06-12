@@ -161,10 +161,16 @@ def has_dry_command(snapshot: Snapshot) -> bool:
     )
 
 
+# Only executing invocations count: mutmut must run (results/show cannot
+# fail on survivors), and list or dry-run forms are not gates.
 def has_mutation_command(snapshot: Snapshot) -> bool:
-    return any_segment(snapshot, tool_pattern("mutmut")) or any_segment(
-        snapshot, tool_pattern("cosmic-ray")
-    )
+    cannot_fail = re.compile(r"--(?:list|dry-?run)")
+    for pattern in (tool_pattern("mutmut") + r" run\b", tool_pattern("cosmic-ray")):
+        compiled = re.compile(pattern)
+        for segment in snapshot_segments(snapshot):
+            if compiled.search(segment) and not cannot_fail.search(segment):
+                return True
+    return False
 
 
 def has_audit_command(snapshot: Snapshot) -> bool:

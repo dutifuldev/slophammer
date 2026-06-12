@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/scan.rs
++++ delete ! in scan_repo
+@@ -62,17 +62,17 @@
+         .hidden(false)
+         .git_ignore(true)
+         .parents(true)
+         .filter_entry(|entry| !ignored_entry(entry.path()))
+         .build();
+     for entry in walker {
+         let entry = entry?;
+         let file_type = entry.file_type();
+-        if !file_type.is_some_and(|item| item.is_file()) {
++        if  /* ~ changed by cargo-mutants ~ */file_type.is_some_and(|item| item.is_file()) {
+             continue;
+         }
+         let Some(path) = relative_path(&root, entry.path())? else {
+             continue;
+         };
+         if let Ok(content) = fs::read_to_string(entry.path()) {
+             files.insert(path.clone(), RepoFile { path, content });
+         }

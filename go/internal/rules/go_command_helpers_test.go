@@ -178,7 +178,7 @@ jobs:
 			subcommand: "mutate",
 			file: repo.File{
 				Path:    "scripts/check.sh",
-				Content: "go run ./cmd/slophammer go mutate --scan\n",
+				Content: "go run ./cmd/slophammer go mutate\n",
 			},
 			want: true,
 		},
@@ -187,7 +187,7 @@ jobs:
 			subcommand: "mutate",
 			file: repo.File{
 				Path:    "scripts/check.sh",
-				Content: "slophammer-go go mutate --scan\n",
+				Content: "slophammer-go go mutate\n",
 			},
 			want: true,
 		},
@@ -205,7 +205,7 @@ jobs:
 			subcommand: "crap",
 			file: repo.File{
 				Path:    "scripts/check.sh",
-				Content: "go run ./cmd/slophammer go mutate --scan\n",
+				Content: "go run ./cmd/slophammer go mutate\n",
 			},
 			want: false,
 		},

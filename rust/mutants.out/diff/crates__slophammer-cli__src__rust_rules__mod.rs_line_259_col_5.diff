@@ -1,0 +1,25 @@
+--- crates/slophammer-cli/src/rust_rules/mod.rs
++++ replace has_coverage_gate -> bool with true
+@@ -251,21 +251,17 @@
+                 key.trim() == "channel" && value.chars().any(|ch| ch.is_ascii_digit())
+             } else {
+                 line.chars().any(|ch| ch.is_ascii_digit())
+             }
+         })
+ }
+ 
+ fn has_coverage_gate(snapshot: &Snapshot, minimum: u32) -> bool {
+-    let evidence = evidence::command_text(snapshot);
+-    evidence.contains("cargo llvm-cov")
+-        && coverage_thresholds(&evidence)
+-            .into_iter()
+-            .any(|threshold| threshold >= f64::from(minimum))
++    true /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn coverage_thresholds(content: &str) -> Vec<f64> {
+     let tokens = content.split_whitespace().collect::<Vec<_>>();
+     let mut thresholds = Vec::new();
+     for (index, token) in tokens.iter().enumerate() {
+         if !token.starts_with("--fail-under") {
+             continue;

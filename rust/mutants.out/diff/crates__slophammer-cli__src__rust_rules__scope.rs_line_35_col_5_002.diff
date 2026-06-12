@@ -1,0 +1,31 @@
+--- crates/slophammer-cli/src/rust_rules/scope.rs
++++ replace scope_counts -> Option<(usize, usize)> with Some((0, 1))
+@@ -27,27 +27,17 @@
+         format!("{}: {}", template.message, uncovered.join(", ")),
+     )]
+ }
+ 
+ /// Scope coverage counts for the report: production files the configured
+ /// scope covers versus all production files. None when no scope is
+ /// configured.
+ pub fn scope_counts(snapshot: &Snapshot, config: &Config) -> Option<(usize, usize)> {
+-    let rust = config.rust.as_ref()?;
+-    let scopes = configured_scopes(rust);
+-    if scopes.is_empty() {
+-        return None;
+-    }
+-    let production = production_rust_files(snapshot);
+-    let scanned = production
+-        .iter()
+-        .filter(|path| in_targets(path, &scopes))
+-        .count();
+-    Some((scanned, production.len()))
++    Some((0, 1)) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Mutation targets participate so narrowing mutation scope stays visible.
+ fn configured_scopes(rust: &RustConfig) -> Vec<String> {
+     let mut scopes = rust.targets.clone();
+     if let Some(dry) = &rust.dry {
+         scopes.extend(dry.paths.iter().cloned());
+     }

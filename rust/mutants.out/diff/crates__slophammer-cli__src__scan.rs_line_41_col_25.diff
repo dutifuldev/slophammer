@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/scan.rs
++++ replace && with || in active_workflow_path
+@@ -33,17 +33,17 @@
+         self.files.keys().any(|path| active_workflow_path(path))
+     }
+ }
+ 
+ fn active_workflow_path(path: &str) -> bool {
+     let Some(name) = path.strip_prefix(".github/workflows/") else {
+         return false;
+     };
+-    !name.contains('/') && (name.ends_with(".yml") || name.ends_with(".yaml"))
++    !name.contains('/') || /* ~ changed by cargo-mutants ~ */ (name.ends_with(".yml") || name.ends_with(".yaml"))
+ }
+ 
+ #[derive(Debug, Error)]
+ pub enum ScanError {
+     #[error("repository root does not exist: {0}")]
+     MissingRoot(String),
+     #[error("walk failed: {0}")]
+     Walk(#[from] ignore::Error),

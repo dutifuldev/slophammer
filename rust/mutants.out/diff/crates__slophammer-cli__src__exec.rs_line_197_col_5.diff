@@ -1,0 +1,25 @@
+--- crates/slophammer-cli/src/exec.rs
++++ replace prefixed_path -> String with String::new()
+@@ -189,21 +189,17 @@
+     !root.is_empty()
+         && roots.iter().any(|candidate| {
+             candidate != root
+                 && (candidate.is_empty() || root.starts_with(&format!("{candidate}/")))
+         })
+ }
+ 
+ fn prefixed_path(root: &str, path: &str) -> String {
+-    if root.is_empty() {
+-        path.to_owned()
+-    } else {
+-        format!("{root}/{path}")
+-    }
++    String::new() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ struct ExecutableCheck<'a> {
+     rule_id: &'static str,
+     path: &'static str,
+     command: &'static str,
+     args: Vec<&'a str>,
+     message: &'static str,

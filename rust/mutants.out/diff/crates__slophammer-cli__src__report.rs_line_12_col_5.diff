@@ -1,0 +1,31 @@
+--- crates/slophammer-cli/src/report.rs
++++ replace new_report -> Report with Default::default()
+@@ -4,27 +4,17 @@
+ 
+ #[derive(Debug, Error)]
+ pub enum ReportError {
+     #[error("json serialization failed: {0}")]
+     Json(#[from] serde_json::Error),
+ }
+ 
+ pub fn new_report(mut findings: Vec<Finding>) -> Report {
+-    findings.sort_by(|left, right| {
+-        left.rule_id
+-            .cmp(&right.rule_id)
+-            .then_with(|| left.path.cmp(&right.path))
+-            .then_with(|| left.message.cmp(&right.message))
+-    });
+-    Report {
+-        ok: findings.is_empty(),
+-        findings,
+-        scope: None,
+-    }
++    Default::default() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ pub fn write_json(report: &Report) -> Result<String, ReportError> {
+     Ok(format!("{}\n", serde_json::to_string_pretty(report)?))
+ }
+ 
+ pub fn write_text(report: &Report) -> String {
+     if report.ok {

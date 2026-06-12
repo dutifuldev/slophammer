@@ -1,0 +1,29 @@
+--- crates/slophammer-cli/src/rust_rules/boundaries.rs
++++ replace workspace_manifest -> Option<(String, DocumentMut)> with Some(("xyzzy".into(), Default::default()))
+@@ -148,25 +148,17 @@
+         .and_then(|workspace| workspace.get("dependencies"))
+     else {
+         return BTreeMap::new();
+     };
+     workspace_dependency_paths_in_item(Some(dependencies), &base)
+ }
+ 
+ fn workspace_manifest(snapshot: &Snapshot, from: &str) -> Option<(String, DocumentMut)> {
+-    ancestor_manifest_paths(from)
+-        .into_iter()
+-        .filter_map(|path| {
+-            let file = snapshot.file(&path)?;
+-            let document = file.content.parse::<DocumentMut>().ok()?;
+-            document.get("workspace")?;
+-            Some((path, document))
+-        })
+-        .next()
++    Some(("xyzzy".into(), Default::default())) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn ancestor_manifest_paths(from: &str) -> Vec<String> {
+     let mut paths = Vec::new();
+     let mut current = repo_dir(from);
+     loop {
+         paths.push(manifest_path(&current));
+         if current == "." {

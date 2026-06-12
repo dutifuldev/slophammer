@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/scope.rs
++++ replace || with && in default_excluded
+@@ -172,17 +172,17 @@
+             let normalized = target.trim_end_matches('/');
+             normalized == "." || path == normalized || path.starts_with(&format!("{normalized}/"))
+         })
+ }
+ 
+ fn default_excluded(path: &str) -> bool {
+     path.starts_with("fixtures/")
+         || path.starts_with("templates/")
+-        || path.contains("/fixtures/")
++        && /* ~ changed by cargo-mutants ~ */ path.contains("/fixtures/")
+         || path.contains("/target/")
+         || path.contains("/node_modules/")
+         || path.ends_with("_test.rs")
+ }
+ 
+ fn globset(patterns: &[String]) -> Option<GlobSet> {
+     if patterns.is_empty() {
+         return None;

@@ -1,0 +1,33 @@
+--- crates/slophammer-cli/src/report.rs
++++ replace write_text -> String with String::new()
+@@ -22,29 +22,17 @@
+     }
+ }
+ 
+ pub fn write_json(report: &Report) -> Result<String, ReportError> {
+     Ok(format!("{}\n", serde_json::to_string_pretty(report)?))
+ }
+ 
+ pub fn write_text(report: &Report) -> String {
+-    if report.ok {
+-        return format!("OK: no findings\n{}", scope_line(report));
+-    }
+-    let mut output = String::new();
+-    for finding in &report.findings {
+-        output.push_str(&format!(
+-            "{} {} {}: {}\n",
+-            finding.severity, finding.rule_id, finding.path, finding.message
+-        ));
+-    }
+-    output.push_str(&format!("\n{} finding(s)\n", report.findings.len()));
+-    output.push_str(&scope_line(report));
+-    output
++    String::new() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn scope_line(report: &Report) -> String {
+     match report.scope {
+         Some(scope) => format!(
+             "scope: scanned {} of {} production files\n",
+             scope.scanned, scope.production_files
+         ),

@@ -1,0 +1,27 @@
+--- crates/slophammer-cli/src/report.rs
++++ replace scope_line -> String with "xyzzy".into()
+@@ -38,23 +38,17 @@
+         ));
+     }
+     output.push_str(&format!("\n{} finding(s)\n", report.findings.len()));
+     output.push_str(&scope_line(report));
+     output
+ }
+ 
+ fn scope_line(report: &Report) -> String {
+-    match report.scope {
+-        Some(scope) => format!(
+-            "scope: scanned {} of {} production files\n",
+-            scope.scanned, scope.production_files
+-        ),
+-        None => String::new(),
+-    }
++    "xyzzy".into() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ pub fn write_sarif(report: &Report) -> Result<String, ReportError> {
+     Ok(format!(
+         "{}\n",
+         serde_json::to_string_pretty(&sarif_report(report))?
+     ))
+ }

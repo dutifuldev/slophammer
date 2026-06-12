@@ -1,0 +1,24 @@
+--- crates/slophammer-cli/src/rust_rules/mod.rs
++++ replace rust_complexity -> Vec<Finding> with vec![Default::default()]
+@@ -172,20 +172,17 @@
+     let threshold = crate::config::rust_coverage_threshold(config);
+     missing(
+         is_rust_project(snapshot) && !has_coverage_gate(snapshot, threshold),
+         rule_ids::RUST_COVERAGE_REQUIRED,
+     )
+ }
+ 
+ fn rust_complexity(snapshot: &Snapshot, config: &Config) -> Vec<Finding> {
+-    missing(
+-        is_rust_project(snapshot) && !has_complexity_limit(snapshot, config),
+-        rule_ids::RUST_COMPLEXITY_REQUIRED,
+-    )
++    vec![Default::default()] /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn rust_dry_declaration(snapshot: &Snapshot) -> Vec<Finding> {
+     missing(
+         is_rust_project(snapshot)
+             && !evidence::command_text(snapshot).contains("slophammer-rs dry"),
+         rule_ids::RUST_DRY_REQUIRED,
+     )

@@ -1,0 +1,31 @@
+--- crates/slophammer-cli/src/rust_rules/mod.rs
++++ replace has_msrv -> bool with true
+@@ -222,27 +222,17 @@
+         .files
+         .keys()
+         .map(String::as_str)
+         .filter(|path| path.ends_with("Cargo.toml") && !ignored_project_path(path))
+         .collect()
+ }
+ 
+ fn has_msrv(snapshot: &Snapshot) -> bool {
+-    snapshot
+-        .files
+-        .values()
+-        .filter(|file| file.path.ends_with("Cargo.toml") && !ignored_project_path(&file.path))
+-        .any(|file| file.content.contains("rust-version"))
+-        || snapshot
+-            .file("rust-toolchain.toml")
+-            .is_some_and(|file| toolchain_declares_version(&file.content))
+-        || snapshot
+-            .file("rust-toolchain")
+-            .is_some_and(|file| toolchain_declares_version(&file.content))
++    true /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn toolchain_declares_version(content: &str) -> bool {
+     content
+         .lines()
+         .map(strip_inline_comment)
+         .map(str::trim)
+         .filter(|line| !line.is_empty())

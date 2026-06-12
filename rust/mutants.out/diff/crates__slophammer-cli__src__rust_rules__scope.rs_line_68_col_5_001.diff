@@ -1,0 +1,34 @@
+--- crates/slophammer-cli/src/rust_rules/scope.rs
++++ replace uncovered_production_dirs -> Vec<String> with vec![String::new()]
+@@ -60,30 +60,17 @@
+     scopes
+ }
+ 
+ fn uncovered_production_dirs(
+     snapshot: &Snapshot,
+     config: &Config,
+     scopes: &[String],
+ ) -> Vec<String> {
+-    let exclude_set = globset(&all_exclude_patterns(config));
+-    let mut dirs: Vec<String> = production_rust_files(snapshot)
+-        .into_iter()
+-        .filter(|path| !in_targets(path, scopes))
+-        .filter(|path| {
+-            exclude_set
+-                .as_ref()
+-                .is_none_or(|set| !set.is_match(path.as_str()))
+-        })
+-        .map(|path| parent_dir(&path))
+-        .collect();
+-    dirs.sort();
+-    dirs.dedup();
+-    dirs
++    vec![String::new()] /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn all_exclude_patterns(config: &Config) -> Vec<String> {
+     let mut patterns = crate::config::rust_exclude(config);
+     patterns.extend(crate::config::rust_dry_exclude(config));
+     if let Some(coverage) = config.rust.as_ref().and_then(|rust| rust.coverage.as_ref()) {
+         patterns.extend(crate::config::exclude_patterns(&coverage.exclude));
+     }

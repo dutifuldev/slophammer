@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/workflow_binding.rs
++++ delete ! in binding_workflow_text
+@@ -7,17 +7,17 @@
+ /// keeps the raw text so filtering only removes false passes.
+ pub fn binding_workflow_text(content: &str) -> Option<String> {
+     let document: Value = yaml_serde::from_str(content).ok()?;
+     let mapping = document.as_mapping()?;
+     let jobs = mapping.get("jobs")?.as_mapping()?;
+     if jobs.is_empty() {
+         return None;
+     }
+-    if !binding_triggers(workflow_triggers(&document)) {
++    if  /* ~ changed by cargo-mutants ~ */binding_triggers(workflow_triggers(&document)) {
+         return Some(String::new());
+     }
+     let mut evidence = Vec::new();
+     for (_, job) in jobs {
+         collect_job_evidence(job, &mut evidence);
+     }
+     Some(evidence.join("\n"))
+ }

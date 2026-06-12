@@ -1,0 +1,25 @@
+--- crates/slophammer-cli/src/config.rs
++++ replace rust_exclude -> Vec<String> with vec![String::new()]
+@@ -477,21 +477,17 @@
+             } else {
+                 rust.targets.clone()
+             }
+         })
+         .unwrap_or_else(|| vec![".".to_owned()])
+ }
+ 
+ pub fn rust_exclude(config: &Config) -> Vec<String> {
+-    config
+-        .rust
+-        .as_ref()
+-        .map(|rust| exclude_patterns(&rust.exclude))
+-        .unwrap_or_default()
++    vec![String::new()] /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ pub fn exclude_patterns(entries: &[ExcludeEntry]) -> Vec<String> {
+     entries
+         .iter()
+         .map(|entry| entry.pattern().to_owned())
+         .collect()
+ }

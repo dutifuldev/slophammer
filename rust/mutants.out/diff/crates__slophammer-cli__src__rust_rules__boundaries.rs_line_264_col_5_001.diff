@@ -1,0 +1,24 @@
+--- crates/slophammer-cli/src/rust_rules/boundaries.rs
++++ replace allowed -> bool with false
+@@ -256,20 +256,17 @@
+     normalized
+ }
+ 
+ fn local_repo_path(snapshot: &Snapshot, path: &str) -> bool {
+     snapshot.files.contains_key(&manifest_path(path))
+ }
+ 
+ fn allowed(boundary: &DependencyBoundary, path: &str) -> bool {
+-    boundary
+-        .allow
+-        .iter()
+-        .any(|allowed| path == allowed || path.starts_with(&format!("{allowed}/")))
++    false /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+     use crate::config::{Config, RustConfig};
+     use crate::scan::{RepoFile, Snapshot};
+     use std::collections::BTreeMap;

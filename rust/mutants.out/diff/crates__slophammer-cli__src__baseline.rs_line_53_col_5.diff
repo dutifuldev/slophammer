@@ -1,0 +1,36 @@
+--- crates/slophammer-cli/src/baseline.rs
++++ replace apply_check -> Result<(), BaselineError> with Ok(())
+@@ -45,32 +45,17 @@
+     rule_id: String,
+     path: String,
+ }
+ 
+ /// Applies a checked-in baseline to a report: matched findings are marked
+ /// baselined and stop affecting `ok`; stale entries are an error so the
+ /// ratchet can only shrink. Matching is on rule_id plus path, never message.
+ pub fn apply_check(root: &Path, report: &mut Report) -> Result<(), BaselineError> {
+-    let baseline = read_baseline(root)?;
+-    let mut unmatched = baseline.clone();
+-    for finding in &mut report.findings {
+-        if baseline.contains(&entry_of(finding)) {
+-            finding.baselined = Some(true);
+-            unmatched.remove(&entry_of(finding));
+-        }
+-    }
+-    if !unmatched.is_empty() {
+-        return Err(BaselineError::Stale(joined(&unmatched)));
+-    }
+-    report.ok = report
+-        .findings
+-        .iter()
+-        .all(|finding| finding.baselined == Some(true));
+-    Ok(())
++    Ok(()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Records current findings as the baseline. Refuses to write a superset of
+ /// an existing baseline and prints the added and removed entries, so debt is
+ /// recorded once, reviewed, and only ever reduced.
+ pub fn write(root: &Path, report: &Report) -> Result<String, BaselineError> {
+     let current: BTreeSet<BaselineEntry> = report.findings.iter().map(entry_of).collect();
+     // Only a missing baseline counts as the initial-write case; a present but

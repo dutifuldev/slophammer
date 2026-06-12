@@ -1,0 +1,25 @@
+--- crates/slophammer-cli/src/rust_rules/scope.rs
++++ replace configured_rust_files -> Vec<String> with vec![String::new()]
+@@ -146,21 +146,17 @@
+                 .as_ref()
+                 .is_none_or(|set| !set.is_match(path.as_str()))
+         })
+         .cloned()
+         .collect()
+ }
+ 
+ pub fn configured_rust_files(snapshot: &Snapshot, config: &Config) -> Vec<String> {
+-    rust_files(
+-        snapshot,
+-        &crate::config::rust_targets(config),
+-        &crate::config::rust_exclude(config),
+-    )
++    vec![String::new()] /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ pub fn dry_rust_files(snapshot: &Snapshot, config: &Config) -> Vec<String> {
+     rust_files(
+         snapshot,
+         &crate::config::rust_dry_paths(config),
+         &crate::config::rust_dry_exclude(config),
+     )

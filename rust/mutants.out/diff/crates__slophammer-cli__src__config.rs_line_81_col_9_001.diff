@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/config.rs
++++ replace ExcludeEntry::empty_reason -> bool with false
+@@ -73,17 +73,17 @@
+         }
+     }
+ 
+     fn needs_reason(&self) -> bool {
+         matches!(self, Self::Pattern(pattern) if !conventional_exclude_pattern(pattern))
+     }
+ 
+     fn empty_reason(&self) -> bool {
+-        matches!(self, Self::Reasoned { reason, .. } if reason.trim().is_empty())
++        false /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ /// The conventional non-production list from specs/CONFIG.md: patterns that
+ /// scope may exclude without a reason.
+ pub fn conventional_exclude_pattern(pattern: &str) -> bool {
+     const CONVENTIONAL: [&str; 15] = [
+         "_test.",

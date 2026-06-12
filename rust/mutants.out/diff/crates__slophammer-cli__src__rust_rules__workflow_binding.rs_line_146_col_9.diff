@@ -1,0 +1,24 @@
+--- crates/slophammer-cli/src/rust_rules/workflow_binding.rs
++++ delete match arm Some(Value::Sequence(names)) in binding_triggers
+@@ -138,20 +138,17 @@
+ }
+ 
+ /// Triggers bind when the workflow can fire for integration: pull requests,
+ /// merge groups, schedules, or pushes whose branch filter is absent,
+ /// wildcarded, or names an integration branch.
+ fn binding_triggers(triggers: Option<&Value>) -> bool {
+     match triggers {
+         Some(Value::String(name)) => binding_trigger_name(name),
+-        Some(Value::Sequence(names)) => names
+-            .iter()
+-            .filter_map(Value::as_str)
+-            .any(binding_trigger_name),
++         /* ~ changed by cargo-mutants ~ */
+         Some(Value::Mapping(entries)) => entries.iter().any(|(name, value)| {
+             name.as_str()
+                 .is_some_and(|name| binding_trigger_entry(name, value))
+         }),
+         _ => false,
+     }
+ }
+ 

@@ -1,0 +1,16 @@
+--- crates/slophammer-cli/src/core.rs
++++ replace find_definition -> Option<&'a RuleDefinition> with None
+@@ -91,12 +91,10 @@
+     pub tool: Option<&'static str>,
+     pub status: &'static str,
+ }
+ 
+ pub fn find_definition<'a>(
+     definitions: &'a [RuleDefinition],
+     rule_id: &str,
+ ) -> Option<&'a RuleDefinition> {
+-    definitions
+-        .iter()
+-        .find(|definition| definition.id == rule_id)
++    None /* ~ changed by cargo-mutants ~ */
+ }

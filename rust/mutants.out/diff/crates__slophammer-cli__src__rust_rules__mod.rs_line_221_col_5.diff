@@ -1,0 +1,26 @@
+--- crates/slophammer-cli/src/rust_rules/mod.rs
++++ replace rust_manifests -> Vec<&str> with vec![]
+@@ -213,22 +213,17 @@
+         || snapshot
+             .files
+             .keys()
+             .any(|path| rust_source_path(path) && !ignored_project_path(path))
+         || evidence::command_text(snapshot).contains("cargo ")
+ }
+ 
+ fn rust_manifests(snapshot: &Snapshot) -> Vec<&str> {
+-    snapshot
+-        .files
+-        .keys()
+-        .map(String::as_str)
+-        .filter(|path| path.ends_with("Cargo.toml") && !ignored_project_path(path))
+-        .collect()
++    vec![] /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn has_msrv(snapshot: &Snapshot) -> bool {
+     snapshot
+         .files
+         .values()
+         .filter(|file| file.path.ends_with("Cargo.toml") && !ignored_project_path(&file.path))
+         .any(|file| file.content.contains("rust-version"))

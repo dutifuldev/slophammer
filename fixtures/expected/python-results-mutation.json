@@ -1,0 +1,15 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "py.mutation-required",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Python projects must declare mutation testing (mutmut or cosmic-ray)"
+    }
+  ],
+  "scope": {
+    "scanned": 2,
+    "production_files": 2
+  }
+}

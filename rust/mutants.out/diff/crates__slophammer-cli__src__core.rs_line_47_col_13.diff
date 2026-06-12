@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/core.rs
++++ delete field path from struct Self expression in Finding::at_path
+@@ -39,17 +39,17 @@
+             path: definition.path.to_owned(),
+             message: definition.message.to_owned(),
+             baselined: None,
+         }
+     }
+ 
+     pub fn at_path(definition: &RuleDefinition, path: impl Into<String>) -> Self {
+         Self {
+-            path: path.into(),
++             /* ~ changed by cargo-mutants ~ */
+             ..Self::new(definition)
+         }
+     }
+ 
+     pub fn with_message(
+         definition: &RuleDefinition,
+         path: impl Into<String>,
+         message: impl Into<String>,

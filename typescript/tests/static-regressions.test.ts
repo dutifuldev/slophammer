@@ -258,6 +258,19 @@ describe("TypeScript command failure regressions", () => {
     expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.mutation-required");
   });
 
+  it("does not accept dry-run mutation commands", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles(),
+        packageWithScripts({ mutate: "stryker run --dryRunOnly" }),
+        enabledESLintConfig()
+      ]),
+      emptyConfig()
+    );
+
+    expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.mutation-required");
+  });
+
   it("does not accept mutation commands whose failures are ignored", () => {
     const report = runRules(
       newSnapshot("/repo", [

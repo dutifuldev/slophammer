@@ -1,0 +1,26 @@
+--- crates/slophammer-cli/src/scan.rs
++++ replace relative_path -> Result<Option<String>, ScanError> with Ok(Some("xyzzy".into()))
+@@ -76,22 +76,17 @@
+         if let Ok(content) = fs::read_to_string(entry.path()) {
+             files.insert(path.clone(), RepoFile { path, content });
+         }
+     }
+     Ok(Snapshot { root, files })
+ }
+ 
+ fn relative_path(root: &Path, path: &Path) -> Result<Option<String>, ScanError> {
+-    let Ok(relative) = path.strip_prefix(root) else {
+-        return Ok(None);
+-    };
+-    let utf8 = Utf8PathBuf::from_path_buf(relative.to_path_buf())
+-        .map_err(|path| ScanError::NonUtf8Path(path.display().to_string()))?;
+-    Ok(Some(utf8.as_str().replace('\\', "/")))
++    Ok(Some("xyzzy".into())) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn ignored_entry(path: &Path) -> bool {
+     path.file_name()
+         .and_then(|name| name.to_str())
+         .is_some_and(|name| {
+             matches!(
+                 name,

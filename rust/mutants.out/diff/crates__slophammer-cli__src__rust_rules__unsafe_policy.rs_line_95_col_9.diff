@@ -1,0 +1,24 @@
+--- crates/slophammer-cli/src/rust_rules/unsafe_policy.rs
++++ replace <impl Visit<'ast> for UnsafeVisitor>::visit_item_fn with ()
+@@ -87,20 +87,17 @@
+ 
+ impl<'ast> Visit<'ast> for UnsafeVisitor {
+     fn visit_expr_unsafe(&mut self, node: &'ast syn::ExprUnsafe) {
+         self.found = true;
+         visit::visit_expr_unsafe(self, node);
+     }
+ 
+     fn visit_item_fn(&mut self, node: &'ast syn::ItemFn) {
+-        if node.sig.unsafety.is_some() {
+-            self.found = true;
+-        }
+-        visit::visit_item_fn(self, node);
++        () /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     fn visit_item_trait(&mut self, node: &'ast syn::ItemTrait) {
+         if node.unsafety.is_some() {
+             self.found = true;
+         }
+         visit::visit_item_trait(self, node);
+     }

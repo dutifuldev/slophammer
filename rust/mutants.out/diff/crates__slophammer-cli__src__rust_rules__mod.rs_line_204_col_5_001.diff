@@ -1,0 +1,25 @@
+--- crates/slophammer-cli/src/rust_rules/mod.rs
++++ replace missing -> Vec<Finding> with vec![Default::default()]
+@@ -196,21 +196,17 @@
+     missing(
+         is_rust_project(snapshot)
+             && !(evidence.contains("cargo audit") || evidence.contains("cargo deny")),
+         rule_ids::RUST_DEPENDENCY_AUDIT_REQUIRED,
+     )
+ }
+ 
+ fn missing(condition: bool, rule_id: &str) -> Vec<Finding> {
+-    if condition {
+-        vec![Finding::new(definition(rule_id))]
+-    } else {
+-        Vec::new()
+-    }
++    vec![Default::default()] /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ pub fn is_rust_project(snapshot: &Snapshot) -> bool {
+     !rust_manifests(snapshot).is_empty()
+         || snapshot
+             .files
+             .keys()
+             .any(|path| rust_source_path(path) && !ignored_project_path(path))

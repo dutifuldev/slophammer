@@ -1,0 +1,24 @@
+--- crates/slophammer-cli/src/rust_rules/workflow_binding.rs
++++ delete match arm Value::Sequence(patterns) in binding_push_filter
+@@ -177,20 +177,17 @@
+         // integration CI; a branches-ignore filter still fires for branches.
+         if value.get("branches-ignore").is_some() {
+             return true;
+         }
+         return value.get("tags").is_none() && value.get("tags-ignore").is_none();
+     };
+     match branches {
+         Value::String(pattern) => integration_branch_pattern(pattern),
+-        Value::Sequence(patterns) => patterns
+-            .iter()
+-            .filter_map(Value::as_str)
+-            .any(integration_branch_pattern),
++         /* ~ changed by cargo-mutants ~ */
+         _ => true,
+     }
+ }
+ 
+ fn integration_branch_pattern(pattern: &str) -> bool {
+     pattern.contains('*') || matches!(pattern, "main" | "master" | "trunk" | "develop")
+ }
+ 

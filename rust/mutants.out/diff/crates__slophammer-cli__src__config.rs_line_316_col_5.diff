@@ -1,0 +1,28 @@
+--- crates/slophammer-cli/src/config.rs
++++ replace validate_value_entries -> Result<(), ConfigError> with Ok(())
+@@ -308,24 +308,17 @@
+     Ok(())
+ }
+ 
+ fn validate_value_entries(
+     value: Option<&Value>,
+     field: &str,
+     allowed: &[&str],
+ ) -> Result<(), ConfigError> {
+-    let entries = match value_sequence(value, field)? {
+-        Some(entries) => entries,
+-        None => return Ok(()),
+-    };
+-    for (index, entry) in entries.iter().enumerate() {
+-        validate_value_keys(entry, &format!("{field}[{index}]"), allowed)?;
+-    }
+-    Ok(())
++    Ok(()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// A present but non-sequence value is a shape error, matching the other
+ /// implementations; absent and null values are fine.
+ fn value_sequence<'a>(
+     value: Option<&'a Value>,
+     field: &str,
+ ) -> Result<Option<&'a Vec<Value>>, ConfigError> {

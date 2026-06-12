@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/evidence.rs
++++ replace || with && in active_workflow_path
+@@ -98,17 +98,17 @@
+ fn word_byte(value: u8) -> bool {
+     value.is_ascii_alphanumeric() || value == b'_' || value == b'-'
+ }
+ 
+ fn active_workflow_path(path: &str) -> bool {
+     let Some(name) = path.strip_prefix(".github/workflows/") else {
+         return false;
+     };
+-    !name.contains('/') && (name.ends_with(".yml") || name.ends_with(".yaml"))
++    !name.contains('/') && (name.ends_with(".yml") && /* ~ changed by cargo-mutants ~ */ name.ends_with(".yaml"))
+ }
+ 
+ fn normalized_content(content: &str) -> String {
+     content
+         .lines()
+         .filter_map(strip_comment)
+         .collect::<Vec<_>>()
+         .join("\n")

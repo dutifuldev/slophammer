@@ -1,0 +1,31 @@
+--- crates/slophammer-cli/src/config.rs
++++ replace validate_value_excludes -> Result<(), ConfigError> with Ok(())
+@@ -337,27 +337,17 @@
+     }
+     value
+         .as_sequence()
+         .map(Some)
+         .ok_or_else(|| ConfigError::Validation(format!("{field} must be a sequence")))
+ }
+ 
+ fn validate_value_excludes(value: Option<&Value>, field: &str) -> Result<(), ConfigError> {
+-    let entries = match value_sequence(value, field)? {
+-        Some(entries) => entries,
+-        None => return Ok(()),
+-    };
+-    for (index, entry) in entries.iter().enumerate() {
+-        if entry.as_str().is_some() {
+-            continue;
+-        }
+-        validate_value_keys(entry, &format!("{field}[{index}]"), &["pattern", "reason"])?;
+-    }
+-    Ok(())
++    Ok(()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn validate(config: &Config) -> Result<(), ConfigError> {
+     for (rule_id, rule) in &config.rules {
+         if rule.disabled && rule.reason.as_deref().unwrap_or("").trim().is_empty() {
+             return Err(ConfigError::Validation(format!(
+                 "rules.{rule_id}.reason is required when disabled is true"
+             )));

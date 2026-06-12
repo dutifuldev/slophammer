@@ -1,0 +1,37 @@
+--- crates/slophammer-cli/src/rust_rules/boundaries.rs
++++ replace boundary_findings -> Vec<Finding> with vec![]
+@@ -2,33 +2,17 @@
+ use crate::config::{Config, DependencyBoundary};
+ use crate::core::Finding;
+ use crate::scan::Snapshot;
+ use std::collections::BTreeMap;
+ use std::path::{Component, Path, PathBuf};
+ use toml_edit::{DocumentMut, Item};
+ 
+ pub fn boundary_findings(snapshot: &Snapshot, config: &Config) -> Vec<Finding> {
+-    if !super::is_rust_project(snapshot) {
+-        return Vec::new();
+-    }
+-    let Some(rust) = &config.rust else {
+-        return vec![Finding::new(definition(
+-            rule_ids::RUST_DEPENDENCY_BOUNDARIES_REQUIRED,
+-        ))];
+-    };
+-    if rust.dependency_boundaries.is_empty() {
+-        return vec![Finding::new(definition(
+-            rule_ids::RUST_DEPENDENCY_BOUNDARIES_REQUIRED,
+-        ))];
+-    }
+-    rust.dependency_boundaries
+-        .iter()
+-        .flat_map(|boundary| check_boundary(snapshot, boundary))
+-        .collect()
++    vec![] /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn check_boundary(snapshot: &Snapshot, boundary: &DependencyBoundary) -> Vec<Finding> {
+     let manifest_path = manifest_path(&boundary.from);
+     let Some(file) = snapshot.file(&manifest_path) else {
+         return vec![Finding::at_path(
+             definition(rule_ids::RUST_DEPENDENCY_BOUNDARIES_REQUIRED),
+             manifest_path,

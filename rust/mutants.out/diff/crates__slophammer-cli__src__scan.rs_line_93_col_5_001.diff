@@ -1,0 +1,28 @@
+--- crates/slophammer-cli/src/scan.rs
++++ replace ignored_entry -> bool with false
+@@ -85,24 +85,17 @@
+         return Ok(None);
+     };
+     let utf8 = Utf8PathBuf::from_path_buf(relative.to_path_buf())
+         .map_err(|path| ScanError::NonUtf8Path(path.display().to_string()))?;
+     Ok(Some(utf8.as_str().replace('\\', "/")))
+ }
+ 
+ fn ignored_entry(path: &Path) -> bool {
+-    path.file_name()
+-        .and_then(|name| name.to_str())
+-        .is_some_and(|name| {
+-            matches!(
+-                name,
+-                ".git" | "node_modules" | "target" | "dist" | "coverage"
+-            )
+-        })
++    false /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+ 
+     #[test]
+     fn detects_workflow_paths() {

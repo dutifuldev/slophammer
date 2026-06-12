@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/exec.rs
++++ replace || with && in execute_workspace
+@@ -117,17 +117,17 @@
+             command: "cargo",
+             args: vec!["mutants", "--workspace"],
+             message: "cargo mutants failed",
+         });
+     }
+     checks
+         .into_iter()
+         .filter(|check| {
+-            only_rule_ids.is_empty() || only_rule_ids.iter().any(|id| id == check.rule_id)
++            only_rule_ids.is_empty() && /* ~ changed by cargo-mutants ~ */ only_rule_ids.iter().any(|id| id == check.rule_id)
+         })
+         .filter_map(|check| run_check(&cwd, &workspace_root, runner, check))
+         .collect()
+ }
+ 
+ fn run_check(
+     cwd: &Path,
+     workspace_root: &str,

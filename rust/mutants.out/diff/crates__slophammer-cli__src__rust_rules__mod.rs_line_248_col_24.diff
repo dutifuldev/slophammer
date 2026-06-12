@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/mod.rs
++++ delete ! in toolchain_declares_version
+@@ -240,17 +240,17 @@
+             .is_some_and(|file| toolchain_declares_version(&file.content))
+ }
+ 
+ fn toolchain_declares_version(content: &str) -> bool {
+     content
+         .lines()
+         .map(strip_inline_comment)
+         .map(str::trim)
+-        .filter(|line| !line.is_empty())
++        .filter(|line|  /* ~ changed by cargo-mutants ~ */line.is_empty())
+         .any(|line| {
+             if let Some((key, value)) = line.split_once('=') {
+                 key.trim() == "channel" && value.chars().any(|ch| ch.is_ascii_digit())
+             } else {
+                 line.chars().any(|ch| ch.is_ascii_digit())
+             }
+         })
+ }

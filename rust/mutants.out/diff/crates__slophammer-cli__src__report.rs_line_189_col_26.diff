@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/report.rs
++++ replace == with != in sarif_suppressions
+@@ -181,17 +181,17 @@
+             },
+             locations: sarif_locations(&finding.path),
+             suppressions: sarif_suppressions(finding),
+         })
+         .collect()
+ }
+ 
+ fn sarif_suppressions(finding: &Finding) -> Vec<SarifSuppression> {
+-    if finding.baselined == Some(true) {
++    if finding.baselined != /* ~ changed by cargo-mutants ~ */ Some(true) {
+         vec![SarifSuppression { kind: "external" }]
+     } else {
+         Vec::new()
+     }
+ }
+ 
+ fn sarif_level(severity: Severity) -> &'static str {
+     match severity {

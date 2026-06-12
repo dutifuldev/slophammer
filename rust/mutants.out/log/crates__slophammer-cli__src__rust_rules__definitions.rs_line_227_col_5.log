@@ -1,0 +1,126 @@
+
+*** crates/slophammer-cli/src/rust_rules/definitions.rs:227:5: replace rust_definition -> RuleDefinition with Default::default()
+
+*** mutation diff:
+--- crates/slophammer-cli/src/rust_rules/definitions.rs
++++ replace rust_definition -> RuleDefinition with Default::default()
+@@ -219,27 +219,17 @@
+ fn rust_definition(
+     id: &'static str,
+     title: &'static str,
+     path: &'static str,
+     message: &'static str,
+     description: &'static str,
+     tool: Option<&'static str>,
+ ) -> RuleDefinition {
+-    RuleDefinition {
+-        id,
+-        title,
+-        category: "rust",
+-        severity: Severity::Error,
+-        path,
+-        message,
+-        description,
+-        tool,
+-        status: "implemented",
+-    }
++    Default::default() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ static README_REQUIRED: RuleDefinition = RuleDefinition {
+     id: rule_ids::README_REQUIRED,
+     title: "README required",
+     category: "repo",
+     severity: Severity::Error,
+     path: "README.md",
+
+
+*** /home/bob/.rustup/toolchains/stable-aarch64-unknown-linux-gnu/bin/cargo test --no-run --verbose --package=slophammer-rs@0.3.0
+       Fresh unicode-ident v1.0.24
+       Fresh memchr v2.8.1
+       Fresh utf8parse v0.2.2
+       Fresh is_terminal_polyfill v1.70.2
+       Fresh colorchoice v1.0.5
+       Fresh anstyle-query v1.1.5
+       Fresh regex-syntax v0.8.10
+       Fresh aho-corasick v1.1.4
+       Fresh anstyle-parse v1.0.0
+       Fresh anstyle v1.0.14
+       Fresh hashbrown v0.17.1
+       Fresh equivalent v1.0.2
+       Fresh bstr v1.12.1
+       Fresh winnow v1.0.3
+       Fresh strsim v0.11.1
+       Fresh itoa v1.0.18
+       Fresh serde_core v1.0.228
+       Fresh crossbeam-utils v0.8.21
+       Fresh regex-automata v0.4.14
+       Fresh indexmap v2.14.0
+       Fresh proc-macro2 v1.0.106
+       Fresh anstream v1.0.0
+       Fresh same-file v1.0.6
+       Fresh clap_lex v1.1.0
+       Fresh heck v0.5.0
+       Fresh log v0.4.32
+       Fresh zmij v1.0.21
+       Fresh toml_parser v1.1.2+spec-1.1.0
+       Fresh toml_datetime v0.7.5+spec-1.1.0
+       Fresh serde_derive v1.0.228
+       Fresh crossbeam-epoch v0.9.18
+       Fresh thiserror-impl v2.0.18
+       Fresh clap_builder v4.6.0
+       Fresh walkdir v2.5.0
+       Fresh quote v1.0.45
+       Fresh clap_derive v4.6.1
+       Fresh globset v0.4.18
+       Fresh libc v0.2.186
+       Fresh ryu v1.0.23
+       Fresh linux-raw-sys v0.12.1
+       Fresh libyaml-rs v0.3.0
+       Fresh cfg-if v1.0.4
+       Fresh winnow v0.7.15
+       Fresh toml_writer v1.1.1+spec-1.1.0
+       Fresh bitflags v2.13.0
+       Fresh camino v1.2.2
+       Fresh serde_json v1.0.150
+       Fresh fastrand v2.4.1
+       Fresh once_cell v1.21.4
+       Fresh crossbeam-deque v0.8.6
+       Fresh serde v1.0.228
+       Fresh rustix v1.1.4
+       Fresh syn v2.0.117
+       Fresh getrandom v0.4.2
+       Fresh thiserror v2.0.18
+       Fresh toml_edit v0.23.10+spec-1.0.0
+       Fresh clap v4.6.1
+       Fresh yaml_serde v0.10.4
+       Fresh ignore v0.4.26
+       Fresh tempfile v3.27.0
+       Dirty slophammer-rs v0.3.0 (/tmp/cargo-mutants-rust-89s9kK.tmp/crates/slophammer-cli): the file `crates/slophammer-cli/src/rust_rules/definitions.rs` has changed (1781268266.190340188s, 2s after last build at 1781268264.973337987s)
+   Compiling slophammer-rs v0.3.0 (/tmp/cargo-mutants-rust-89s9kK.tmp/crates/slophammer-cli)
+     Running `/home/bob/.rustup/toolchains/stable-aarch64-unknown-linux-gnu/bin/rustc --crate-name slophammer_rs --edition=2024 crates/slophammer-cli/src/main.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=692dd60ce4a91235 -C extra-filename=-c3a800629f8bc1eb --out-dir /tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps --extern camino=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libcamino-2014f95ed4aa656e.rlib --extern clap=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libclap-3e1d8dbd42257920.rlib --extern globset=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libglobset-df34ff480f534705.rlib --extern ignore=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libignore-f2cb21606a57d846.rlib --extern serde=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libserde-60583f22ed38d6b8.rlib --extern serde_json=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libserde_json-93ac085c3ebb1a50.rlib --extern syn=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libsyn-435700cfedf2e318.rlib --extern tempfile=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libtempfile-69d946ab9f332d8e.rlib --extern thiserror=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libthiserror-848f54786d621def.rlib --extern toml_edit=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libtoml_edit-9bdeadd08d2c37c0.rlib --extern yaml_serde=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libyaml_serde-65164af57e8beaf6.rlib`
+     Running `/home/bob/.rustup/toolchains/stable-aarch64-unknown-linux-gnu/bin/rustc --crate-name slophammer_rs --edition=2024 crates/slophammer-cli/src/main.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type bin --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=c5ca586e84369ade -C extra-filename=-0cbb3951a8ccb87e --out-dir /tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps --extern camino=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libcamino-2014f95ed4aa656e.rlib --extern clap=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libclap-3e1d8dbd42257920.rlib --extern globset=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libglobset-df34ff480f534705.rlib --extern ignore=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libignore-f2cb21606a57d846.rlib --extern serde=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libserde-60583f22ed38d6b8.rlib --extern serde_json=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libserde_json-93ac085c3ebb1a50.rlib --extern syn=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libsyn-435700cfedf2e318.rlib --extern thiserror=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libthiserror-848f54786d621def.rlib --extern toml_edit=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libtoml_edit-9bdeadd08d2c37c0.rlib --extern yaml_serde=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libyaml_serde-65164af57e8beaf6.rlib`
+error[E0277]: the trait bound `RuleDefinition: std::default::Default` is not satisfied
+   --> crates/slophammer-cli/src/rust_rules/definitions.rs:227:5
+    |
+227 |     Default::default() /* ~ changed by cargo-mutants ~ */
+    |     ^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+    |
+help: the trait `std::default::Default` is not implemented for `RuleDefinition`
+   --> crates/slophammer-cli/src/core.rs:82:1
+    |
+ 82 | pub struct RuleDefinition {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `slophammer-rs` (bin "slophammer-rs") due to 1 previous error
+
+Caused by:
+  process didn't exit successfully: `/home/bob/.rustup/toolchains/stable-aarch64-unknown-linux-gnu/bin/rustc --crate-name slophammer_rs --edition=2024 crates/slophammer-cli/src/main.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type bin --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=c5ca586e84369ade -C extra-filename=-0cbb3951a8ccb87e --out-dir /tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps --extern camino=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libcamino-2014f95ed4aa656e.rlib --extern clap=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libclap-3e1d8dbd42257920.rlib --extern globset=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libglobset-df34ff480f534705.rlib --extern ignore=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libignore-f2cb21606a57d846.rlib --extern serde=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libserde-60583f22ed38d6b8.rlib --extern serde_json=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libserde_json-93ac085c3ebb1a50.rlib --extern syn=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libsyn-435700cfedf2e318.rlib --extern thiserror=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libthiserror-848f54786d621def.rlib --extern toml_edit=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libtoml_edit-9bdeadd08d2c37c0.rlib --extern yaml_serde=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libyaml_serde-65164af57e8beaf6.rlib` (exit status: 1)
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `slophammer-rs` (bin "slophammer-rs" test) due to 1 previous error
+
+Caused by:
+  process didn't exit successfully: `/home/bob/.rustup/toolchains/stable-aarch64-unknown-linux-gnu/bin/rustc --crate-name slophammer_rs --edition=2024 crates/slophammer-cli/src/main.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=692dd60ce4a91235 -C extra-filename=-c3a800629f8bc1eb --out-dir /tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps --extern camino=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libcamino-2014f95ed4aa656e.rlib --extern clap=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libclap-3e1d8dbd42257920.rlib --extern globset=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libglobset-df34ff480f534705.rlib --extern ignore=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libignore-f2cb21606a57d846.rlib --extern serde=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libserde-60583f22ed38d6b8.rlib --extern serde_json=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libserde_json-93ac085c3ebb1a50.rlib --extern syn=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libsyn-435700cfedf2e318.rlib --extern tempfile=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libtempfile-69d946ab9f332d8e.rlib --extern thiserror=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libthiserror-848f54786d621def.rlib --extern toml_edit=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libtoml_edit-9bdeadd08d2c37c0.rlib --extern yaml_serde=/tmp/cargo-mutants-rust-89s9kK.tmp/target/debug/deps/libyaml_serde-65164af57e8beaf6.rlib` (exit status: 1)
+
+*** result: Failure(101)

@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/mod.rs
++++ replace <= with > in has_complexity_limit
+@@ -297,17 +297,17 @@
+     }
+ }
+ 
+ fn has_complexity_limit(snapshot: &Snapshot, config: &Config) -> bool {
+     config
+         .rust
+         .as_ref()
+         .and_then(|rust| rust.complexity.as_ref())
+-        .is_some_and(|complexity| complexity.cognitive_max <= 8)
++        .is_some_and(|complexity| complexity.cognitive_max > /* ~ changed by cargo-mutants ~ */ 8)
+         || has_clippy_complexity_limit(snapshot)
+ }
+ 
+ fn has_clippy_complexity_limit(snapshot: &Snapshot) -> bool {
+     snapshot
+         .files
+         .values()
+         .filter(|file| {

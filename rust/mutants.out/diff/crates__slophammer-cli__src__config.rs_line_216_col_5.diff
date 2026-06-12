@@ -1,0 +1,31 @@
+--- crates/slophammer-cli/src/config.rs
++++ replace parse -> Result<Config, ConfigError> with Ok(Default::default())
+@@ -208,27 +208,17 @@
+         .map(|file| file.content.as_str())
+     else {
+         return Ok(Config::default());
+     };
+     parse(content)
+ }
+ 
+ pub fn parse(content: &str) -> Result<Config, ConfigError> {
+-    let root: RootConfig = yaml_serde::from_str(content)?;
+-    let _known_sections = (&root.go, &root.typescript);
+-    if let Some(python) = &root.python {
+-        validate_python_section(python)?;
+-    }
+-    let config = Config {
+-        rules: root.rules,
+-        rust: root.rust,
+-    };
+-    validate(&config)?;
+-    Ok(config)
++    Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// The shared python section is enforced by the Python checker but
+ /// shape-validated by every implementation, so typos in shared config fail
+ /// everywhere. Key trees mirror specs/CONFIG.md.
+ fn validate_python_section(value: &Value) -> Result<(), ConfigError> {
+     let allowed = [
+         "coverage",

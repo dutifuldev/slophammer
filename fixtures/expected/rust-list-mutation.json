@@ -1,0 +1,15 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "rust.mutation-required",
+      "severity": "error",
+      "path": ".github/workflows",
+      "message": "Rust projects must declare mutation testing"
+    }
+  ],
+  "scope": {
+    "scanned": 1,
+    "production_files": 1
+  }
+}

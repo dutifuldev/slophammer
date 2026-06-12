@@ -1,0 +1,31 @@
+--- crates/slophammer-cli/src/rust_rules/boundaries.rs
++++ replace normalize_path -> PathBuf with Default::default()
+@@ -238,27 +238,17 @@
+     if trimmed.is_empty() || trimmed == "." {
+         ".".to_owned()
+     } else {
+         trimmed.to_owned()
+     }
+ }
+ 
+ fn normalize_path(path: PathBuf) -> PathBuf {
+-    let mut normalized = PathBuf::new();
+-    for component in path.components() {
+-        match component {
+-            Component::ParentDir => {
+-                normalized.pop();
+-            }
+-            Component::CurDir => {}
+-            other => normalized.push(other.as_os_str()),
+-        }
+-    }
+-    normalized
++    Default::default() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn local_repo_path(snapshot: &Snapshot, path: &str) -> bool {
+     snapshot.files.contains_key(&manifest_path(path))
+ }
+ 
+ fn allowed(boundary: &DependencyBoundary, path: &str) -> bool {
+     boundary

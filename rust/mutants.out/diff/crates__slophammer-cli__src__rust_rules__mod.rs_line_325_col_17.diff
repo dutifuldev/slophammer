@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/mod.rs
++++ replace && with || in has_clippy_complexity_limit
+@@ -317,17 +317,17 @@
+         })
+         .any(|file| {
+             let normalized = file.content.to_ascii_lowercase();
+             normalized.contains("cognitive-complexity-threshold")
+                 && numeric_limit_at_most(&normalized, 8)
+         })
+         || snapshot.files.values().any(|file| {
+             rust_source_path(&file.path)
+-                && file
++                || /* ~ changed by cargo-mutants ~ */ file
+                     .content
+                     .to_ascii_lowercase()
+                     .contains("clippy::cognitive_complexity")
+         })
+ }
+ 
+ fn strip_inline_comment(line: &str) -> &str {
+     line.split('#').next().unwrap_or(line)

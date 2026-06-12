@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/definitions.rs
++++ delete match arm rule_ids::RUST_MANIFEST_REQUIRED in definition
+@@ -191,17 +191,17 @@
+     ]
+ }
+ 
+ pub fn definition(rule_id: &str) -> &'static RuleDefinition {
+     match rule_id {
+         rule_ids::README_REQUIRED => &README_REQUIRED,
+         rule_ids::AGENTS_REQUIRED => &AGENTS_REQUIRED,
+         rule_ids::CI_REQUIRED => &CI_REQUIRED,
+-        rule_ids::RUST_MANIFEST_REQUIRED => &RUST_MANIFEST_REQUIRED,
++         /* ~ changed by cargo-mutants ~ */
+         rule_ids::RUST_MSRV_REQUIRED => &RUST_MSRV_REQUIRED,
+         rule_ids::RUST_CHECK_REQUIRED => &RUST_CHECK_REQUIRED,
+         rule_ids::RUST_FMT_REQUIRED => &RUST_FMT_REQUIRED,
+         rule_ids::RUST_CLIPPY_REQUIRED => &RUST_CLIPPY_REQUIRED,
+         rule_ids::RUST_TEST_REQUIRED => &RUST_TEST_REQUIRED,
+         rule_ids::RUST_COVERAGE_REQUIRED => &RUST_COVERAGE_REQUIRED,
+         rule_ids::RUST_COMPLEXITY_REQUIRED => &RUST_COMPLEXITY_REQUIRED,
+         rule_ids::RUST_DRY_REQUIRED => &RUST_DRY_REQUIRED,

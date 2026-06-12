@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/core.rs
++++ delete field path from struct Self expression in Finding::with_message
+@@ -50,17 +50,17 @@
+     }
+ 
+     pub fn with_message(
+         definition: &RuleDefinition,
+         path: impl Into<String>,
+         message: impl Into<String>,
+     ) -> Self {
+         Self {
+-            path: path.into(),
++             /* ~ changed by cargo-mutants ~ */
+             message: message.into(),
+             ..Self::new(definition)
+         }
+     }
+ }
+ 
+ #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+ pub struct Report {

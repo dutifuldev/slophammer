@@ -1,0 +1,24 @@
+--- crates/slophammer-cli/src/rust_rules/mod.rs
++++ replace cargo_command -> Vec<Finding> with vec![Default::default()]
+@@ -138,20 +138,17 @@
+ fn rust_msrv(snapshot: &Snapshot) -> Vec<Finding> {
+     missing(
+         is_rust_project(snapshot) && !has_msrv(snapshot),
+         rule_ids::RUST_MSRV_REQUIRED,
+     )
+ }
+ 
+ fn cargo_command(snapshot: &Snapshot, rule_id: &str, command: &str) -> Vec<Finding> {
+-    missing(
+-        is_rust_project(snapshot) && !evidence::command_text(snapshot).contains(command),
+-        rule_id,
+-    )
++    vec![Default::default()] /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn rust_fmt(snapshot: &Snapshot) -> Vec<Finding> {
+     let evidence = evidence::command_text(snapshot);
+     missing(
+         is_rust_project(snapshot)
+             && !(evidence.contains("cargo fmt") && evidence.contains("--check")),
+         rule_ids::RUST_FMT_REQUIRED,

@@ -25,6 +25,9 @@ go:
       min_tokens: 100
   crap:
     max_score: 8
+  mutation:
+    targets:
+      - go/internal/rules
   dependency_boundaries:
     - from: go/cmd/slophammer
       allow:
@@ -137,6 +140,9 @@ python:
     threshold: 85
     paths:
       - python/src
+    exclude:
+      - pattern: python/utils/**
+        reason: PyPI name-reservation placeholder with no shipped logic
   complexity:
     max: 8
   dry:

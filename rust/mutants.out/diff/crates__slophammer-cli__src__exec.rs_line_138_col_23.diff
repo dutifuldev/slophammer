@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/exec.rs
++++ replace match guard output.status == 0 with true in run_check
+@@ -130,17 +130,17 @@
+ 
+ fn run_check(
+     cwd: &Path,
+     workspace_root: &str,
+     runner: &impl Runner,
+     check: ExecutableCheck<'_>,
+ ) -> Option<Finding> {
+     match runner.run(cwd, check.command, &check.args) {
+-        Ok(output) if output.status == 0 => None,
++        Ok(output) if true /* ~ changed by cargo-mutants ~ */ => None,
+         Ok(output) => Some(Finding {
+             rule_id: check.rule_id.to_owned(),
+             severity: Severity::Error,
+             path: prefixed_path(workspace_root, check.path),
+             message: format!("{}: {}", check.message, compact_output(&output)),
+             baselined: None,
+         }),
+         Err(error) => Some(Finding {

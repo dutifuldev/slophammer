@@ -1,0 +1,37 @@
+--- crates/slophammer-cli/src/config.rs
++++ replace validate_value_keys -> Result<(), ConfigError> with Ok(())
+@@ -284,33 +284,17 @@
+             "python.typecheck.demotions",
+             &["rule", "reason"],
+         )?;
+     }
+     Ok(())
+ }
+ 
+ fn validate_value_keys(value: &Value, field: &str, allowed: &[&str]) -> Result<(), ConfigError> {
+-    let Some(mapping) = value.as_mapping() else {
+-        if matches!(value, Value::Null) {
+-            return Ok(());
+-        }
+-        return Err(ConfigError::Validation(format!(
+-            "{field} must be a mapping"
+-        )));
+-    };
+-    for (key, _) in mapping {
+-        let name = key.as_str().unwrap_or_default();
+-        if !allowed.contains(&name) {
+-            return Err(ConfigError::Validation(format!(
+-                "{field}.{name} is not supported"
+-            )));
+-        }
+-    }
+-    Ok(())
++    Ok(()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn validate_value_entries(
+     value: Option<&Value>,
+     field: &str,
+     allowed: &[&str],
+ ) -> Result<(), ConfigError> {
+     let entries = match value_sequence(value, field)? {

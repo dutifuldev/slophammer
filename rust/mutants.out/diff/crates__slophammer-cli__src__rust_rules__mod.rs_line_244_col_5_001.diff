@@ -1,0 +1,32 @@
+--- crates/slophammer-cli/src/rust_rules/mod.rs
++++ replace toolchain_declares_version -> bool with false
+@@ -236,28 +236,17 @@
+             .file("rust-toolchain.toml")
+             .is_some_and(|file| toolchain_declares_version(&file.content))
+         || snapshot
+             .file("rust-toolchain")
+             .is_some_and(|file| toolchain_declares_version(&file.content))
+ }
+ 
+ fn toolchain_declares_version(content: &str) -> bool {
+-    content
+-        .lines()
+-        .map(strip_inline_comment)
+-        .map(str::trim)
+-        .filter(|line| !line.is_empty())
+-        .any(|line| {
+-            if let Some((key, value)) = line.split_once('=') {
+-                key.trim() == "channel" && value.chars().any(|ch| ch.is_ascii_digit())
+-            } else {
+-                line.chars().any(|ch| ch.is_ascii_digit())
+-            }
+-        })
++    false /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn has_coverage_gate(snapshot: &Snapshot, minimum: u32) -> bool {
+     let evidence = evidence::command_text(snapshot);
+     evidence.contains("cargo llvm-cov")
+         && coverage_thresholds(&evidence)
+             .into_iter()
+             .any(|threshold| threshold >= f64::from(minimum))

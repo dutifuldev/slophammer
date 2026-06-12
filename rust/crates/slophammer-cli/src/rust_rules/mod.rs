@@ -59,7 +59,7 @@ fn run_rule(rule_id: &str, snapshot: &Snapshot, config: &Config) -> Vec<Finding>
         rule_ids::RUST_COVERAGE_REQUIRED => rust_coverage(snapshot, config),
         rule_ids::RUST_COMPLEXITY_REQUIRED => rust_complexity(snapshot, config),
         rule_ids::RUST_DRY_REQUIRED => rust_dry_declaration(snapshot),
-        rule_ids::RUST_MUTATION_REQUIRED => cargo_command(snapshot, rule_id, "cargo mutants"),
+        rule_ids::RUST_MUTATION_REQUIRED => rust_mutation(snapshot),
         rule_ids::RUST_UNSAFE_POLICY_REQUIRED => unsafe_policy::policy_findings(snapshot, config),
         rule_ids::RUST_DEPENDENCY_AUDIT_REQUIRED => rust_dependency_audit(snapshot),
         rule_ids::RUST_DEPENDENCY_BOUNDARIES_REQUIRED => {
@@ -146,6 +146,19 @@ fn cargo_command(snapshot: &Snapshot, rule_id: &str, command: &str) -> Vec<Findi
     missing(
         is_rust_project(snapshot) && !evidence::command_text(snapshot).contains(command),
         rule_id,
+    )
+}
+
+/// A `cargo mutants --list` enumerates mutants and cannot fail on a
+/// survivor, so it is not mutation-testing evidence; executing forms
+/// (including `--in-diff`) count.
+fn rust_mutation(snapshot: &Snapshot) -> Vec<Finding> {
+    let executing = evidence::command_segments(snapshot)
+        .iter()
+        .any(|segment| segment.contains("cargo mutants") && !segment.contains("--list"));
+    missing(
+        is_rust_project(snapshot) && !executing,
+        rule_ids::RUST_MUTATION_REQUIRED,
     )
 }
 
@@ -359,6 +372,53 @@ mod tests {
     use crate::scan::{RepoFile, Snapshot};
     use std::collections::BTreeMap;
     use std::path::PathBuf;
+
+    #[test]
+    fn list_only_mutation_commands_are_not_evidence() {
+        let workflow = "name: CI\non: [push]\njobs:\n  ci:\n    steps:\n      - run: cargo mutants --workspace --list\n";
+        let snapshot = Snapshot {
+            root: PathBuf::from("."),
+            files: BTreeMap::from([
+                (
+                    "Cargo.toml".to_owned(),
+                    RepoFile {
+                        path: "Cargo.toml".to_owned(),
+                        content: "[package]\nname = \"x\"\n".to_owned(),
+                    },
+                ),
+                (
+                    ".github/workflows/ci.yml".to_owned(),
+                    RepoFile {
+                        path: ".github/workflows/ci.yml".to_owned(),
+                        content: workflow.to_owned(),
+                    },
+                ),
+            ]),
+        };
+        let findings = rust_mutation(&snapshot);
+        assert_eq!(findings.len(), 1, "list-only run must not satisfy the rule");
+
+        let executing = Snapshot {
+            root: PathBuf::from("."),
+            files: BTreeMap::from([
+                (
+                    "Cargo.toml".to_owned(),
+                    RepoFile {
+                        path: "Cargo.toml".to_owned(),
+                        content: "[package]\nname = \"x\"\n".to_owned(),
+                    },
+                ),
+                (
+                    ".github/workflows/ci.yml".to_owned(),
+                    RepoFile {
+                        path: ".github/workflows/ci.yml".to_owned(),
+                        content: workflow.replace(" --list", "").to_owned(),
+                    },
+                ),
+            ]),
+        };
+        assert!(rust_mutation(&executing).is_empty());
+    }
 
     #[test]
     fn missing_rust_checks_are_reported() {

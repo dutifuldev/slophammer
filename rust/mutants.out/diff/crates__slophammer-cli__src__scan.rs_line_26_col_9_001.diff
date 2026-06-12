@@ -1,0 +1,24 @@
+--- crates/slophammer-cli/src/scan.rs
++++ replace Snapshot::has_case_insensitive -> bool with false
+@@ -18,20 +18,17 @@
+ }
+ 
+ impl Snapshot {
+     pub fn file(&self, path: &str) -> Option<&RepoFile> {
+         self.files.get(path)
+     }
+ 
+     pub fn has_case_insensitive(&self, filename: &str) -> bool {
+-        self.files
+-            .keys()
+-            .filter(|path| !path.contains('/'))
+-            .any(|path| path.eq_ignore_ascii_case(filename))
++        false /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     pub fn has_workflow(&self) -> bool {
+         self.files.keys().any(|path| active_workflow_path(path))
+     }
+ }
+ 
+ fn active_workflow_path(path: &str) -> bool {

@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/app.rs
++++ replace check -> AppResult with Default::default()
+@@ -48,17 +48,17 @@
+     UnknownRule(String),
+     #[error("--only requires a rule id")]
+     EmptyOnlyRule,
+     #[error(transparent)]
+     Baseline(#[from] crate::baseline::BaselineError),
+ }
+ 
+ pub fn check(options: CheckOptions) -> AppResult {
+-    check_with_runner(options, &RealRunner)
++    Default::default() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ pub fn check_with_runner(options: CheckOptions, runner: &impl Runner) -> AppResult {
+     match check_inner(options, runner) {
+         Ok(result) => result,
+         Err(error) => AppResult {
+             code: EXIT_ERROR,
+             stdout: String::new(),

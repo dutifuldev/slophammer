@@ -1,0 +1,24 @@
+--- crates/slophammer-cli/src/rust_rules/mod.rs
++++ replace invocation_with_check -> bool with false
+@@ -110,20 +110,17 @@
+         "slophammer-rs",
+         "slophammer-py",
+     ]
+     .iter()
+     .any(|binary| invocation_with_check(evidence, binary))
+ }
+ 
+ fn invocation_with_check(evidence: &str, binary: &str) -> bool {
+-    evidence.match_indices(binary).any(|(index, _)| {
+-        let window_end = (index + 160).min(evidence.len());
+-        evidence[index..window_end].contains(" check")
+-    })
++    false /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn rust_suppressions(snapshot: &Snapshot) -> Vec<Finding> {
+     if !is_rust_project(snapshot) {
+         return Vec::new();
+     }
+     suppressions::suppression_findings(snapshot)
+ }

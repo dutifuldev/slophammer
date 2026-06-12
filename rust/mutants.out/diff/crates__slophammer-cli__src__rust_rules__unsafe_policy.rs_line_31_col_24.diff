@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/unsafe_policy.rs
++++ delete ! in forbid_findings
+@@ -23,17 +23,17 @@
+         UnsafePolicy::Forbid => forbid_findings(snapshot, config),
+         UnsafePolicy::AllowDocumented => documented_findings(snapshot, config),
+     }
+ }
+ 
+ fn forbid_findings(snapshot: &Snapshot, config: &Config) -> Vec<Finding> {
+     unsafe_paths(snapshot, config)
+         .into_iter()
+-        .filter(|path| !unsafe_allowed(config, path))
++        .filter(|path|  /* ~ changed by cargo-mutants ~ */unsafe_allowed(config, path))
+         .map(|path| Finding::at_path(definition(rule_ids::RUST_UNSAFE_POLICY_REQUIRED), path))
+         .collect()
+ }
+ 
+ fn documented_findings(snapshot: &Snapshot, config: &Config) -> Vec<Finding> {
+     unsafe_paths(snapshot, config)
+         .into_iter()
+         .filter(|path| !unsafe_allowed(config, path))

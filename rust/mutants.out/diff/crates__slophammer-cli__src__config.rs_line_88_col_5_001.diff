@@ -1,0 +1,38 @@
+--- crates/slophammer-cli/src/config.rs
++++ replace conventional_exclude_pattern -> bool with false
+@@ -80,34 +80,17 @@
+     fn empty_reason(&self) -> bool {
+         matches!(self, Self::Reasoned { reason, .. } if reason.trim().is_empty())
+     }
+ }
+ 
+ /// The conventional non-production list from specs/CONFIG.md: patterns that
+ /// scope may exclude without a reason.
+ pub fn conventional_exclude_pattern(pattern: &str) -> bool {
+-    const CONVENTIONAL: [&str; 15] = [
+-        "_test.",
+-        ".test.",
+-        ".spec.",
+-        "tests/",
+-        "fixtures/",
+-        "templates/",
+-        "testdata/",
+-        "dist/",
+-        "build/",
+-        "coverage/",
+-        "target/",
+-        "node_modules/",
+-        "vendor/",
+-        "generated",
+-        "scripts/",
+-    ];
+-    CONVENTIONAL.iter().any(|marker| pattern.contains(marker))
++    false /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+ #[serde(deny_unknown_fields)]
+ pub struct RustCoverage {
+     pub threshold: u32,
+     #[serde(default)]
+     pub paths: Vec<String>,

@@ -1,0 +1,46 @@
+--- crates/slophammer-cli/src/scan.rs
++++ replace scan_repo -> Result<Snapshot, ScanError> with Ok(Default::default())
+@@ -47,42 +47,17 @@
+     MissingRoot(String),
+     #[error("walk failed: {0}")]
+     Walk(#[from] ignore::Error),
+     #[error("path is not valid UTF-8: {0}")]
+     NonUtf8Path(String),
+ }
+ 
+ pub fn scan_repo(root: impl AsRef<Path>) -> Result<Snapshot, ScanError> {
+-    let root = root.as_ref();
+-    if !root.exists() {
+-        return Err(ScanError::MissingRoot(root.display().to_string()));
+-    }
+-    let root = root.to_path_buf();
+-    let mut files = BTreeMap::new();
+-    let walker = WalkBuilder::new(&root)
+-        .hidden(false)
+-        .git_ignore(true)
+-        .parents(true)
+-        .filter_entry(|entry| !ignored_entry(entry.path()))
+-        .build();
+-    for entry in walker {
+-        let entry = entry?;
+-        let file_type = entry.file_type();
+-        if !file_type.is_some_and(|item| item.is_file()) {
+-            continue;
+-        }
+-        let Some(path) = relative_path(&root, entry.path())? else {
+-            continue;
+-        };
+-        if let Ok(content) = fs::read_to_string(entry.path()) {
+-            files.insert(path.clone(), RepoFile { path, content });
+-        }
+-    }
+-    Ok(Snapshot { root, files })
++    Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn relative_path(root: &Path, path: &Path) -> Result<Option<String>, ScanError> {
+     let Ok(relative) = path.strip_prefix(root) else {
+         return Ok(None);
+     };
+     let utf8 = Utf8PathBuf::from_path_buf(relative.to_path_buf())
+         .map_err(|path| ScanError::NonUtf8Path(path.display().to_string()))?;

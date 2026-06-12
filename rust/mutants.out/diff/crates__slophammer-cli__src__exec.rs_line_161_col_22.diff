@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/exec.rs
++++ delete ! in compact_output
+@@ -153,17 +153,17 @@
+     }
+ }
+ 
+ fn compact_output(output: &CommandOutput) -> String {
+     let combined = format!("{}{}", output.stderr, output.stdout);
+     combined
+         .lines()
+         .map(str::trim)
+-        .find(|line| !line.is_empty())
++        .find(|line|  /* ~ changed by cargo-mutants ~ */line.is_empty())
+         .unwrap_or("command exited non-zero")
+         .chars()
+         .take(240)
+         .collect()
+ }
+ 
+ fn rust_workspace_roots(snapshot: &Snapshot) -> Vec<String> {
+     let mut roots: Vec<String> = snapshot

@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/baseline.rs
++++ replace != with == in read_baseline
+@@ -111,17 +111,17 @@
+         Ok(content) => content,
+         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+             return Err(BaselineError::Missing);
+         }
+         Err(error) => return Err(BaselineError::Read(error.to_string())),
+     };
+     let file: BaselineFile =
+         serde_json::from_str(&content).map_err(|error| BaselineError::Parse(error.to_string()))?;
+-    if file.version != 1 {
++    if file.version == /* ~ changed by cargo-mutants ~ */ 1 {
+         return Err(BaselineError::Version);
+     }
+     Ok(file.findings.into_iter().collect())
+ }
+ 
+ fn entry_of(finding: &Finding) -> BaselineEntry {
+     BaselineEntry {
+         rule_id: finding.rule_id.clone(),

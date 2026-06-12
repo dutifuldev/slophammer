@@ -1,0 +1,27 @@
+--- crates/slophammer-cli/src/rust_rules/boundaries.rs
++++ replace resolve_dependency_path -> Option<String> with Some("xyzzy".into())
+@@ -216,23 +216,17 @@
+     if dir == "." {
+         "Cargo.toml".to_owned()
+     } else {
+         format!("{dir}/Cargo.toml")
+     }
+ }
+ 
+ fn resolve_dependency_path(from: &str, dependency_path: &str) -> Option<String> {
+-    let base = repo_dir(from);
+-    let base = if base == "." { "" } else { base.as_str() };
+-    let path = normalize_path(Path::new(base).join(dependency_path));
+-    path.to_str().map(|path| match path.replace('\\', "/") {
+-        path if path.is_empty() => ".".to_owned(),
+-        path => path,
+-    })
++    Some("xyzzy".into()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn repo_dir(path: &str) -> String {
+     let mut trimmed = path.trim().trim_end_matches('/');
+     while let Some(path) = trimmed.strip_prefix("./") {
+         trimmed = path;
+     }
+     if trimmed.is_empty() || trimmed == "." {

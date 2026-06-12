@@ -74,7 +74,7 @@ fail_under = 85
 show_missing = true
 
 [tool.mutmut]
-paths_to_mutate = ["src/slophammer/rules/", "src/slophammer/repo.py"]
+source_paths = ["src/slophammer/rules/", "src/slophammer/repo.py"]
 also_copy = [
     "src/slophammer/__init__.py",
     "src/slophammer/app.py",

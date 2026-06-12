@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/mod.rs
++++ replace || with && in ignored_project_path
+@@ -343,17 +343,17 @@
+ 
+ fn rust_source_path(path: &str) -> bool {
+     path.ends_with(".rs")
+ }
+ 
+ fn ignored_project_path(path: &str) -> bool {
+     path.starts_with("fixtures/")
+         || path.starts_with("templates/")
+-        || path.contains("/fixtures/")
++        && /* ~ changed by cargo-mutants ~ */ path.contains("/fixtures/")
+         || path.contains("/target/")
+         || path.contains("/node_modules/")
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+     use crate::scan::{RepoFile, Snapshot};

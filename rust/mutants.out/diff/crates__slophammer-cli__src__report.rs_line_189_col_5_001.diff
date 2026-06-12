@@ -1,0 +1,25 @@
+--- crates/slophammer-cli/src/report.rs
++++ replace sarif_suppressions -> Vec<SarifSuppression> with vec![Default::default()]
+@@ -181,21 +181,17 @@
+             },
+             locations: sarif_locations(&finding.path),
+             suppressions: sarif_suppressions(finding),
+         })
+         .collect()
+ }
+ 
+ fn sarif_suppressions(finding: &Finding) -> Vec<SarifSuppression> {
+-    if finding.baselined == Some(true) {
+-        vec![SarifSuppression { kind: "external" }]
+-    } else {
+-        Vec::new()
+-    }
++    vec![Default::default()] /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn sarif_level(severity: Severity) -> &'static str {
+     match severity {
+         Severity::Warn => "warning",
+         Severity::Error => "error",
+     }
+ }

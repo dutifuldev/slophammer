@@ -9,3 +9,7 @@ var (
 	strictCoverageThresholdPattern = regexp.MustCompile(`(?im)\b(total|minimum|threshold|required)\b[^\n]*(>|<)[^\n]*(\b(total|minimum|threshold|required)\b|[0-9]+(?:\.[0-9]+)?)|([0-9]+(?:\.[0-9]+)?|\b(total|minimum|threshold|required)\b)[^\n]*(>|<)[^\n]*\b(total|minimum|threshold|required)\b`)
 	strictCRAPThresholdPattern     = regexp.MustCompile(`(?im)\b(crap|score|maximum|max)\b[^\n]*(>|<)[^\n]*(\b(score|maximum|max)\b|[0-9]+(?:\.[0-9]+)?)`)
 )
+
+// mutate4go-manifest-begin
+// {"version":1,"tested_at":"2026-06-12T21:41:20+08:00","module_hash":"20f8215f6a4317a0cfbbb4b0815f26491ef79d430f50a7be10442db1a299756b","functions":null}
+// mutate4go-manifest-end

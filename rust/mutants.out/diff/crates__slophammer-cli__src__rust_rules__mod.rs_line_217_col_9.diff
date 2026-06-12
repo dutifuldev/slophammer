@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/mod.rs
++++ replace || with && in is_rust_project
+@@ -209,17 +209,17 @@
+ }
+ 
+ pub fn is_rust_project(snapshot: &Snapshot) -> bool {
+     !rust_manifests(snapshot).is_empty()
+         || snapshot
+             .files
+             .keys()
+             .any(|path| rust_source_path(path) && !ignored_project_path(path))
+-        || evidence::command_text(snapshot).contains("cargo ")
++        && /* ~ changed by cargo-mutants ~ */ evidence::command_text(snapshot).contains("cargo ")
+ }
+ 
+ fn rust_manifests(snapshot: &Snapshot) -> Vec<&str> {
+     snapshot
+         .files
+         .keys()
+         .map(String::as_str)
+         .filter(|path| path.ends_with("Cargo.toml") && !ignored_project_path(path))

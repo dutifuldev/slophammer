@@ -1,0 +1,37 @@
+--- crates/slophammer-cli/src/rust_rules/workflow_binding.rs
++++ replace job_matrix_commands -> Vec<String> with vec![String::new()]
+@@ -71,33 +71,17 @@
+     let trimmed = run.trim();
+     trimmed
+         .strip_prefix("${{")
+         .and_then(|rest| rest.strip_suffix("}}"))
+         .is_some_and(|inner| inner.trim() == "matrix.command")
+ }
+ 
+ fn job_matrix_commands(job: &Value) -> Vec<String> {
+-    let Some(matrix) = job
+-        .get("strategy")
+-        .and_then(|strategy| strategy.get("matrix"))
+-    else {
+-        return Vec::new();
+-    };
+-    let mut commands = sequence_strings(matrix.get("command"));
+-    if let Some(include) = matrix.get("include").and_then(Value::as_sequence) {
+-        commands.extend(
+-            include
+-                .iter()
+-                .filter_map(|item| item.get("command"))
+-                .filter_map(Value::as_str)
+-                .map(str::to_owned),
+-        );
+-    }
+-    commands
++    vec![String::new()] /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn sequence_strings(value: Option<&Value>) -> Vec<String> {
+     value
+         .and_then(Value::as_sequence)
+         .map(|items| {
+             items
+                 .iter()

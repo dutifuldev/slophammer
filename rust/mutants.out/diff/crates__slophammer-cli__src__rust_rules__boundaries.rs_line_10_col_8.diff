@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/boundaries.rs
++++ delete ! in boundary_findings
+@@ -2,17 +2,17 @@
+ use crate::config::{Config, DependencyBoundary};
+ use crate::core::Finding;
+ use crate::scan::Snapshot;
+ use std::collections::BTreeMap;
+ use std::path::{Component, Path, PathBuf};
+ use toml_edit::{DocumentMut, Item};
+ 
+ pub fn boundary_findings(snapshot: &Snapshot, config: &Config) -> Vec<Finding> {
+-    if !super::is_rust_project(snapshot) {
++    if  /* ~ changed by cargo-mutants ~ */super::is_rust_project(snapshot) {
+         return Vec::new();
+     }
+     let Some(rust) = &config.rust else {
+         return vec![Finding::new(definition(
+             rule_ids::RUST_DEPENDENCY_BOUNDARIES_REQUIRED,
+         ))];
+     };
+     if rust.dependency_boundaries.is_empty() {

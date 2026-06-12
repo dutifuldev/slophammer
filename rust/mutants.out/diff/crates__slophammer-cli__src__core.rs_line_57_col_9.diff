@@ -1,0 +1,25 @@
+--- crates/slophammer-cli/src/core.rs
++++ replace Finding::with_message -> Self with Default::default()
+@@ -49,21 +49,17 @@
+         }
+     }
+ 
+     pub fn with_message(
+         definition: &RuleDefinition,
+         path: impl Into<String>,
+         message: impl Into<String>,
+     ) -> Self {
+-        Self {
+-            path: path.into(),
+-            message: message.into(),
+-            ..Self::new(definition)
+-        }
++        Default::default() /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+ pub struct Report {
+     pub ok: bool,
+     pub findings: Vec<Finding>,
+     #[serde(default, skip_serializing_if = "Option::is_none")]

@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/config.rs
++++ delete ! in validate_value_keys
+@@ -294,17 +294,17 @@
+             return Ok(());
+         }
+         return Err(ConfigError::Validation(format!(
+             "{field} must be a mapping"
+         )));
+     };
+     for (key, _) in mapping {
+         let name = key.as_str().unwrap_or_default();
+-        if !allowed.contains(&name) {
++        if  /* ~ changed by cargo-mutants ~ */allowed.contains(&name) {
+             return Err(ConfigError::Validation(format!(
+                 "{field}.{name} is not supported"
+             )));
+         }
+     }
+     Ok(())
+ }
+ 

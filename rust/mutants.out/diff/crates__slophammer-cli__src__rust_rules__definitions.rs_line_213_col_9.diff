@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/definitions.rs
++++ delete match arm rule_ids::RUST_SCOPE_INCOMPLETE in definition
+@@ -205,17 +205,17 @@
+         rule_ids::RUST_COVERAGE_REQUIRED => &RUST_COVERAGE_REQUIRED,
+         rule_ids::RUST_COMPLEXITY_REQUIRED => &RUST_COMPLEXITY_REQUIRED,
+         rule_ids::RUST_DRY_REQUIRED => &RUST_DRY_REQUIRED,
+         rule_ids::RUST_MUTATION_REQUIRED => &RUST_MUTATION_REQUIRED,
+         rule_ids::RUST_UNSAFE_POLICY_REQUIRED => &RUST_UNSAFE_POLICY_REQUIRED,
+         rule_ids::RUST_DEPENDENCY_AUDIT_REQUIRED => &RUST_DEPENDENCY_AUDIT_REQUIRED,
+         rule_ids::RUST_DEPENDENCY_BOUNDARIES_REQUIRED => &RUST_DEPENDENCY_BOUNDARIES_REQUIRED,
+         rule_ids::SLOPHAMMER_CI_REQUIRED => &SLOPHAMMER_CI_REQUIRED,
+-        rule_ids::RUST_SCOPE_INCOMPLETE => &RUST_SCOPE_INCOMPLETE,
++         /* ~ changed by cargo-mutants ~ */
+         rule_ids::RUST_SUPPRESSIONS_JUSTIFIED => &RUST_SUPPRESSIONS_JUSTIFIED,
+         _ => &README_REQUIRED,
+     }
+ }
+ 
+ fn rust_definition(
+     id: &'static str,
+     title: &'static str,

@@ -1,0 +1,26 @@
+--- crates/slophammer-cli/src/rust_rules/mod.rs
++++ replace explain -> Option<String> with Some("xyzzy".into())
+@@ -27,22 +27,17 @@
+         .filter(|id| wanted(id))
+     {
+         findings.extend(run_rule(rule_id, snapshot, config));
+     }
+     findings
+ }
+ 
+ pub fn explain(rule_id: &str) -> Option<String> {
+-    find_definition(&default_definitions(), rule_id).map(|definition| {
+-        format!(
+-            "{}\n{}\nseverity: {}\npath: {}\n",
+-            definition.id, definition.description, definition.severity, definition.path
+-        )
+-    })
++    Some("xyzzy".into()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ pub fn known_rule(rule_id: &str) -> bool {
+     find_definition(&default_definitions(), rule_id).is_some()
+ }
+ 
+ fn run_rule(rule_id: &str, snapshot: &Snapshot, config: &Config) -> Vec<Finding> {
+     match rule_id {

@@ -1,0 +1,37 @@
+--- crates/slophammer-cli/src/exec.rs
++++ replace run_check -> Option<Finding> with None
+@@ -129,33 +129,17 @@
+ }
+ 
+ fn run_check(
+     cwd: &Path,
+     workspace_root: &str,
+     runner: &impl Runner,
+     check: ExecutableCheck<'_>,
+ ) -> Option<Finding> {
+-    match runner.run(cwd, check.command, &check.args) {
+-        Ok(output) if output.status == 0 => None,
+-        Ok(output) => Some(Finding {
+-            rule_id: check.rule_id.to_owned(),
+-            severity: Severity::Error,
+-            path: prefixed_path(workspace_root, check.path),
+-            message: format!("{}: {}", check.message, compact_output(&output)),
+-            baselined: None,
+-        }),
+-        Err(error) => Some(Finding {
+-            rule_id: check.rule_id.to_owned(),
+-            severity: Severity::Error,
+-            path: prefixed_path(workspace_root, check.path),
+-            message: format!("{}: {error}", check.message),
+-            baselined: None,
+-        }),
+-    }
++    None /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn compact_output(output: &CommandOutput) -> String {
+     let combined = format!("{}{}", output.stderr, output.stdout);
+     combined
+         .lines()
+         .map(str::trim)
+         .find(|line| !line.is_empty())

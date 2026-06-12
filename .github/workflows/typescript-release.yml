@@ -172,6 +172,9 @@ jobs:
       - name: Sync the Python implementation
         working-directory: .
         run: uv sync --frozen --directory python
+      - name: Full mutation sweep
+        run: npm run mutate
+
       - name: Validate shared conformance
         working-directory: .
         run: node scripts/check-conformance.mjs

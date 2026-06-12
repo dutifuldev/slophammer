@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/scope.rs
++++ delete ! in rust_files
+@@ -135,17 +135,17 @@
+ 
+ pub fn rust_files(snapshot: &Snapshot, paths: &[String], excludes: &[String]) -> Vec<String> {
+     let exclude_set = globset(excludes);
+     snapshot
+         .files
+         .keys()
+         .filter(|path| path.ends_with(".rs"))
+         .filter(|path| in_targets(path, paths))
+-        .filter(|path| !default_excluded(path))
++        .filter(|path|  /* ~ changed by cargo-mutants ~ */default_excluded(path))
+         .filter(|path| {
+             exclude_set
+                 .as_ref()
+                 .is_none_or(|set| !set.is_match(path.as_str()))
+         })
+         .cloned()
+         .collect()
+ }

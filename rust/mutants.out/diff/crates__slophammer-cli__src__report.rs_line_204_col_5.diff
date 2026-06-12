@@ -1,0 +1,31 @@
+--- crates/slophammer-cli/src/report.rs
++++ replace sarif_locations -> Vec<SarifLocation> with vec![]
+@@ -196,27 +196,17 @@
+ fn sarif_level(severity: Severity) -> &'static str {
+     match severity {
+         Severity::Warn => "warning",
+         Severity::Error => "error",
+     }
+ }
+ 
+ fn sarif_locations(path: &str) -> Vec<SarifLocation> {
+-    if path.is_empty() {
+-        return Vec::new();
+-    }
+-    vec![SarifLocation {
+-        physical_location: SarifPhysicalLocation {
+-            artifact_location: SarifArtifactLocation {
+-                uri: path.to_owned(),
+-            },
+-            region: SarifRegion { start_line: 1 },
+-        },
+-    }]
++    vec![] /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+     use crate::core::{Finding, Severity};
+ 
+     #[test]

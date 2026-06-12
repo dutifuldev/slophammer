@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/rust_rules/suppressions.rs
++++ delete ! in bare_allow_attribute
+@@ -39,17 +39,17 @@
+             return Some(index + 1);
+         }
+         previous_line_is_comment = trimmed.starts_with("//");
+     }
+     None
+ }
+ 
+ fn bare_allow_attribute(trimmed: &str, previous_line_is_comment: bool) -> bool {
+-    if !trimmed.starts_with("#[allow(") && !trimmed.starts_with("#![allow(") {
++    if !trimmed.starts_with("#[allow(") &&  /* ~ changed by cargo-mutants ~ */trimmed.starts_with("#![allow(") {
+         return false;
+     }
+     !previous_line_is_comment && !trimmed.contains("//") && !trimmed.contains("reason")
+ }
+ 
+ fn suppression_finding(path: &str, line: usize) -> Finding {
+     let template = definition(rule_ids::RUST_SUPPRESSIONS_JUSTIFIED);
+     Finding::with_message(

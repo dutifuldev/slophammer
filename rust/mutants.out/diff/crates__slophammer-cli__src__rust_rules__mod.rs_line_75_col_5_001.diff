@@ -1,0 +1,24 @@
+--- crates/slophammer-cli/src/rust_rules/mod.rs
++++ replace repo_readme -> Vec<Finding> with vec![Default::default()]
+@@ -67,20 +67,17 @@
+         }
+         rule_ids::RUST_SUPPRESSIONS_JUSTIFIED => rust_suppressions(snapshot),
+         rule_ids::RUST_SCOPE_INCOMPLETE => scope::scope_findings(snapshot, config),
+         _ => Vec::new(),
+     }
+ }
+ 
+ fn repo_readme(snapshot: &Snapshot) -> Vec<Finding> {
+-    missing(
+-        !snapshot.has_case_insensitive("README.md"),
+-        rule_ids::README_REQUIRED,
+-    )
++    vec![Default::default()] /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn repo_agents(snapshot: &Snapshot) -> Vec<Finding> {
+     missing(
+         !snapshot.has_case_insensitive("AGENTS.md"),
+         rule_ids::AGENTS_REQUIRED,
+     )
+ }

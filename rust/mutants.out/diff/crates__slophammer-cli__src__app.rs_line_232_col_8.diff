@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/app.rs
++++ delete ! in expand_only_rule_ids
+@@ -224,17 +224,17 @@
+     if !raw.is_empty() && expanded.is_empty() {
+         return Err(AppError::EmptyOnlyRule);
+     }
+     let unknown: Vec<&str> = expanded
+         .iter()
+         .filter(|rule_id| !crate::rust_rules::known_rule(rule_id))
+         .map(String::as_str)
+         .collect();
+-    if !unknown.is_empty() {
++    if  /* ~ changed by cargo-mutants ~ */unknown.is_empty() {
+         return Err(AppError::UnknownRule(unknown.join(", ")));
+     }
+     Ok(expanded)
+ }
+ 
+ fn command_root(root: &str) -> &str {
+     if root.is_empty() { "." } else { root }
+ }

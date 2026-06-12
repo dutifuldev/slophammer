@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/config.rs
++++ replace != with == in validate
+@@ -378,17 +378,17 @@
+     if let Some(complexity) = &rust.complexity {
+         if complexity.cognitive_max > 8 {
+             return Err(ConfigError::Validation(
+                 "rust complexity cognitive_max must be at most 8".to_owned(),
+             ));
+         }
+     }
+     if let Some(dry) = &rust.dry {
+-        if dry.max_findings != 0 {
++        if dry.max_findings == /* ~ changed by cargo-mutants ~ */ 0 {
+             return Err(ConfigError::Validation(
+                 "rust dry max_findings must be 0 for production code".to_owned(),
+             ));
+         }
+         if let Some(copied_blocks) = &dry.copied_blocks {
+             if copied_blocks.min_tokens == 0 {
+                 return Err(ConfigError::Validation(
+                     "rust dry copied_blocks min_tokens must be positive".to_owned(),

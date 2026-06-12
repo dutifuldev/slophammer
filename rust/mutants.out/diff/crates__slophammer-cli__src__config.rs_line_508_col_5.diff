@@ -1,0 +1,32 @@
+--- crates/slophammer-cli/src/config.rs
++++ replace rust_dry_paths -> Vec<String> with vec![]
+@@ -500,28 +500,17 @@
+     config
+         .rust
+         .as_ref()
+         .and_then(|rust| rust.coverage.as_ref().map(|coverage| coverage.threshold))
+         .unwrap_or(85)
+ }
+ 
+ pub fn rust_dry_paths(config: &Config) -> Vec<String> {
+-    config
+-        .rust
+-        .as_ref()
+-        .and_then(|rust| rust.dry.as_ref())
+-        .map(|dry| {
+-            if dry.paths.is_empty() {
+-                rust_targets(config)
+-            } else {
+-                dry.paths.clone()
+-            }
+-        })
+-        .unwrap_or_else(|| rust_targets(config))
++    vec![] /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ pub fn rust_dry_exclude(config: &Config) -> Vec<String> {
+     config
+         .rust
+         .as_ref()
+         .and_then(|rust| rust.dry.as_ref())
+         .map(|dry| exclude_patterns(&dry.exclude))

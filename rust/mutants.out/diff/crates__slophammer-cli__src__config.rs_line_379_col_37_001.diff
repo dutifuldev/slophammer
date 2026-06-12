@@ -1,0 +1,21 @@
+--- crates/slophammer-cli/src/config.rs
++++ replace > with < in validate
+@@ -371,17 +371,17 @@
+     if let Some(threshold) = coverage_threshold {
+         if threshold < 85 {
+             return Err(ConfigError::Validation(
+                 "rust coverage threshold must be at least 85".to_owned(),
+             ));
+         }
+     }
+     if let Some(complexity) = &rust.complexity {
+-        if complexity.cognitive_max > 8 {
++        if complexity.cognitive_max < /* ~ changed by cargo-mutants ~ */ 8 {
+             return Err(ConfigError::Validation(
+                 "rust complexity cognitive_max must be at most 8".to_owned(),
+             ));
+         }
+     }
+     if let Some(dry) = &rust.dry {
+         if dry.max_findings != 0 {
+             return Err(ConfigError::Validation(

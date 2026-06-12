@@ -1,0 +1,24 @@
+--- crates/slophammer-cli/src/exec.rs
++++ replace execute_rust_checks -> Vec<Finding> with vec![]
+@@ -41,20 +41,17 @@
+ }
+ 
+ pub fn execute_rust_checks(
+     snapshot: &Snapshot,
+     config: &Config,
+     only_rule_ids: &[String],
+     runner: &impl Runner,
+ ) -> Vec<Finding> {
+-    rust_workspace_roots(snapshot)
+-        .into_iter()
+-        .flat_map(|root| execute_workspace(snapshot, config, only_rule_ids, runner, root))
+-        .collect()
++    vec![] /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn execute_workspace(
+     snapshot: &Snapshot,
+     config: &Config,
+     only_rule_ids: &[String],
+     runner: &impl Runner,
+     workspace_root: String,

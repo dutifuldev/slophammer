@@ -1,0 +1,26 @@
+--- crates/slophammer-cli/src/rust_rules/scope.rs
++++ replace default_excluded -> bool with false
+@@ -170,22 +170,17 @@
+     targets.is_empty()
+         || targets.iter().any(|target| {
+             let normalized = target.trim_end_matches('/');
+             normalized == "." || path == normalized || path.starts_with(&format!("{normalized}/"))
+         })
+ }
+ 
+ fn default_excluded(path: &str) -> bool {
+-    path.starts_with("fixtures/")
+-        || path.starts_with("templates/")
+-        || path.contains("/fixtures/")
+-        || path.contains("/target/")
+-        || path.contains("/node_modules/")
+-        || path.ends_with("_test.rs")
++    false /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn globset(patterns: &[String]) -> Option<GlobSet> {
+     if patterns.is_empty() {
+         return None;
+     }
+     let mut builder = GlobSetBuilder::new();
+     for pattern in patterns {
