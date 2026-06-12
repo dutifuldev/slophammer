@@ -354,12 +354,32 @@ checker and the multi-language dispatcher — comes later.
      The existing `templates/python` stays a template; the checker is new
      code held to Slophammer's own gates (coverage ≥ 85, complexity ≤ 8,
      DRY 0, mutation declared).
-   - The checker's own typechecker is `ty` (Astral). Its gradual-guarantee
-     defaults pass unannotated code, so the gate configures the rule
-     severities that make missing annotations errors; if ty cannot yet
-     express that or is not stable enough to pin in CI when implementation
-     starts, run ty alongside a strict fallback checker until it can,
-     rather than dropping the requirement.
+   - The checker's own typechecker is `ty` (Astral), configured to the
+     same contract it enforces (below). ty has no annotation-coverage rule
+     (verified against ty source at 0.0.49): it checks the annotations you
+     wrote but never requires you to write them. That gap closes with
+     Ruff's ANN rule selection (every function annotated, no `Any` in
+     public signatures), which rides on the already-required Ruff gate
+     instead of a second typechecker.
+   - The ty strictness contract `py.types-strict-required` enforces, in
+     full: no stable default-error rule demoted below error (in `ty.toml`,
+     `[tool.ty]`, or `--warn`/`--ignore` invocation flags) except through a
+     reasoned severity override in `slophammer.yml`;
+     `error-on-warning = true` (or the flag) so warn-tier rules block;
+     these ignore-default rules promoted to error: `missing-type-argument`,
+     `possibly-missing-attribute`, `possibly-unresolved-reference`,
+     `possibly-missing-import`. Preview rules are never required, and
+     unknown rule names are tolerated in both directions so checker
+     upgrades do not break gates. The default-severity table ships as
+     generated spec data (`specs/ty-rules.json`: rule, default level,
+     stability), extracted from ty's source by a script; refreshing it is
+     part of bumping the supported ty version.
+   - Tool configuration is evidence, not just CI commands: the checker
+     parses `ty.toml`/`[tool.ty]`, mypy config, and pyright config, plus
+     severity flags on the CI invocation, because that is where quiet
+     weakening happens. Evidence matchers are uv-native (`uv run`, `uvx`,
+     `uv sync --frozen`/`--locked`), and a frozen lockfile counts as the
+     toolchain pinning evidence for pre-1.0 tools like ty.
    - Rule set `py.*` at TypeScript parity: `py.project-required`
      (`pyproject.toml`), `py.typecheck-required` (ty, mypy, or pyright —
      ty recognized from day one, including its `# ty: ignore[rule]`
@@ -383,8 +403,14 @@ checker and the multi-language dispatcher — comes later.
    - Config: a `python:` section in the shared nested shape; validators in
      the other three checkers learn its allowed keys, exactly as they
      cross-validate each other today.
-   - Conformance: `python-clean`, per-rule `python-missing-*` fixtures, and
-     a `python-bad-dependency` fixture, all registered in
+   - The conventional non-production list gains `migrations/` for Python
+     (Alembic and Django migrations are as standard a carve-out as
+     `testdata/` is for Go); other production-matching excludes keep
+     needing reasons.
+   - Conformance: `python-clean`, per-rule `python-missing-*` fixtures, a
+     `python-bad-dependency` fixture, plus weakened-typechecking negatives
+     (`python-demoted-rule`: a default-error ty rule set to ignore;
+     `python-soft-warnings`: no `error-on-warning`), all registered in
      `scripts/check-conformance.mjs`; specs `rules.json`/`RULES.md` grow the
      `py.*` rows.
    - Release: PyPI package `slophammer-py` via trusted publishing, a
