@@ -353,7 +353,15 @@ checker and the multi-language dispatcher — comes later.
      same internal boundaries: CLI → app → scan → config → rules → report).
      The existing `templates/python` stays a template; the checker is new
      code held to Slophammer's own gates (coverage ≥ 85, complexity ≤ 8,
-     DRY 0, mutation declared).
+     DRY 0, mutation declared). Runtime decisions, fixed here: Python
+     3.12 minimum, uv as the dev and build tool with a committed frozen
+     lockfile, and PyYAML as the single runtime dependency (safe_load
+     only), matching the one-YAML-library rule the other implementations
+     follow.
+   - Full report-contract parity, explicitly including the baseline
+     ratchet: `--baseline` and `--baseline-write` with identical
+     subset/superset/stale semantics and exit codes, since conformance
+     runs the three baseline cases against every implementation.
    - The checker's own typechecker is `ty` (Astral), configured to the
      same contract it enforces (below). ty has no annotation-coverage rule
      (verified against ty source at 0.0.49): it checks the annotations you
@@ -430,7 +438,9 @@ checker and the multi-language dispatcher — comes later.
      `python-bad-dependency` fixture, plus weakened-typechecking negatives
      (`python-demoted-rule`: a default-error ty rule set to ignore;
      `python-soft-warnings`: no `error-on-warning`), all registered in
-     `scripts/check-conformance.mjs`; specs `rules.json`/`RULES.md` grow the
+     `scripts/check-conformance.mjs`, which invokes the checker
+     deterministically via `uv run --directory python slophammer-py`
+     against the frozen lockfile; specs `rules.json`/`RULES.md` grow the
      `py.*` rows.
    - Release: PyPI package `slophammer-py` via trusted publishing, a
      `python-release.yml` workflow cloned from the TypeScript one (tag
