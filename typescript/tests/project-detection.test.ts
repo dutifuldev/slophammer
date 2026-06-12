@@ -416,12 +416,9 @@ function nestedPackageWithoutPackageFile(): readonly {
     { path: "AGENTS.md", content: "# Agents\n" },
     { path: ".github/workflows/ci.yml", content: singlePackageDefaultWorkflow("packages/app") },
     { path: "package.json", content: JSON.stringify({ scripts: { test: "echo ok" } }) },
+    { path: "stryker.conf.json", content: '{"thresholds":{"high":70,"low":50,"break":50}}' },
     { path: "packages/app/src/index.ts", content: "export const value: number = 1;\n" },
     { path: "packages/app/tsconfig.json", content: strictTSConfig() },
-    {
-      path: "packages/app/stryker.conf.json",
-      content: '{"thresholds":{"high":70,"low":50,"break":50}}'
-    },
     { path: "packages/app/eslint.config.mjs", content: eslintConfig() },
     { path: "packages/app/vitest.config.ts", content: coverageConfig() }
   ];

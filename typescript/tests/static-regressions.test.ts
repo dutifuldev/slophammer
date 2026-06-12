@@ -303,6 +303,23 @@ describe("TypeScript mutation threshold regressions", () => {
     }
   });
 
+  it("does not accept a subdirectory stryker config the run never loads", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles().filter((file) => file.path !== "stryker.conf.json"),
+        {
+          path: "docs/stryker.conf.json",
+          content: '{"thresholds":{"high":70,"low":50,"break":50}}'
+        },
+        packageWithScripts({ mutate: "stryker run" }),
+        enabledESLintConfig()
+      ]),
+      emptyConfig()
+    );
+
+    expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.mutation-required");
+  });
+
   it("accepts an uncommented breaking threshold in a js config", () => {
     const report = runRules(
       newSnapshot("/repo", [

@@ -21,16 +21,18 @@ export function hasTypeScriptMutationCommand(snapshot: Snapshot): boolean {
   );
 }
 
+// Stryker loads its config from the directory it runs in, so only a
+// config at the project root can gate the credited run; a copy under
+// docs/ or another subdirectory is never loaded.
 function hasStrykerBreakThreshold(snapshot: Snapshot): boolean {
   for (const file of snapshot.files.values()) {
-    if (ignoredProjectDataPath(file.path)) {
+    if (file.path.includes("/") || ignoredProjectDataPath(file.path)) {
       continue;
     }
-    const name = file.path.split("/").at(-1) ?? "";
-    if (!/^stryker\.(?:conf|config)\./u.test(name)) {
+    if (!/^stryker\.(?:conf|config)\./u.test(file.path)) {
       continue;
     }
-    if (strykerConfigDeclaresBreak(file.content, name)) {
+    if (strykerConfigDeclaresBreak(file.content, file.path)) {
       return true;
     }
   }
