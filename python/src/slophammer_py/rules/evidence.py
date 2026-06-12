@@ -113,10 +113,10 @@ def has_coverage_config_threshold(snapshot: Snapshot, threshold: int) -> bool:
     return configured is not None and configured >= threshold
 
 
+# radon cc is report-only and exits zero on complex code, so it is not a
+# gate; xenon is its gating frontend.
 def has_complexity_command(snapshot: Snapshot) -> bool:
-    return any_segment(snapshot, tool_pattern("radon") + r" cc\b") or any_segment(
-        snapshot, tool_pattern("xenon")
-    )
+    return any_segment(snapshot, tool_pattern("xenon"))
 
 
 def has_dry_command(snapshot: Snapshot) -> bool:

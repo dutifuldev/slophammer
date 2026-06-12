@@ -16,7 +16,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from importlib import resources
 
-from ..config import Config
+from ..config import Config, conventional_exclude_pattern
 from ..repo import Snapshot
 from .evidence import snapshot_segments
 
@@ -187,7 +187,8 @@ MYPY_STRICT_FLAGS = ("disallow_untyped_defs", "disallow_incomplete_defs", "check
 
 def mypy_strict(snapshot: Snapshot) -> bool:
     if any(
-        re.search(r"\bmypy\b[^\n]* --strict\b", segment) for segment in snapshot_segments(snapshot)
+        re.search(r"\bmypy\b[^\n]* --strict(?=\s|$)", segment)
+        for segment in snapshot_segments(snapshot)
     ):
         return True
     section = pyproject_tool(snapshot, "mypy")
@@ -288,11 +289,27 @@ def ruff_selects(snapshot: Snapshot, code: str) -> bool:
         return False
     for key in ("ignore", "extend-ignore"):
         ignored = config.get(key)
-        if isinstance(ignored, list) and any(
-            str(item).startswith(code) or code.startswith(str(item)) for item in ignored
-        ):
+        if isinstance(ignored, list) and any(overlapping_code(item, code) for item in ignored):
             return False
-    return True
+    return not production_per_file_ignore(config, code)
+
+
+def overlapping_code(item: object, code: str) -> bool:
+    return str(item).startswith(code) or code.startswith(str(item))
+
+
+# Per-file ignores on conventional non-production paths (tests, migrations)
+# are normal; on production paths they carve the family out of enforcement.
+def production_per_file_ignore(config: Mapping[str, object], code: str) -> bool:
+    ignores = as_mapping(config.get("per-file-ignores"))
+    for pattern, codes in ignores.items():
+        if not isinstance(codes, list):
+            continue
+        if not any(overlapping_code(item, code) for item in codes):
+            continue
+        if not conventional_exclude_pattern(str(pattern)):
+            return True
+    return False
 
 
 def ruff_complexity_limit(snapshot: Snapshot) -> int | None:
@@ -315,15 +332,25 @@ def coverage_fail_under(snapshot: Snapshot) -> float | None:
     return None
 
 
-def builds_package(snapshot: Snapshot) -> bool:
+# Each built package needs its own marker: a tests/py.typed elsewhere in a
+# monorepo does nothing for consumers of an unmarked sibling package.
+def packaged_dirs_without_typed_marker(snapshot: Snapshot) -> list[str]:
+    missing: list[str] = []
+    for directory in dict.fromkeys(["", *project_dirs(snapshot)]):
+        path = f"{directory}/pyproject.toml" if directory else "pyproject.toml"
+        pyproject = file_toml(snapshot, path)
+        if "build-system" not in pyproject or "project" not in pyproject:
+            continue
+        if not has_typed_marker_under(snapshot, directory):
+            missing.append(path)
+    return missing
+
+
+def has_typed_marker_under(snapshot: Snapshot, directory: str) -> bool:
+    prefix = f"{directory}/" if directory else ""
     return any(
-        "build-system" in pyproject and "project" in pyproject
-        for pyproject in project_pyprojects(snapshot)
+        path.startswith(prefix) and path.rsplit("/", 1)[-1] == "py.typed" for path in snapshot.files
     )
-
-
-def has_typed_marker(snapshot: Snapshot) -> bool:
-    return any(path.endswith("/py.typed") or path == "py.typed" for path in snapshot.files)
 
 
 def as_mapping(value: object) -> Mapping[str, object]:

@@ -290,7 +290,12 @@ fn validate_python_section(value: &Value) -> Result<(), ConfigError> {
 
 fn validate_value_keys(value: &Value, field: &str, allowed: &[&str]) -> Result<(), ConfigError> {
     let Some(mapping) = value.as_mapping() else {
-        return Ok(());
+        if matches!(value, Value::Null) {
+            return Ok(());
+        }
+        return Err(ConfigError::Validation(format!(
+            "{field} must be a mapping"
+        )));
     };
     for (key, _) in mapping {
         let name = key.as_str().unwrap_or_default();

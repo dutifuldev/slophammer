@@ -185,9 +185,15 @@ def complexity_findings(
 
 
 def typed_marker_findings(definition: Definition, snapshot: Snapshot) -> list[Finding]:
-    if not toolconfig.builds_package(snapshot) or toolconfig.has_typed_marker(snapshot):
-        return []
-    return [finding(definition)]
+    return [
+        Finding(
+            rule_id=definition.id,
+            severity=definition.severity,
+            path=pyproject_path,
+            message=definition.message,
+        )
+        for pyproject_path in toolconfig.packaged_dirs_without_typed_marker(snapshot)
+    ]
 
 
 def types_strict_findings(

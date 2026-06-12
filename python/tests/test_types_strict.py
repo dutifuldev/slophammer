@@ -133,6 +133,38 @@ class TestMypy:
     def test_strict_mypy_passes(self):
         assert rule_ids(report_for(mypy_repo(), only=ONLY)) == []
 
+    def test_strict_optional_flag_is_not_strict(self):
+        files = mypy_repo(strict_section="")
+        files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
+            "uv run mypy src", "uv run mypy --strict-optional src"
+        )
+        assert "strict" in messages(files)
+
+    def test_strict_cli_flag_counts(self):
+        files = mypy_repo(strict_section="")
+        files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
+            "uv run mypy src", "uv run mypy --strict src"
+        )
+        assert rule_ids(report_for(files, only=ONLY)) == []
+
+    def test_production_per_file_ignores_are_weakening(self):
+        files = clean_python_repo(
+            {
+                "pyproject.toml": STRICT_PYPROJECT
+                + '\n[tool.ruff.lint.per-file-ignores]\n"src/**" = ["ANN"]\n'
+            }
+        )
+        assert "ANN" in messages(files)
+
+    def test_test_scope_per_file_ignores_are_conventional(self):
+        files = clean_python_repo(
+            {
+                "pyproject.toml": STRICT_PYPROJECT
+                + '\n[tool.ruff.lint.per-file-ignores]\n"tests/**" = ["ANN"]\n'
+            }
+        )
+        assert rule_ids(report_for(files, only=ONLY)) == []
+
     def test_unstrict_mypy_is_a_finding(self):
         files = mypy_repo(strict_section="[tool.mypy]\npretty = true\n")
         assert "strict" in messages(files)

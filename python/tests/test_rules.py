@@ -208,11 +208,17 @@ class TestGateRules:
         ids = rule_ids(report_for(files, only=["py.project-required"]))
         assert ids == ["py.project-required"]
 
-    def test_complexity_via_radon_command(self):
+    def test_complexity_via_xenon_command(self):
         files = clean_python_repo({"pyproject.toml": '[project]\nname = "demo"\nversion = "0"\n'})
-        files[".github/workflows/ci.yml"] += "      - run: uv run radon cc --max B src\n"
+        files[".github/workflows/ci.yml"] += "      - run: uv run xenon --max-absolute B src\n"
         ids = rule_ids(report_for(files, only=["py.complexity-required"]))
         assert ids == []
+
+    def test_report_only_radon_is_not_a_gate(self):
+        files = clean_python_repo({"pyproject.toml": '[project]\nname = "demo"\nversion = "0"\n'})
+        files[".github/workflows/ci.yml"] += "      - run: uv run radon cc src\n"
+        ids = rule_ids(report_for(files, only=["py.complexity-required"]))
+        assert ids == ["py.complexity-required"]
 
     def test_complexity_missing_when_no_mccabe(self):
         files = clean_python_repo({"pyproject.toml": '[project]\nname = "demo"\nversion = "0"\n'})
@@ -237,6 +243,23 @@ class TestTypedMarker:
     def test_applications_are_exempt(self):
         ids = rule_ids(report_for(clean_python_repo(), only=["py.typed-marker-required"]))
         assert ids == []
+
+    def test_each_package_needs_its_own_marker(self):
+        packaged = (
+            '[project]\nname = "pkg"\nversion = "0"\n'
+            '[build-system]\nrequires = ["hatchling"]\nbuild-backend = "hatchling.build"\n'
+        )
+        files = clean_python_repo(
+            {
+                "packages/one/pyproject.toml": packaged,
+                "packages/one/src/one/__init__.py": "",
+                "packages/one/src/one/py.typed": "",
+                "packages/two/pyproject.toml": packaged,
+                "packages/two/src/two/__init__.py": "",
+            }
+        )
+        report = report_for(files, only=["py.typed-marker-required"])
+        assert [finding.path for finding in report.findings] == ["packages/two/pyproject.toml"]
 
 
 class TestSeverityOverrides:
