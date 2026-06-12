@@ -281,7 +281,12 @@ describe("TypeScript mutation threshold regressions", () => {
     const weakConfigs = [
       { path: "stryker.conf.mjs", content: "// thresholds: { break: 50 }\nexport default {};\n" },
       { path: "stryker.conf.json", content: '{"thresholds":{"break":50}' },
-      { path: "stryker.conf.json", content: '{"thresholds":{"break":0}}' }
+      { path: "stryker.conf.json", content: '{"thresholds":{"break":0}}' },
+      { path: "stryker.conf.json", content: '{"dryRunOnly":true,"thresholds":{"break":50}}' },
+      {
+        path: "stryker.conf.mjs",
+        content: "export default { dryRunOnly: true, thresholds: { break: 50 } };\n"
+      }
     ];
     for (const config of weakConfigs) {
       const report = runRules(

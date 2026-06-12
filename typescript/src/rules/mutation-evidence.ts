@@ -39,14 +39,21 @@ function hasStrykerBreakThreshold(snapshot: Snapshot): boolean {
 
 // JSON configs are parsed so malformed files never count; JS configs are
 // matched after stripping comments so a commented-out threshold is not
-// credited.
+// credited. A config that turns on dryRunOnly never executes a mutant,
+// so its threshold does not gate anything.
 function strykerConfigDeclaresBreak(content: string, name: string): boolean {
   if (name.endsWith(".json")) {
-    const thresholds = asRecord(asRecord(parsedJSON(content))["thresholds"]);
-    const breakValue = thresholds["break"];
+    const config = asRecord(parsedJSON(content));
+    if (config["dryRunOnly"] === true) {
+      return false;
+    }
+    const breakValue = asRecord(config["thresholds"])["break"];
     return typeof breakValue === "number" && breakValue > 0;
   }
   const stripped = content.replace(/\/\*[\s\S]*?\*\//gu, "").replace(/\/\/[^\n]*/gu, "");
+  if (/\bdryRunOnly["']?\s*:\s*true\b/u.test(stripped)) {
+    return false;
+  }
   const match = /\bbreak["']?\s*:\s*(\d+(?:\.\d+)?)/u.exec(stripped);
   return match?.[1] !== undefined && Number(match[1]) > 0;
 }

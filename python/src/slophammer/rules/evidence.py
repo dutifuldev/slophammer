@@ -216,7 +216,13 @@ def has_gated_cosmic_ray(snapshot: Snapshot) -> bool:
         for segment in snapshot_segments(snapshot)
     ):
         return False
-    return any_segment(snapshot, tool_pattern("cr-rate") + r"[^\n]*--fail-over\b")
+    # cr-rate fails when the survival rate exceeds the maximum, and the
+    # rate cannot exceed 100, so a threshold of 100 or more never fails.
+    gate = re.compile(tool_pattern("cr-rate") + r"[^\n]*--fail-over[= ]+(\d+(?:\.\d+)?)")
+    return any(
+        (match := gate.search(segment)) is not None and float(match.group(1)) < 100
+        for segment in snapshot_segments(snapshot)
+    )
 
 
 def has_audit_command(snapshot: Snapshot) -> bool:

@@ -440,6 +440,19 @@ class TestGateRules:
         ids = rule_ids(report_for(files, only=["py.mutation-required"]))
         assert ids == []
 
+    def test_cosmic_ray_fail_over_at_hundred_is_not_evidence(self):
+        files = clean_python_repo()
+        files[".github/workflows/ci.yml"] = (
+            files[".github/workflows/ci.yml"]
+            .replace("uv run mutmut run", "uv run cosmic-ray exec config.toml session.sqlite")
+            .replace(
+                "uv run python scripts/check-mutation.py --min-kill-rate 74",
+                "uv run cr-rate --fail-over 100 session.sqlite",
+            )
+        )
+        ids = rule_ids(report_for(files, only=["py.mutation-required"]))
+        assert ids == ["py.mutation-required"]
+
     def test_cosmic_ray_exec_without_rate_gate_is_not_evidence(self):
         files = clean_python_repo()
         files[".github/workflows/ci.yml"] = (
