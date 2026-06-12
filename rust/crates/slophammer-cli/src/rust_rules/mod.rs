@@ -374,6 +374,31 @@ mod tests {
     use std::path::PathBuf;
 
     #[test]
+    fn run_rule_dispatches_mutation_and_dry_rules() {
+        let snapshot = Snapshot {
+            root: PathBuf::from("."),
+            files: BTreeMap::from([(
+                "Cargo.toml".to_owned(),
+                RepoFile {
+                    path: "Cargo.toml".to_owned(),
+                    content: "[package]\nname = \"x\"\n".to_owned(),
+                },
+            )]),
+        };
+        let config = Config::default();
+        let mutation = run_rule(rule_ids::RUST_MUTATION_REQUIRED, &snapshot, &config);
+        assert_eq!(
+            mutation.len(),
+            1,
+            "mutation rule must dispatch through run_rule"
+        );
+        assert_eq!(mutation[0].rule_id, rule_ids::RUST_MUTATION_REQUIRED);
+        let dry = run_rule(rule_ids::RUST_DRY_REQUIRED, &snapshot, &config);
+        assert_eq!(dry.len(), 1, "dry rule must dispatch through run_rule");
+        assert_eq!(dry[0].rule_id, rule_ids::RUST_DRY_REQUIRED);
+    }
+
+    #[test]
     fn list_only_mutation_commands_are_not_evidence() {
         let workflow = "name: CI\non: [push]\njobs:\n  ci:\n    steps:\n      - run: cargo mutants --workspace --list\n";
         let snapshot = Snapshot {

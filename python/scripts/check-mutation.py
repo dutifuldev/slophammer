@@ -36,10 +36,21 @@ def main() -> int:
         check=False,
     )
     output = completed.stdout + completed.stderr
+    if completed.returncode != 0:
+        sys.stderr.write(output)
+        sys.stderr.write(
+            f"mutation gate failed: mutmut exited {completed.returncode}\n"
+        )
+        return 2
     stats = last_stats(output)
     if stats is None:
         sys.stderr.write(output)
         sys.stderr.write("mutation gate failed: no mutmut statistics found\n")
+        return 2
+    if stats["done"] != stats["total"]:
+        sys.stderr.write(
+            f"mutation gate failed: only {stats['done']} of {stats['total']} mutants ran\n"
+        )
         return 2
 
     caught = stats["killed"] + stats["timeout"]

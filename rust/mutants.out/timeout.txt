@@ -1,2 +1,0 @@
-crates/slophammer-cli/src/rust_rules/boundaries.rs:172:20: replace == with != in ancestor_manifest_paths
-crates/slophammer-cli/src/rust_rules/evidence.rs:81:27: replace + with * in contains_word

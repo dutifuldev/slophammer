@@ -28,3 +28,8 @@ python/.coverage
 python/.ruff_cache/
 __pycache__/
 *.egg-info/
+
+# Mutation testing output
+rust/mutants.out/
+typescript/reports/
+typescript/.stryker-tmp/

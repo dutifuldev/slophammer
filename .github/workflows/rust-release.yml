@@ -148,7 +148,7 @@ jobs:
             echo "no previous rust release tag; skipping diff-scoped mutation"
             exit 0
           fi
-          git diff "$previous"...HEAD -- . > /tmp/release.diff
+          git -c diff.mnemonicPrefix=false diff --relative "$previous"...HEAD -- . > /tmp/release.diff
           if [ ! -s /tmp/release.diff ]; then
             echo "no rust changes since $previous"
             exit 0

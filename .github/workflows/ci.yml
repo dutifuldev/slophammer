@@ -236,7 +236,7 @@ jobs:
             echo "no changed code to mutate"
             exit 0
           fi
-          git diff "$base"...HEAD -- . > /tmp/pr.diff
+          git -c diff.mnemonicPrefix=false diff --relative "$base"...HEAD -- . > /tmp/pr.diff
           if [ ! -s /tmp/pr.diff ]; then
             echo "no changed code to mutate"
             exit 0
