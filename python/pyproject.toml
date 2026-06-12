@@ -81,6 +81,7 @@ also_copy = [
     "src/slophammer_py/dry.py",
     "src/slophammer_py/report.py",
     "src/slophammer_py/scan.py",
+    "src/slophammer_py/toolchecks.py",
     "src/slophammer_py/ty_rules.json",
     "src/slophammer_py/py.typed",
 ]
