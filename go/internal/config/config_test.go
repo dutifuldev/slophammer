@@ -489,6 +489,7 @@ func TestLoadRejectsUnknownConfigKeys(t *testing.T) {
 		{name: "python typecheck", content: "python:\n  typecheck:\n    made_up: true\n", want: "python.typecheck.made_up"},
 		{name: "python demotion", content: "python:\n  typecheck:\n    demotions:\n      - rule: deprecated\n        made_up: true\n", want: "python.typecheck.demotions[0].made_up"},
 		{name: "python boundary", content: "python:\n  dependency_boundaries:\n    - from: src/app\n      made_up: true\n", want: "python.dependency_boundaries[0].made_up"},
+		{name: "python dry exclude", content: "python:\n  dry:\n    exclude:\n      - pattern: src/**\n        made_up: true\n", want: "python.dry.exclude[0].made_up"},
 		{name: "rust", content: "rust:\n  made_up: true\n", want: "rust.made_up"},
 		{name: "rust dry", content: "rust:\n  dry:\n    made_up: true\n", want: "rust.dry.made_up"},
 		{name: "rust unsafe allow", content: "rust:\n  unsafe:\n    allow:\n      - path: src/lib.rs\n        made_up: true\n", want: "rust.unsafe.allow[0].made_up"},

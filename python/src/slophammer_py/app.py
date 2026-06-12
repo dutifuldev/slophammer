@@ -37,16 +37,16 @@ def check(
 
 
 def finish_check(root: str, report: Report, output_format: str, baseline: str) -> CommandResult:
-    extra = ""
     if baseline == "write":
-        extra = write_baseline(root, report)
+        summary = write_baseline(root, report)
         report = apply_baseline_check(root, report)
-    elif baseline == "check":
+        return CommandResult(code=0 if report.ok else 1, stdout=summary)
+    if baseline == "check":
         report = apply_baseline_check(root, report)
     body = format_report(report, output_format)
-    if baseline != "off" and output_format == "text":
+    if baseline == "check" and output_format == "text":
         body += debt_line(report)
-    return CommandResult(code=0 if report.ok else 1, stdout=extra + body)
+    return CommandResult(code=0 if report.ok else 1, stdout=body)
 
 
 def format_report(report: Report, output_format: str) -> str:

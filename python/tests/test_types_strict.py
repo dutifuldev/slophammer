@@ -169,15 +169,13 @@ class TestMypy:
         files = mypy_repo(strict_section="[tool.mypy]\npretty = true\n")
         assert "strict" in messages(files)
 
-    def test_disallow_untyped_defs_flags_count_as_strict(self):
-        files = mypy_repo(
-            strict_section=(
-                "[tool.mypy]\n"
-                "disallow_untyped_defs = true\n"
-                "disallow_incomplete_defs = true\n"
-                "check_untyped_defs = true\n"
-            )
-        )
+    def test_disallow_untyped_defs_alone_counts_as_strict(self):
+        files = mypy_repo(strict_section="[tool.mypy]\ndisallow_untyped_defs = true\n")
+        assert rule_ids(report_for(files, only=ONLY)) == []
+
+    def test_mypy_ini_disallow_untyped_defs_counts(self):
+        files = mypy_repo(strict_section="")
+        files["mypy.ini"] = "[mypy]\ndisallow_untyped_defs = True\n"
         assert rule_ids(report_for(files, only=ONLY)) == []
 
     def test_pydantic_without_plugin_is_a_finding(self):

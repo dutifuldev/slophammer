@@ -554,6 +554,9 @@ func validateCopiedBlockDryKeys(node *yaml.Node, field string) error {
 			if key == "copied_blocks" {
 				return validateMappingKeys(value, field+".copied_blocks", set("enabled", "min_tokens"), nil)
 			}
+			if key == "exclude" {
+				return validateExcludeEntryKeys(value, field+".exclude")
+			}
 			return nil
 		},
 	)

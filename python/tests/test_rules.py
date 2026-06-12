@@ -75,6 +75,20 @@ class TestCleanRepo:
         assert report.findings == []
         assert report.ok
 
+    def test_conventional_pyprojects_are_not_python_projects(self):
+        report = report_for(
+            {
+                "README.md": "# Demo\n",
+                "AGENTS.md": "# Agents\n",
+                ".github/workflows/ci.yml": (
+                    "name: CI\non: [push]\njobs:\n  c:\n    steps:\n      - run: true\n"
+                ),
+                "tests/pyproject.toml": '[project]\nname = "fixture"\nversion = "0"\n',
+                "scripts/pyproject.toml": '[project]\nname = "tooling"\nversion = "0"\n',
+            }
+        )
+        assert report.findings == []
+
     def test_repo_without_python_skips_python_rules(self):
         report = report_for(
             {
@@ -244,6 +258,15 @@ class TestTypedMarker:
         ids = rule_ids(report_for(clean_python_repo(), only=["py.typed-marker-required"]))
         assert ids == []
 
+    def test_marker_under_tests_does_not_count(self):
+        build_system = (
+            '[build-system]\nrequires = ["hatchling"]\nbuild-backend = "hatchling.build"\n'
+        )
+        files = clean_python_repo({"pyproject.toml": STRICT_PYPROJECT + "\n" + build_system})
+        files["tests/py.typed"] = ""
+        ids = rule_ids(report_for(files, only=["py.typed-marker-required"]))
+        assert ids == ["py.typed-marker-required"]
+
     def test_each_package_needs_its_own_marker(self):
         packaged = (
             '[project]\nname = "pkg"\nversion = "0"\n'
@@ -371,6 +394,24 @@ class TestBoundaries:
                 "src/__init__.py": "",
                 "src/demo/main.py": "from .. import config\n",
                 "src/config/__init__.py": "",
+            }
+        )
+        ids = rule_ids(report_for(files, only=["py.dependency-boundaries-required"]))
+        assert ids == []
+
+    def test_from_import_alias_resolving_to_allowed_submodule(self):
+        files = clean_python_repo(
+            {
+                "slophammer.yml": (
+                    "python:\n"
+                    "  dependency_boundaries:\n"
+                    "    - from: src/demo/feature\n"
+                    "      allow:\n"
+                    "        - src/demo/config\n"
+                ),
+                "src/demo/feature/__init__.py": "",
+                "src/demo/feature/x.py": "from demo import config\n",
+                "src/demo/config/__init__.py": "",
             }
         )
         ids = rule_ids(report_for(files, only=["py.dependency-boundaries-required"]))

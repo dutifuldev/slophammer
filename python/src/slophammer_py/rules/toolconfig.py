@@ -57,6 +57,8 @@ def file_toml(snapshot: Snapshot, path: str) -> Mapping[str, object]:
 
 
 IGNORED_PROJECT_SEGMENTS = {
+    "tests",
+    "test",
     "fixtures",
     "templates",
     "testdata",
@@ -64,6 +66,10 @@ IGNORED_PROJECT_SEGMENTS = {
     "vendor",
     "dist",
     "build",
+    "coverage",
+    "target",
+    "scripts",
+    "migrations",
 }
 
 
@@ -182,9 +188,6 @@ def typechecker_in_use(snapshot: Snapshot) -> str | None:
     return None
 
 
-MYPY_STRICT_FLAGS = ("disallow_untyped_defs", "disallow_incomplete_defs", "check_untyped_defs")
-
-
 def mypy_strict(snapshot: Snapshot) -> bool:
     if any(
         re.search(r"\bmypy\b[^\n]* --strict(?=\s|$)", segment)
@@ -192,9 +195,7 @@ def mypy_strict(snapshot: Snapshot) -> bool:
     ):
         return True
     section = pyproject_tool(snapshot, "mypy")
-    if section.get("strict") is True:
-        return True
-    if all(section.get(flag) is True for flag in MYPY_STRICT_FLAGS) and section:
+    if section.get("strict") is True or section.get("disallow_untyped_defs") is True:
         return True
     return mypy_ini_strict(snapshot)
 
@@ -214,7 +215,7 @@ def mypy_ini_strict(snapshot: Snapshot) -> bool:
             continue
         if parser.getboolean("mypy", "strict", fallback=False):
             return True
-        if all(parser.getboolean("mypy", flag, fallback=False) for flag in MYPY_STRICT_FLAGS):
+        if parser.getboolean("mypy", "disallow_untyped_defs", fallback=False):
             return True
     return False
 
@@ -346,11 +347,17 @@ def packaged_dirs_without_typed_marker(snapshot: Snapshot) -> list[str]:
     return missing
 
 
+# Markers under conventional non-production paths (tests, fixtures) do not
+# type the published package.
 def has_typed_marker_under(snapshot: Snapshot, directory: str) -> bool:
     prefix = f"{directory}/" if directory else ""
-    return any(
-        path.startswith(prefix) and path.rsplit("/", 1)[-1] == "py.typed" for path in snapshot.files
-    )
+    for path in snapshot.files:
+        if not path.startswith(prefix) or path.rsplit("/", 1)[-1] != "py.typed":
+            continue
+        relative_segments = set(path[len(prefix) :].split("/")[:-1])
+        if not relative_segments & IGNORED_PROJECT_SEGMENTS:
+            return True
+    return False
 
 
 def as_mapping(value: object) -> Mapping[str, object]:

@@ -141,6 +141,12 @@ class TestCheckIntegration:
         assert "baseline written: 3 finding(s)" in result.stdout
         assert check(str(tmp_path), baseline="check").code == 0
 
+    def test_baseline_write_prints_only_the_summary(self, tmp_path: Path):
+        result = check(str(tmp_path), output_format="json", baseline="write")
+        assert result.code == 0
+        assert result.stdout.startswith("baseline written:")
+        assert "{" not in result.stdout
+
     def test_sarif_marks_baselined_findings_suppressed(self, tmp_path: Path):
         check(str(tmp_path), baseline="write")
         result = check(str(tmp_path), output_format="sarif", baseline="check")

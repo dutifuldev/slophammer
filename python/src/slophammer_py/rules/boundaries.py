@@ -68,8 +68,8 @@ def first_violation(
     boundary: DependencyBoundary,
     roots: list[str],
 ) -> str | None:
-    for module in imported_modules(content, file_path):
-        resolved = resolve_module(snapshot, module, roots)
+    for candidates in imported_module_candidates(content, file_path):
+        resolved = resolve_first(snapshot, candidates, roots)
         if resolved is None:
             continue
         if not allowed_target(resolved, boundary):
@@ -77,30 +77,36 @@ def first_violation(
     return None
 
 
-def imported_modules(content: str, file_path: str) -> list[str]:
+def resolve_first(snapshot: Snapshot, candidates: list[str], roots: list[str]) -> str | None:
+    for candidate in candidates:
+        resolved = resolve_module(snapshot, candidate, roots)
+        if resolved is not None:
+            return resolved
+    return None
+
+
+# Each import yields candidates from most to least specific: in
+# `from X import name`, the alias may itself be a local submodule (X.name),
+# and only when no alias form resolves is the package base judged.
+def imported_module_candidates(content: str, file_path: str) -> list[list[str]]:
     try:
         tree = ast.parse(content)
     except SyntaxError:
         return []
-    modules: list[str] = []
+    candidates: list[list[str]] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            modules.extend(alias.name for alias in node.names)
+            candidates.extend([alias.name] for alias in node.names)
         elif isinstance(node, ast.ImportFrom):
-            modules.extend(resolve_import_from(node, file_path))
-    return [module for module in modules if module]
+            candidates.extend(import_from_candidates(node, file_path))
+    return [group for group in candidates if any(group)]
 
 
-# `from .. import config` carries no module, only aliases; each alias is the
-# imported module, so the parent package alone must not be judged.
-def resolve_import_from(node: ast.ImportFrom, file_path: str) -> list[str]:
+def import_from_candidates(node: ast.ImportFrom, file_path: str) -> list[list[str]]:
     base = import_from_base(node, file_path)
-    if node.module is not None:
-        return [base]
-    if node.level == 0:
+    if not base:
         return []
-    prefix = f"{base}." if base else ""
-    return [f"{prefix}{alias.name}" for alias in node.names]
+    return [[f"{base}.{alias.name}", base] for alias in node.names]
 
 
 def import_from_base(node: ast.ImportFrom, file_path: str) -> str:

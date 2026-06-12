@@ -313,8 +313,9 @@ fn validate_value_entries(
     field: &str,
     allowed: &[&str],
 ) -> Result<(), ConfigError> {
-    let Some(entries) = value.and_then(Value::as_sequence) else {
-        return Ok(());
+    let entries = match value_sequence(value, field)? {
+        Some(entries) => entries,
+        None => return Ok(()),
     };
     for (index, entry) in entries.iter().enumerate() {
         validate_value_keys(entry, &format!("{field}[{index}]"), allowed)?;
@@ -322,9 +323,28 @@ fn validate_value_entries(
     Ok(())
 }
 
+/// A present but non-sequence value is a shape error, matching the other
+/// implementations; absent and null values are fine.
+fn value_sequence<'a>(
+    value: Option<&'a Value>,
+    field: &str,
+) -> Result<Option<&'a Vec<Value>>, ConfigError> {
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    if matches!(value, Value::Null) {
+        return Ok(None);
+    }
+    value
+        .as_sequence()
+        .map(Some)
+        .ok_or_else(|| ConfigError::Validation(format!("{field} must be a sequence")))
+}
+
 fn validate_value_excludes(value: Option<&Value>, field: &str) -> Result<(), ConfigError> {
-    let Some(entries) = value.and_then(Value::as_sequence) else {
-        return Ok(());
+    let entries = match value_sequence(value, field)? {
+        Some(entries) => entries,
+        None => return Ok(()),
     };
     for (index, entry) in entries.iter().enumerate() {
         if entry.as_str().is_some() {
@@ -542,6 +562,18 @@ mod tests {
     fn rejects_unknown_rust_keys() {
         let error = parse("rust:\n  surprise: true\n").unwrap_err();
         assert!(error.to_string().contains("unknown field"));
+    }
+
+    #[test]
+    fn rejects_malformed_python_shapes() {
+        let scalar = parse("python: 8\n").unwrap_err();
+        assert!(scalar.to_string().contains("python must be a mapping"));
+        let entries = parse("python:\n  typecheck:\n    demotions: yes\n").unwrap_err();
+        assert!(
+            entries
+                .to_string()
+                .contains("python.typecheck.demotions must be a sequence")
+        );
     }
 
     #[test]
