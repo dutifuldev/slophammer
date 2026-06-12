@@ -29,7 +29,6 @@ go install github.com/dutifuldev/slophammer/go/cmd/slophammer-go@latest
 npm install -g slophammer-ts
 cargo install slophammer-rs --locked
 uv tool install slophammer-py
-uv tool install slophammer
 ```
 
 Then point it at a repository:
@@ -55,7 +54,6 @@ go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.3.0 check .
 npx slophammer-ts@0.3.0 check .
 cargo install slophammer-rs --version 0.3.0 --locked
 uvx slophammer-py@0.3.0 check .
-uvx slophammer@0.3.0 check .
 ```
 
 The simplest CI integration is the bundled GitHub Action, which requires an
@@ -104,8 +102,8 @@ exact checker version you verified against in CI; do not install latest.
 - Four released implementations of that spec: `slophammer-go`,
   `slophammer-ts` on npm, `slophammer-rs` on crates.io, and `slophammer-py`
   on PyPI.
-- A bare `slophammer` PyPI command package that delegates to the pinned
-  Python checker release without claiming the `import slophammer` namespace.
+- A reserved bare `slophammer` PyPI placeholder that does not claim the
+  `import slophammer` namespace.
 - Go, TypeScript, and Python project templates with strict local checks.
 - A reference for project structure, testing, errors, reporting, and CI.
 - A source of patterns for agents working in different language ecosystems.
@@ -120,9 +118,9 @@ exact checker version you verified against in CI; do not install latest.
 ## The Checkers
 
 Slophammer is the standard; implementations carry short language-specific
-names. The bare `slophammer` PyPI package is command-only. The Python checker
-ships as `slophammer-py` but owns the `import slophammer` namespace, so the
-bare package stays outside that import namespace.
+names. The bare `slophammer` PyPI package is currently a placeholder. The
+Python checker ships as `slophammer-py` but owns the `import slophammer`
+namespace, so the bare package stays outside that import namespace.
 
 | Language   | Command         | Status                                  |
 | ---------- | --------------- | --------------------------------------- |
@@ -130,7 +128,7 @@ bare package stays outside that import namespace.
 | TypeScript | `slophammer-ts` | Released to npm                          |
 | Rust       | `slophammer-rs` | Released to crates.io                    |
 | Python     | `slophammer-py` | Released to PyPI                         |
-| Bare PyPI  | `slophammer`    | Delegates to the pinned Python checker   |
+| Bare PyPI  | `slophammer`    | Reserved placeholder                     |
 
 The language suffix names the implementation and packaging target, not a hard
 limit on what the checker inspects. Each implementation is best at its native
@@ -320,10 +318,14 @@ Run `make check` from the repo root to run the same gates CI runs, or a
 per-language target such as `make check-go`. CI also runs every checker
 against this repository itself, so Slophammer must pass Slophammer before
 anything merges. Release tags (`go/vX.Y.Z`, `typescript/vX.Y.Z`,
-`rust/vX.Y.Z`) drive workflows that validate, publish, and create the
+`rust/vX.Y.Z`, `python/vX.Y.Z`, and `python-placeholder/vX.Y.Z`) drive workflows
+that validate, publish, and create the
 [GitHub releases](https://github.com/dutifuldev/slophammer/releases); the
 release policy and shared architecture live in [Product](specs/PRODUCT.md) and
 [Implementation Model](docs/IMPLEMENTATION_MODEL.md).
+
+The bare PyPI placeholder release uses `python/utils/slophammer-placeholder` and
+publishes with the repository secret `PYPI_API_TOKEN`.
 
 ## Guardrail Principles
 

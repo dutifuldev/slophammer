@@ -5,7 +5,10 @@ from __future__ import annotations
 import sys
 from importlib import metadata
 
-from slophammer.cli import main as run_python_checker
+PLACEHOLDER_MESSAGE = (
+    "slophammer is reserved for the future umbrella dispatcher. "
+    "Use slophammer-py for the current Python checker.\n"
+)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -13,7 +16,8 @@ def main(argv: list[str] | None = None) -> int:
         argv = sys.argv[1:]
     if argv == ["--version"]:
         return print_version()
-    return run_python_checker(argv)
+    sys.stderr.write(PLACEHOLDER_MESSAGE)
+    return 2
 
 
 def print_version() -> int:

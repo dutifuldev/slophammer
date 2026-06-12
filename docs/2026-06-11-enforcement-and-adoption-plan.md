@@ -463,9 +463,9 @@ checker and the multi-language dispatcher — comes later.
    the Python checker's distribution is `slophammer-py` but its import
    package is `slophammer`, so the dispatcher must stay command-only — its
    command is `slophammer`, and it never claims the Python import
-   namespace. The first bare PyPI release is a command-only alias package
-   pinned to the Python checker release; the full dispatcher can replace that
-   implementation in a later release:
+   namespace. The first bare PyPI release is a `0.0.0` placeholder to reserve
+   the package name; the full dispatcher can replace that implementation in a
+   later release:
 
    - Detection by ecosystem markers, reusing the spec's project-detection
      semantics: `go.mod` → `slophammer-go`, TypeScript signals →

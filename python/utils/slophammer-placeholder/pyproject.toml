@@ -1,12 +1,12 @@
 [project]
 name = "slophammer"
-version = "0.3.0"
-description = "Command entry point for Slophammer"
+version = "0.0.0"
+description = "Reserved placeholder for the Slophammer command"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
 authors = [{ name = "dutifuldev" }]
-dependencies = ["slophammer-py==0.3.0"]
+dependencies = []
 
 [project.urls]
 Homepage = "https://github.com/dutifuldev/slophammer"
