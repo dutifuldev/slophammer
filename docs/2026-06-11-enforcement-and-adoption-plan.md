@@ -358,9 +358,17 @@ checker and the multi-language dispatcher — comes later.
      same contract it enforces (below). ty has no annotation-coverage rule
      (verified against ty source at 0.0.49): it checks the annotations you
      wrote but never requires you to write them. That gap closes with
-     Ruff's ANN rule selection (every function annotated, no `Any` in
-     public signatures), which rides on the already-required Ruff gate
-     instead of a second typechecker.
+     Ruff's ANN rule selection riding on the already-required Ruff gate
+     instead of a second typechecker: every production function signature
+     fully annotated — parameters (ANN001-ANN003) and returns
+     (ANN201-ANN206), private helpers included — and no `Any` in
+     signatures (ANN401). Locals are never required (inference is checked
+     against the annotated signature), `self`/`cls` are exempt (Ruff
+     deprecated ANN101/ANN102), tests are exempt via per-file-ignores that
+     count as conventional, and genuinely dynamic boundaries escape with
+     `# noqa: ANN401 -- reason`, which `py.suppressions-justified` keeps
+     honest. Signatures always, locals never, tests exempt, escapes
+     reasoned.
    - The ty strictness contract `py.types-strict-required` enforces, in
      full: no stable default-error rule demoted below error (in `ty.toml`,
      `[tool.ty]`, or `--warn`/`--ignore` invocation flags) except through a
