@@ -287,60 +287,6 @@ describe("executeTypeScriptChecks package managers", () => {
     expect(calls[0]).toBe("yarn format");
   });
 
-  it("runs optional mutation checks when configured", async () => {
-    const root = await packageFixture({ ...requiredScripts(), mutate: "stryker run" });
-    const calls: string[] = [];
-    const runner: Runner = {
-      run: (_cwd, command, args) => {
-        calls.push([command, ...args].join(" "));
-        return Promise.resolve(
-          args.includes("mutate") ? { code: 1, stdout: "mutation failed", stderr: "" } : ok()
-        );
-      }
-    };
-
-    const findings = await executeTypeScriptChecks(root, runner);
-
-    expect(calls).toContain("npm run mutate");
-    expect(calls.join("\n")).not.toContain("--dryRunOnly");
-    expect(findings[0]?.rule_id).toBe("ts.mutation-required");
-    expect(findings[0]?.message).toContain("mutation gate failed");
-  });
-
-  it("runs noncanonical pure mutation checks", async () => {
-    const root = await packageFixture({ ...requiredScripts(), mutation: "stryker run" });
-    const calls: string[] = [];
-    const runner: Runner = {
-      run: (_cwd, command, args) => {
-        calls.push([command, ...args].join(" "));
-        return Promise.resolve(ok());
-      }
-    };
-
-    await executeTypeScriptChecks(root, runner);
-
-    expect(calls).toContain("npm run mutation");
-  });
-
-  it("does not run missing TypeScript mutation command placeholders", async () => {
-    const root = await packageFixture({
-      ...requiredScripts(),
-      mutate: "slophammer typescript mutate ."
-    });
-    const calls: string[] = [];
-    const runner: Runner = {
-      run: (_cwd, command, args) => {
-        calls.push([command, ...args].join(" "));
-        return Promise.resolve(ok());
-      }
-    };
-
-    const findings = await executeTypeScriptChecks(root, runner);
-
-    expect(findings).toEqual([]);
-    expect(calls.join("\n")).not.toContain("npm run mutate");
-  });
-
   it("runs optional complexity checks when configured", async () => {
     const root = await packageFixture({
       ...requiredScripts(),
@@ -398,3 +344,79 @@ function ok(): CommandResult {
 function silentRunner(): Runner {
   return { run: () => Promise.resolve(ok()) };
 }
+
+describe("executeTypeScriptChecks mutation", () => {
+  it("runs optional mutation checks when configured", async () => {
+    const root = await packageFixture({ ...requiredScripts(), mutate: "stryker run" });
+    const calls: string[] = [];
+    const runner: Runner = {
+      run: (_cwd, command, args) => {
+        calls.push([command, ...args].join(" "));
+        return Promise.resolve(
+          args.includes("mutate") ? { code: 1, stdout: "mutation failed", stderr: "" } : ok()
+        );
+      }
+    };
+
+    const findings = await executeTypeScriptChecks(root, runner);
+
+    expect(calls).toContain("npm run mutate");
+    expect(calls.join("\n")).not.toContain("--dryRunOnly");
+    expect(findings[0]?.rule_id).toBe("ts.mutation-required");
+    expect(findings[0]?.message).toContain("mutation gate failed");
+  });
+
+  it("runs noncanonical pure mutation checks", async () => {
+    const root = await packageFixture({ ...requiredScripts(), mutation: "stryker run" });
+    const calls: string[] = [];
+    const runner: Runner = {
+      run: (_cwd, command, args) => {
+        calls.push([command, ...args].join(" "));
+        return Promise.resolve(ok());
+      }
+    };
+
+    await executeTypeScriptChecks(root, runner);
+
+    expect(calls).toContain("npm run mutation");
+  });
+
+  it("selects the executing mutation script over a dry-run canonical one", async () => {
+    const root = await packageFixture({
+      ...requiredScripts(),
+      mutate: "stryker run --dryRunOnly",
+      mutation: "stryker run"
+    });
+    const calls: string[] = [];
+    const runner: Runner = {
+      run: (_cwd, command, args) => {
+        calls.push([command, ...args].join(" "));
+        return Promise.resolve(ok());
+      }
+    };
+
+    await executeTypeScriptChecks(root, runner);
+
+    expect(calls).toContain("npm run mutation");
+    expect(calls.join("\n")).not.toContain("npm run mutate\n");
+  });
+
+  it("does not run missing TypeScript mutation command placeholders", async () => {
+    const root = await packageFixture({
+      ...requiredScripts(),
+      mutate: "slophammer typescript mutate ."
+    });
+    const calls: string[] = [];
+    const runner: Runner = {
+      run: (_cwd, command, args) => {
+        calls.push([command, ...args].join(" "));
+        return Promise.resolve(ok());
+      }
+    };
+
+    const findings = await executeTypeScriptChecks(root, runner);
+
+    expect(findings).toEqual([]);
+    expect(calls.join("\n")).not.toContain("npm run mutate");
+  });
+});

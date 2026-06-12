@@ -68,7 +68,12 @@ function scriptChecks(): readonly ScriptCheck[] {
     // The static rule only credits executing mutation runs, so execute
     // mode must run the real script: a forced dry run cannot fail on a
     // surviving mutant.
-    optionalScriptCheck("mutate", ruleIDs.tsMutationRequired, "mutation gate failed", mutationCheck)
+    optionalScriptCheck(
+      "mutate",
+      ruleIDs.tsMutationRequired,
+      "mutation gate failed",
+      executingMutationCheck
+    )
   ];
 }
 
@@ -334,6 +339,12 @@ function dryCheck(content: string): boolean {
 
 function mutationCheck(content: string): boolean {
   return /\bstryker\b/u.test(content);
+}
+
+// Execute mode must select the same evidence the static rule accepts: an
+// executing `stryker run`, never a dry-run-only or non-run invocation.
+function executingMutationCheck(content: string): boolean {
+  return /\bstryker run\b/u.test(content) && !/--dry-?run-?only\b/u.test(content);
 }
 
 function placeholderTestCommand(content: string): boolean {

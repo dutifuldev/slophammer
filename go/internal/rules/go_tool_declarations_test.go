@@ -926,34 +926,6 @@ func TestSlophammerGoCommandArgsStartRejectionsReturnZero(t *testing.T) {
 	}
 }
 
-func TestUpdateManifestFalseFlagStaysExecuting(t *testing.T) {
-	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
-		"go.mod":                   {Path: "go.mod", Content: "module example.com/demo\n"},
-		".github/workflows/ci.yml": {Path: ".github/workflows/ci.yml", Content: "name: CI\non: [push]\njobs:\n  t:\n    steps:\n      - run: ./scripts/gate.sh\n"},
-		"scripts/gate.sh": {
-			Path:    "scripts/gate.sh",
-			Content: "slophammer-go mutate . --target main.go --update-manifest=false\n",
-		},
-	})
-	if !hasMutate4GoCommand(snapshot) {
-		t.Fatal("--update-manifest=false explicitly keeps the run executing and must stay credited")
-	}
-}
-
-func TestScanFalseFlagStaysExecuting(t *testing.T) {
-	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
-		"go.mod":                   {Path: "go.mod", Content: "module example.com/demo\n"},
-		".github/workflows/ci.yml": {Path: ".github/workflows/ci.yml", Content: "name: CI\non: [push]\njobs:\n  t:\n    steps:\n      - run: ./scripts/gate.sh\n"},
-		"scripts/gate.sh": {
-			Path:    "scripts/gate.sh",
-			Content: "slophammer-go mutate . --target main.go --scan=false\n",
-		},
-	})
-	if !hasMutate4GoCommand(snapshot) {
-		t.Fatal("--scan=false explicitly disables the scan and stays executing evidence")
-	}
-}
-
 func TestScanRejectionScopesToTheMatchedCommand(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
 		"go.mod":                   {Path: "go.mod", Content: "module example.com/demo\n"},
@@ -989,6 +961,8 @@ func TestScanOnlyMutationCommandsAreNotEvidence(t *testing.T) {
 		"go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --update-manifest\n",
 		"go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --update-manifest=true\n",
 		"slophammer-go mutate . --target main.go --update-manifest\n",
+		"slophammer-go mutate . --target main.go --scan=false\n",
+		"slophammer-go mutate . --target main.go --update-manifest=false\n",
 	}
 	for _, content := range contents {
 		snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
