@@ -216,33 +216,7 @@ describe("TypeScript tool evidence false positives", () => {
   });
 });
 
-describe("TypeScript command failure regressions", () => {
-  it("does not accept lint commands whose failures are ignored", () => {
-    const report = runRules(
-      newSnapshot("/repo", [
-        ...baseTypeScriptFiles(),
-        packageWithScripts({ lint: "eslint . || true" }),
-        enabledESLintConfig()
-      ]),
-      emptyConfig()
-    );
-
-    expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.lint-required");
-  });
-
-  it("does not accept DRY commands whose failures are ignored", () => {
-    const report = runRules(
-      newSnapshot("/repo", [
-        ...baseTypeScriptFiles(),
-        packageWithScripts({ dry: "slophammer typescript dry . || true" }),
-        enabledESLintConfig()
-      ]),
-      emptyConfig()
-    );
-
-    expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.dry-required");
-  });
-
+describe("TypeScript mutation evidence regressions", () => {
   it("does not accept missing TypeScript mutation command placeholders", () => {
     const report = runRules(
       newSnapshot("/repo", [
@@ -284,6 +258,36 @@ describe("TypeScript command failure regressions", () => {
     expect(report.findings.map((finding) => finding.rule_id)).not.toContain("ts.mutation-required");
   });
 
+  it("does not accept fixture stryker configs as the breaking threshold", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles().filter((file) => file.path !== "stryker.conf.json"),
+        {
+          path: "fixtures/demo/stryker.conf.json",
+          content: '{"thresholds":{"high":70,"low":50,"break":50}}'
+        },
+        packageWithScripts({ mutate: "stryker run" }),
+        enabledESLintConfig()
+      ]),
+      emptyConfig()
+    );
+
+    expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.mutation-required");
+  });
+
+  it("does not accept stryker runs without a breaking threshold", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles().filter((file) => file.path !== "stryker.conf.json"),
+        packageWithScripts({ mutate: "stryker run" }),
+        enabledESLintConfig()
+      ]),
+      emptyConfig()
+    );
+
+    expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.mutation-required");
+  });
+
   it("does not accept non-run stryker invocations", () => {
     for (const weak of ["stryker init", "stryker --help"]) {
       const report = runRules(
@@ -310,6 +314,34 @@ describe("TypeScript command failure regressions", () => {
     );
 
     expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.mutation-required");
+  });
+});
+
+describe("TypeScript command failure regressions", () => {
+  it("does not accept lint commands whose failures are ignored", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles(),
+        packageWithScripts({ lint: "eslint . || true" }),
+        enabledESLintConfig()
+      ]),
+      emptyConfig()
+    );
+
+    expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.lint-required");
+  });
+
+  it("does not accept DRY commands whose failures are ignored", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles(),
+        packageWithScripts({ dry: "slophammer typescript dry . || true" }),
+        enabledESLintConfig()
+      ]),
+      emptyConfig()
+    );
+
+    expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.dry-required");
   });
 
   it("checks import type expressions against dependency boundaries", () => {

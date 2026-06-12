@@ -176,15 +176,28 @@ KILL_RATE_FLOOR = re.compile(r"--min-kill-rate[= ]+(\d+(?:\.\d+)?)")
 
 # The flag only gates when it rides a mutation command and the floor can
 # actually fail: an unrelated command mentioning the flag, or a floor of
-# zero, is not evidence.
+# zero, is not evidence. A --stats-file invocation only parses a log, so
+# it counts only beside an executing mutmut run that produced the log.
 def has_kill_rate_gate(snapshot: Snapshot) -> bool:
     for segment in snapshot_segments(snapshot):
         if "mutmut" not in segment and "mutation" not in segment:
             continue
         match = KILL_RATE_FLOOR.search(segment)
-        if match is not None and float(match.group(1)) > 0:
-            return True
+        if match is None or float(match.group(1)) <= 0:
+            continue
+        if "--stats-file" in segment and not has_executing_mutmut_run(snapshot):
+            continue
+        return True
     return False
+
+
+def has_executing_mutmut_run(snapshot: Snapshot) -> bool:
+    cannot_fail = re.compile(r"--(?:list|dry-?run)")
+    run = re.compile(tool_pattern("mutmut") + r" run\b")
+    return any(
+        run.search(segment) and not cannot_fail.search(segment)
+        for segment in snapshot_segments(snapshot)
+    )
 
 
 def has_gated_cosmic_ray(snapshot: Snapshot) -> bool:

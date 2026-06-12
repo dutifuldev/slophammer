@@ -840,6 +840,9 @@ function hasTypeScriptMutationCommand(snapshot: Snapshot): boolean {
 
 function hasStrykerBreakThreshold(snapshot: Snapshot): boolean {
   for (const file of snapshot.files.values()) {
+    if (ignoredProjectDataPath(file.path)) {
+      continue;
+    }
     const name = file.path.split("/").at(-1) ?? "";
     if (!/^stryker\.(?:conf|config)\./u.test(name)) {
       continue;

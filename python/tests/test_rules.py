@@ -391,6 +391,30 @@ class TestGateRules:
             ids = rule_ids(report_for(files, only=["py.mutation-required"]))
             assert ids == ["py.mutation-required"], weak
 
+    def test_stats_file_gate_requires_an_executing_run(self):
+        files = clean_python_repo()
+        files[".github/workflows/ci.yml"] = (
+            files[".github/workflows/ci.yml"]
+            .replace("      - run: uv run mutmut run\n", "")
+            .replace(
+                "uv run python scripts/check-mutation.py --min-kill-rate 74",
+                "uv run python scripts/check-mutation.py --stats-file /tmp/mutmut.log"
+                " --min-kill-rate 74",
+            )
+        )
+        ids = rule_ids(report_for(files, only=["py.mutation-required"]))
+        assert ids == ["py.mutation-required"]
+
+    def test_stats_file_gate_beside_executing_run_counts(self):
+        files = clean_python_repo()
+        files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
+            "uv run python scripts/check-mutation.py --min-kill-rate 74",
+            "uv run python scripts/check-mutation.py --stats-file /tmp/mutmut.log"
+            " --min-kill-rate 74",
+        )
+        ids = rule_ids(report_for(files, only=["py.mutation-required"]))
+        assert ids == []
+
     def test_kill_rate_gate_alone_counts(self):
         # check-mutation.py runs mutmut itself when no stats file is given,
         # so the gate line is complete evidence on its own.
