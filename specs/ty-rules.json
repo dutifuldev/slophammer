@@ -1,482 +1,485 @@
 {
-  "abstract-method-in-final-class": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "ambiguous-protocol-member": {
-    "default_level": "warn",
-    "stability": "stable"
-  },
-  "assert-type-unspellable-subtype": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "call-abstract-method": {
-    "default_level": "error",
-    "stability": "preview"
-  },
-  "call-non-callable": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "call-top-callable": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "conflicting-declarations": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "conflicting-metaclass": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "cyclic-class-definition": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "cyclic-type-alias-definition": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "dataclass-field-order": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "deprecated": {
-    "default_level": "warn",
-    "stability": "stable"
-  },
-  "division-by-zero": {
-    "default_level": "ignore",
-    "stability": "stable"
-  },
-  "duplicate-base": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "duplicate-kw-only": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "empty-body": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "escape-character-in-forward-annotation": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "final-on-non-method": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "final-without-value": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "ignore-comment-unknown-rule": {
-    "default_level": "warn",
-    "stability": "stable"
-  },
-  "implicit-concatenated-string-type-annotation": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "inconsistent-mro": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "index-out-of-bounds": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "ineffective-final": {
-    "default_level": "warn",
-    "stability": "stable"
-  },
-  "instance-layout-conflict": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-argument-type": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-assignment": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-attribute-access": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-attribute-override": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-await": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-base": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-context-manager": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-dataclass": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-dataclass-override": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-declaration": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-enum-member-annotation": {
-    "default_level": "warn",
-    "stability": "stable"
-  },
-  "invalid-exception-caught": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-explicit-override": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-frozen-dataclass-subclass": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-generic-class": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-generic-enum": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-ignore-comment": {
-    "default_level": "warn",
-    "stability": "stable"
-  },
-  "invalid-key": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-legacy-positional-parameter": {
-    "default_level": "warn",
-    "stability": "stable"
-  },
-  "invalid-legacy-type-variable": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-match-pattern": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-metaclass": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-method-override": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-named-tuple": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-named-tuple-override": {
-    "default_level": "warn",
-    "stability": "stable"
-  },
-  "invalid-newtype": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-overload": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-parameter-default": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-paramspec": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-protocol": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-raise": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-return-type": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-super-argument": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-syntax-in-forward-annotation": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-total-ordering": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-type-alias-type": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-type-arguments": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-type-checking-constant": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-type-form": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-type-guard-call": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-type-guard-definition": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-type-variable-bound": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-type-variable-constraints": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-type-variable-default": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-typed-dict-field": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-typed-dict-header": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-typed-dict-statement": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "invalid-yield": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "isinstance-against-protocol": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "isinstance-against-typed-dict": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "mismatched-type-name": {
-    "default_level": "warn",
-    "stability": "stable"
-  },
-  "missing-argument": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "missing-override-decorator": {
-    "default_level": "ignore",
-    "stability": "preview"
-  },
-  "missing-type-argument": {
-    "default_level": "ignore",
-    "stability": "stable"
-  },
-  "missing-typed-dict-key": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "no-matching-overload": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "non-callable-init-subclass": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "not-iterable": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "not-subscriptable": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "override-of-final-method": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "override-of-final-variable": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "parameter-already-assigned": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "positional-only-parameter-as-kwarg": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "possibly-missing-attribute": {
-    "default_level": "ignore",
-    "stability": "stable"
-  },
-  "possibly-missing-implicit-call": {
-    "default_level": "warn",
-    "stability": "stable"
-  },
-  "possibly-missing-import": {
-    "default_level": "ignore",
-    "stability": "stable"
-  },
-  "possibly-missing-submodule": {
-    "default_level": "warn",
-    "stability": "stable"
-  },
-  "possibly-unresolved-reference": {
-    "default_level": "ignore",
-    "stability": "stable"
-  },
-  "raw-string-type-annotation": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "redundant-cast": {
-    "default_level": "warn",
-    "stability": "stable"
-  },
-  "redundant-final-classvar": {
-    "default_level": "warn",
-    "stability": "stable"
-  },
-  "shadowed-type-variable": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "static-assert-error": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "subclass-of-dataclass-with-order": {
-    "default_level": "warn",
-    "stability": "stable"
-  },
-  "subclass-of-final-class": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "super-call-in-named-tuple-method": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "too-many-positional-arguments": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "type-assertion-failure": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "unavailable-implicit-super-arguments": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "unbound-type-variable": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "undefined-reveal": {
-    "default_level": "warn",
-    "stability": "stable"
-  },
-  "unknown-argument": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "unresolved-attribute": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "unresolved-global": {
-    "default_level": "warn",
-    "stability": "stable"
-  },
-  "unresolved-import": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "unresolved-reference": {
-    "default_level": "warn",
-    "stability": "preview"
-  },
-  "unsupported-base": {
-    "default_level": "warn",
-    "stability": "stable"
-  },
-  "unsupported-bool-conversion": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "unsupported-dynamic-base": {
-    "default_level": "ignore",
-    "stability": "stable"
-  },
-  "unsupported-operator": {
-    "default_level": "error",
-    "stability": "stable"
-  },
-  "unused-awaitable": {
-    "default_level": "warn",
-    "stability": "preview"
-  },
-  "unused-ignore-comment": {
-    "default_level": "warn",
-    "stability": "stable"
-  },
-  "unused-type-ignore-comment": {
-    "default_level": "warn",
-    "stability": "stable"
-  },
-  "useless-overload-body": {
-    "default_level": "warn",
-    "stability": "stable"
-  },
-  "zero-stepsize-in-slice": {
-    "default_level": "error",
-    "stability": "stable"
+  "ty_version": "094025e",
+  "rules": {
+    "abstract-method-in-final-class": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "ambiguous-protocol-member": {
+      "default_level": "warn",
+      "stability": "stable"
+    },
+    "assert-type-unspellable-subtype": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "call-abstract-method": {
+      "default_level": "error",
+      "stability": "preview"
+    },
+    "call-non-callable": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "call-top-callable": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "conflicting-declarations": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "conflicting-metaclass": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "cyclic-class-definition": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "cyclic-type-alias-definition": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "dataclass-field-order": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "deprecated": {
+      "default_level": "warn",
+      "stability": "stable"
+    },
+    "division-by-zero": {
+      "default_level": "ignore",
+      "stability": "stable"
+    },
+    "duplicate-base": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "duplicate-kw-only": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "empty-body": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "escape-character-in-forward-annotation": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "final-on-non-method": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "final-without-value": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "ignore-comment-unknown-rule": {
+      "default_level": "warn",
+      "stability": "stable"
+    },
+    "implicit-concatenated-string-type-annotation": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "inconsistent-mro": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "index-out-of-bounds": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "ineffective-final": {
+      "default_level": "warn",
+      "stability": "stable"
+    },
+    "instance-layout-conflict": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-argument-type": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-assignment": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-attribute-access": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-attribute-override": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-await": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-base": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-context-manager": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-dataclass": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-dataclass-override": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-declaration": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-enum-member-annotation": {
+      "default_level": "warn",
+      "stability": "stable"
+    },
+    "invalid-exception-caught": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-explicit-override": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-frozen-dataclass-subclass": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-generic-class": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-generic-enum": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-ignore-comment": {
+      "default_level": "warn",
+      "stability": "stable"
+    },
+    "invalid-key": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-legacy-positional-parameter": {
+      "default_level": "warn",
+      "stability": "stable"
+    },
+    "invalid-legacy-type-variable": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-match-pattern": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-metaclass": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-method-override": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-named-tuple": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-named-tuple-override": {
+      "default_level": "warn",
+      "stability": "stable"
+    },
+    "invalid-newtype": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-overload": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-parameter-default": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-paramspec": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-protocol": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-raise": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-return-type": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-super-argument": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-syntax-in-forward-annotation": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-total-ordering": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-type-alias-type": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-type-arguments": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-type-checking-constant": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-type-form": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-type-guard-call": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-type-guard-definition": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-type-variable-bound": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-type-variable-constraints": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-type-variable-default": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-typed-dict-field": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-typed-dict-header": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-typed-dict-statement": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "invalid-yield": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "isinstance-against-protocol": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "isinstance-against-typed-dict": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "mismatched-type-name": {
+      "default_level": "warn",
+      "stability": "stable"
+    },
+    "missing-argument": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "missing-override-decorator": {
+      "default_level": "ignore",
+      "stability": "preview"
+    },
+    "missing-type-argument": {
+      "default_level": "ignore",
+      "stability": "stable"
+    },
+    "missing-typed-dict-key": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "no-matching-overload": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "non-callable-init-subclass": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "not-iterable": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "not-subscriptable": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "override-of-final-method": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "override-of-final-variable": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "parameter-already-assigned": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "positional-only-parameter-as-kwarg": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "possibly-missing-attribute": {
+      "default_level": "ignore",
+      "stability": "stable"
+    },
+    "possibly-missing-implicit-call": {
+      "default_level": "warn",
+      "stability": "stable"
+    },
+    "possibly-missing-import": {
+      "default_level": "ignore",
+      "stability": "stable"
+    },
+    "possibly-missing-submodule": {
+      "default_level": "warn",
+      "stability": "stable"
+    },
+    "possibly-unresolved-reference": {
+      "default_level": "ignore",
+      "stability": "stable"
+    },
+    "raw-string-type-annotation": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "redundant-cast": {
+      "default_level": "warn",
+      "stability": "stable"
+    },
+    "redundant-final-classvar": {
+      "default_level": "warn",
+      "stability": "stable"
+    },
+    "shadowed-type-variable": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "static-assert-error": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "subclass-of-dataclass-with-order": {
+      "default_level": "warn",
+      "stability": "stable"
+    },
+    "subclass-of-final-class": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "super-call-in-named-tuple-method": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "too-many-positional-arguments": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "type-assertion-failure": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "unavailable-implicit-super-arguments": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "unbound-type-variable": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "undefined-reveal": {
+      "default_level": "warn",
+      "stability": "stable"
+    },
+    "unknown-argument": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "unresolved-attribute": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "unresolved-global": {
+      "default_level": "warn",
+      "stability": "stable"
+    },
+    "unresolved-import": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "unresolved-reference": {
+      "default_level": "warn",
+      "stability": "preview"
+    },
+    "unsupported-base": {
+      "default_level": "warn",
+      "stability": "stable"
+    },
+    "unsupported-bool-conversion": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "unsupported-dynamic-base": {
+      "default_level": "ignore",
+      "stability": "stable"
+    },
+    "unsupported-operator": {
+      "default_level": "error",
+      "stability": "stable"
+    },
+    "unused-awaitable": {
+      "default_level": "warn",
+      "stability": "preview"
+    },
+    "unused-ignore-comment": {
+      "default_level": "warn",
+      "stability": "stable"
+    },
+    "unused-type-ignore-comment": {
+      "default_level": "warn",
+      "stability": "stable"
+    },
+    "useless-overload-body": {
+      "default_level": "warn",
+      "stability": "stable"
+    },
+    "zero-stepsize-in-slice": {
+      "default_level": "error",
+      "stability": "stable"
+    }
   }
 }

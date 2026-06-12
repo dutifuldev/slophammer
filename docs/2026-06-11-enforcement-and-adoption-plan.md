@@ -339,9 +339,50 @@ checker and the multi-language dispatcher — comes later.
    checkers, the paste block mentions pinning, and the README names the
    branch-protection boundary.
 
+## Follow-up: Mutation Reality
+
+10. [ ] Make mutation testing real in every ecosystem.
+
+   Three of the four implementations never execute a mutant: Go CI runs
+   `mutate --scan` (site counting, with a threshold warning nothing acts
+   on), TypeScript runs `stryker --dryRunOnly` (config validation), and
+   Rust runs `cargo mutants --list`. Only Python executes mutants, and it
+   exits 0 regardless of survivors. The rules permit this because
+   `*.mutation-required` accepts any declared invocation — the same
+   cannot-fail evidence the binding-CI work eliminated elsewhere.
+
+   Change, applying the binding-evidence principle to mutation:
+
+   - Rule matchers in all four implementations stop crediting forms that
+     cannot fail on a surviving mutant: `--list`, `--scan`,
+     `--dryRunOnly`, and equivalents are rejected; only executing
+     invocations count. Diff-scoped and incremental forms
+     (`cargo mutants --in-diff`, Stryker `--incremental`) count, because
+     they can fail.
+   - Own gates run real mutants per PR, fast form per tool: full mutmut
+     for Python (seconds), `cargo mutants --in-diff` for Rust, Stryker
+     incremental with a `thresholds.break` floor for TypeScript, and the
+     executing `mutate` mode on the configured targets for Go (the scan
+     threshold warning becomes fatal).
+   - Full-sweep mutation runs are `workflow_dispatch` workflows per
+     implementation, dispatched on demand — correctly non-binding under
+     the shared trigger semantics, since a dispatched diagnostic is not a
+     gate. The release workflows run the full sweep as part of release
+     validation, so every release is preceded by one with a human
+     watching.
+   - Python's surviving mutants (~548 at last run) get triaged enough to
+     set an honest initial kill-rate floor; a configurable
+     `mutation.minimum_kill_rate` ratchet (baseline-style, only rises) is
+     designed in a follow-up once per-tool reporting is understood.
+
+   Done when: every implementation's CI executes mutants on PRs and fails
+   on the tool's native gate, the matchers reject cannot-fail forms with
+   fixtures locking the behavior, and each release workflow runs a full
+   sweep.
+
 ## Phase 2: Cover More Languages (Later)
 
-8. [ ] Ship `slophammer-py`.
+8. [x] Ship `slophammer-py`.
 
    Python is the largest agent-coding ecosystem and the one planned
    implementation that does not exist; polyglot repositories with Python

@@ -25,6 +25,25 @@ LEVEL = re.compile(r"default_level:\s*Level::(\w+)")
 STATUS = re.compile(r"status:\s*LintStatus::(\w+)")
 
 
+def source_version(ty_source_root: Path) -> str:
+    """The ty version at the source checkout, from the ty crate metadata."""
+    import re as version_re
+    import subprocess
+
+    cargo = ty_source_root / "crates" / "ty" / "Cargo.toml"
+    if cargo.exists():
+        match = version_re.search(r'^version\s*=\s*"([^"]+)"', cargo.read_text(), version_re.M)
+        if match and match.group(1) != "0.0.0":
+            return match.group(1)
+    described = subprocess.run(
+        ["git", "-C", str(ty_source_root), "rev-parse", "--short", "HEAD"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return described.stdout.strip() or "unknown"
+
+
 def extract(ty_source_root: Path) -> dict[str, dict[str, str]]:
     text = "".join(
         (ty_source_root / name).read_text(encoding="utf-8")
@@ -50,11 +69,13 @@ def main() -> int:
         print(__doc__, file=sys.stderr)
         return 2
     repo_root = Path(__file__).resolve().parent.parent
-    rules = extract(Path(sys.argv[1]).expanduser())
+    source_root = Path(sys.argv[1]).expanduser()
+    rules = extract(source_root)
     if not rules:
         print("no rules extracted; wrong source root?", file=sys.stderr)
         return 1
-    serialized = json.dumps(rules, indent=2) + "\n"
+    document = {"ty_version": source_version(source_root), "rules": rules}
+    serialized = json.dumps(document, indent=2) + "\n"
     for destination in (
         repo_root / "specs" / "ty-rules.json",
         repo_root / "python" / "src" / "slophammer" / "ty_rules.json",

@@ -10,9 +10,10 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = [
-  "mypy>=1.10",
   "pytest>=8.0",
-  "ruff>=0.5"
+  "ruff>=0.5",
+  "ty>=0.0.9",
+  "typeguard>=4.3"
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -23,18 +24,32 @@ line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["A", "B", "C4", "E", "F", "I", "N", "PL", "RUF", "SIM", "TID", "UP"]
+select = ["A", "B", "C4", "E", "F", "I", "N", "ANN", "PL", "RUF", "SIM", "TID", "UP"]
 ignore = ["PLR2004"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"
 
-[tool.mypy]
-python_version = "3.12"
-strict = true
-disallow_any_explicit = true
-warn_unreachable = true
+[tool.ruff.lint.per-file-ignores]
+# Tests are exempt from annotation coverage by convention.
+"tests/**" = ["ANN"]
+
+# ty configured to the contract py.types-strict-required enforces.
+[tool.ty.terminal]
+error-on-warning = true
+
+[tool.ty.analysis]
+respect-type-ignore-comments = false
+
+[tool.ty.rules]
+missing-type-argument = "error"
+possibly-missing-attribute = "error"
+possibly-unresolved-reference = "error"
+possibly-missing-import = "error"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# typeguard verifies the annotations at runtime while the tests execute, so
+# a signature that lies about its types fails the suite.
+addopts = "--typeguard-packages=slophammer_template"
 

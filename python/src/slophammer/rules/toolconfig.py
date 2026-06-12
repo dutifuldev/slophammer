@@ -41,7 +41,10 @@ class TyContract:
 def load_ty_rules() -> Mapping[str, Mapping[str, str]]:
     content = resources.files("slophammer").joinpath("ty_rules.json").read_text("utf-8")
     parsed = json.loads(content)
-    return parsed if isinstance(parsed, dict) else {}
+    if not isinstance(parsed, dict):
+        return {}
+    rules = parsed.get("rules", parsed)
+    return rules if isinstance(rules, dict) else {}
 
 
 def parse_toml(content: str) -> Mapping[str, object]:
