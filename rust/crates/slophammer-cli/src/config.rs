@@ -196,6 +196,8 @@ struct RootConfig {
     #[serde(default)]
     typescript: Option<Value>,
     #[serde(default)]
+    python: Option<Value>,
+    #[serde(default)]
     rust: Option<RustConfig>,
 }
 
@@ -212,7 +214,7 @@ pub fn load(snapshot: &Snapshot) -> Result<Config, ConfigError> {
 
 pub fn parse(content: &str) -> Result<Config, ConfigError> {
     let root: RootConfig = yaml_serde::from_str(content)?;
-    let _known_sections = (&root.go, &root.typescript);
+    let _known_sections = (&root.go, &root.typescript, &root.python);
     let config = Config {
         rules: root.rules,
         rust: root.rust,
@@ -437,6 +439,8 @@ mod tests {
 go:
   ignored: true
 typescript:
+  ignored: true
+python:
   ignored: true
 rules:
   repo.readme-required:

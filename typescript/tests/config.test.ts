@@ -137,110 +137,128 @@ describe("loadConfig", () => {
   });
 });
 
+const unknownKeyCases = [
+  { name: "root", content: "made_up: true\n", want: "root.made_up" },
+  {
+    name: "rules",
+    content: "rules:\n  repo.readme-required:\n    made_up: true\n",
+    want: "rules.repo.readme-required.made_up"
+  },
+  { name: "typescript", content: "typescript:\n  made_up: true\n", want: "typescript.made_up" },
+  {
+    name: "typescript coverage",
+    content: "typescript:\n  coverage:\n    made_up: true\n",
+    want: "typescript.coverage.made_up"
+  },
+  {
+    name: "typescript dry",
+    content: "typescript:\n  dry:\n    made_up: true\n",
+    want: "typescript.dry.made_up"
+  },
+  {
+    name: "typescript copied blocks",
+    content: "typescript:\n  dry:\n    copied_blocks:\n      made_up: true\n",
+    want: "typescript.dry.copied_blocks.made_up"
+  },
+  {
+    name: "typescript boundary",
+    content: "typescript:\n  dependency_boundaries:\n    - from: src/app\n      made_up: true\n",
+    want: "typescript.dependency_boundaries[0].made_up"
+  },
+  { name: "ignored go", content: "go:\n  made_up: true\n", want: "go.made_up" },
+  { name: "ignored python", content: "python:\n  made_up: true\n", want: "python.made_up" },
+  {
+    name: "ignored python coverage",
+    content: "python:\n  coverage:\n    made_up: true\n",
+    want: "python.coverage.made_up"
+  },
+  {
+    name: "ignored python typecheck",
+    content: "python:\n  typecheck:\n    made_up: true\n",
+    want: "python.typecheck.made_up"
+  },
+  {
+    name: "ignored python demotion",
+    content:
+      "python:\n  typecheck:\n    demotions:\n      - rule: deprecated\n        made_up: true\n",
+    want: "python.typecheck.demotions[0].made_up"
+  },
+  {
+    name: "ignored go mutation",
+    content: "go:\n  mutation:\n    made_up: true\n",
+    want: "go.mutation.made_up"
+  },
+  {
+    name: "removed go mutation targets",
+    content: "go:\n  mutation_targets:\n    - main.go\n",
+    want: "go.mutation_targets"
+  },
+  {
+    name: "removed go coverage_threshold",
+    content: "go:\n  coverage_threshold: 85\n",
+    want: "go.coverage_threshold"
+  },
+  {
+    name: "removed typescript coverage_threshold",
+    content: "typescript:\n  coverage_threshold: 85\n",
+    want: "typescript.coverage_threshold"
+  },
+  {
+    name: "removed typescript complexity_max",
+    content: "typescript:\n  complexity_max: 8\n",
+    want: "typescript.complexity_max"
+  },
+  {
+    name: "removed typescript mutation_targets",
+    content: "typescript:\n  mutation_targets:\n    - src/rules.ts\n",
+    want: "typescript.mutation_targets"
+  },
+  {
+    name: "removed rust coverage_threshold",
+    content: "rust:\n  coverage_threshold: 85\n",
+    want: "rust.coverage_threshold"
+  },
+  {
+    name: "scalar typescript complexity",
+    content: "typescript:\n  complexity: 8\n",
+    want: "typescript.complexity must be a mapping"
+  },
+  {
+    name: "scalar typescript coverage",
+    content: "typescript:\n  coverage: 85\n",
+    want: "typescript.coverage must be a mapping"
+  },
+  {
+    name: "scalar go coverage",
+    content: "go:\n  coverage: 85\n",
+    want: "go.coverage must be a mapping"
+  },
+  {
+    name: "scalar rust coverage",
+    content: "rust:\n  coverage: 85\n",
+    want: "rust.coverage must be a mapping"
+  },
+  {
+    name: "scalar typescript section",
+    content: "typescript: 8\n",
+    want: "typescript must be a mapping"
+  },
+  { name: "ignored rust", content: "rust:\n  made_up: true\n", want: "rust.made_up" },
+  {
+    name: "ignored rust dry",
+    content: "rust:\n  dry:\n    made_up: true\n",
+    want: "rust.dry.made_up"
+  },
+  {
+    name: "ignored rust unsafe allow",
+    content: "rust:\n  unsafe:\n    allow:\n      - path: src/lib.rs\n        made_up: true\n",
+    want: "rust.unsafe.allow[0].made_up"
+  }
+];
+
 describe("loadConfig strict keys", () => {
   it("rejects unknown config keys", () => {
-    const cases = [
-      { name: "root", content: "made_up: true\n", want: "root.made_up" },
-      {
-        name: "rules",
-        content: "rules:\n  repo.readme-required:\n    made_up: true\n",
-        want: "rules.repo.readme-required.made_up"
-      },
-      { name: "typescript", content: "typescript:\n  made_up: true\n", want: "typescript.made_up" },
-      {
-        name: "typescript coverage",
-        content: "typescript:\n  coverage:\n    made_up: true\n",
-        want: "typescript.coverage.made_up"
-      },
-      {
-        name: "typescript dry",
-        content: "typescript:\n  dry:\n    made_up: true\n",
-        want: "typescript.dry.made_up"
-      },
-      {
-        name: "typescript copied blocks",
-        content: "typescript:\n  dry:\n    copied_blocks:\n      made_up: true\n",
-        want: "typescript.dry.copied_blocks.made_up"
-      },
-      {
-        name: "typescript boundary",
-        content:
-          "typescript:\n  dependency_boundaries:\n    - from: src/app\n      made_up: true\n",
-        want: "typescript.dependency_boundaries[0].made_up"
-      },
-      { name: "ignored go", content: "go:\n  made_up: true\n", want: "go.made_up" },
-      {
-        name: "ignored go mutation",
-        content: "go:\n  mutation:\n    made_up: true\n",
-        want: "go.mutation.made_up"
-      },
-      {
-        name: "removed go mutation targets",
-        content: "go:\n  mutation_targets:\n    - main.go\n",
-        want: "go.mutation_targets"
-      },
-      {
-        name: "removed go coverage_threshold",
-        content: "go:\n  coverage_threshold: 85\n",
-        want: "go.coverage_threshold"
-      },
-      {
-        name: "removed typescript coverage_threshold",
-        content: "typescript:\n  coverage_threshold: 85\n",
-        want: "typescript.coverage_threshold"
-      },
-      {
-        name: "removed typescript complexity_max",
-        content: "typescript:\n  complexity_max: 8\n",
-        want: "typescript.complexity_max"
-      },
-      {
-        name: "removed typescript mutation_targets",
-        content: "typescript:\n  mutation_targets:\n    - src/rules.ts\n",
-        want: "typescript.mutation_targets"
-      },
-      {
-        name: "removed rust coverage_threshold",
-        content: "rust:\n  coverage_threshold: 85\n",
-        want: "rust.coverage_threshold"
-      },
-      {
-        name: "scalar typescript complexity",
-        content: "typescript:\n  complexity: 8\n",
-        want: "typescript.complexity must be a mapping"
-      },
-      {
-        name: "scalar typescript coverage",
-        content: "typescript:\n  coverage: 85\n",
-        want: "typescript.coverage must be a mapping"
-      },
-      {
-        name: "scalar go coverage",
-        content: "go:\n  coverage: 85\n",
-        want: "go.coverage must be a mapping"
-      },
-      {
-        name: "scalar rust coverage",
-        content: "rust:\n  coverage: 85\n",
-        want: "rust.coverage must be a mapping"
-      },
-      {
-        name: "scalar typescript section",
-        content: "typescript: 8\n",
-        want: "typescript must be a mapping"
-      },
-      { name: "ignored rust", content: "rust:\n  made_up: true\n", want: "rust.made_up" },
-      {
-        name: "ignored rust dry",
-        content: "rust:\n  dry:\n    made_up: true\n",
-        want: "rust.dry.made_up"
-      },
-      {
-        name: "ignored rust unsafe allow",
-        content: "rust:\n  unsafe:\n    allow:\n      - path: src/lib.rs\n        made_up: true\n",
-        want: "rust.unsafe.allow[0].made_up"
-      }
-    ];
+    const cases = unknownKeyCases;
 
     for (const testCase of cases) {
       const snapshot = newSnapshot("/repo", [
@@ -256,7 +274,7 @@ describe("loadConfig strict keys", () => {
 });
 
 describe("loadConfig shared language sections", () => {
-  it("allows shared Go, TypeScript, and Rust config", () => {
+  it("allows shared Go, TypeScript, Python, and Rust config", () => {
     const snapshot = newSnapshot("/repo", [
       {
         path: "slophammer.yml",
@@ -280,6 +298,25 @@ describe("loadConfig shared language sections", () => {
           "      - go/internal/rules",
           "    exclude:",
           "      - go/internal/rules/generated/**",
+          "python:",
+          "  coverage:",
+          "    threshold: 85",
+          "    paths:",
+          "      - python/src",
+          "  complexity:",
+          "    max: 8",
+          "  dry:",
+          "    max_findings: 0",
+          "    copied_blocks:",
+          "      enabled: true",
+          "      min_tokens: 100",
+          "  mutation:",
+          "    targets:",
+          "      - python/src",
+          "  typecheck:",
+          "    demotions:",
+          "      - rule: deprecated",
+          "        reason: upstream false positive on decorators",
           "typescript:",
           "  coverage:",
           "    threshold: 85",
