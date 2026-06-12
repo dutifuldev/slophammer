@@ -173,6 +173,14 @@ def has_mutation_command(snapshot: Snapshot) -> bool:
 
 KILL_RATE_FLOOR = re.compile(r"--min-kill-rate[= ]+(\d+(?:\.\d+)?)")
 
+# A mutation gate in command position: a script or module whose name
+# mentions mutation/mutmut, optionally behind a runner and interpreter.
+# Echoed or logged text never sits in command position, so it never
+# counts.
+KILL_RATE_GATE_COMMAND = re.compile(
+    rf"^{ENV_PREFIX}{RUNNER_PREFIX}(?:python3? )?\S*(?:mutation|mutmut)\S*(?:\s|$)"
+)
+
 
 # The flag only gates when it rides a mutation command and the floor can
 # actually fail: an unrelated command mentioning the flag, or a floor of
@@ -180,7 +188,7 @@ KILL_RATE_FLOOR = re.compile(r"--min-kill-rate[= ]+(\d+(?:\.\d+)?)")
 # it counts only beside an executing mutmut run that produced the log.
 def has_kill_rate_gate(snapshot: Snapshot) -> bool:
     for segment in snapshot_segments(snapshot):
-        if "mutmut" not in segment and "mutation" not in segment:
+        if KILL_RATE_GATE_COMMAND.search(segment) is None:
             continue
         match = KILL_RATE_FLOOR.search(segment)
         if match is None or float(match.group(1)) <= 0:

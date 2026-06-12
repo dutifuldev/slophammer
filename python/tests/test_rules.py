@@ -379,6 +379,8 @@ class TestGateRules:
     def test_unanchored_or_zero_kill_rate_flags_are_not_evidence(self):
         weak_forms = (
             "echo --min-kill-rate 74",
+            "echo mutation --min-kill-rate 74",
+            "echo check-mutation.py --min-kill-rate 74",
             "uv run python scripts/check-mutation.py --min-kill-rate 0",
         )
         for weak in weak_forms:

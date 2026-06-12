@@ -274,6 +274,46 @@ describe("TypeScript mutation evidence regressions", () => {
 
     expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.mutation-required");
   });
+});
+
+describe("TypeScript mutation threshold regressions", () => {
+  it("does not accept commented-out or malformed breaking thresholds", () => {
+    const weakConfigs = [
+      { path: "stryker.conf.mjs", content: "// thresholds: { break: 50 }\nexport default {};\n" },
+      { path: "stryker.conf.json", content: '{"thresholds":{"break":50}' },
+      { path: "stryker.conf.json", content: '{"thresholds":{"break":0}}' }
+    ];
+    for (const config of weakConfigs) {
+      const report = runRules(
+        newSnapshot("/repo", [
+          ...baseTypeScriptFiles().filter((file) => file.path !== "stryker.conf.json"),
+          config,
+          packageWithScripts({ mutate: "stryker run" }),
+          enabledESLintConfig()
+        ]),
+        emptyConfig()
+      );
+
+      expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.mutation-required");
+    }
+  });
+
+  it("accepts an uncommented breaking threshold in a js config", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles().filter((file) => file.path !== "stryker.conf.json"),
+        {
+          path: "stryker.config.mjs",
+          content: "export default { thresholds: { high: 70, low: 50, break: 50 } };\n"
+        },
+        packageWithScripts({ mutate: "stryker run" }),
+        enabledESLintConfig()
+      ]),
+      emptyConfig()
+    );
+
+    expect(report.findings.map((finding) => finding.rule_id)).not.toContain("ts.mutation-required");
+  });
 
   it("does not accept stryker runs without a breaking threshold", () => {
     const report = runRules(

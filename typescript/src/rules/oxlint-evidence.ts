@@ -1,4 +1,5 @@
 import { commandFiles, filesNamed, type Snapshot } from "../repo/repo.js";
+import { asRecord, commandSegments } from "./command-content.js";
 import { expandedPackageScriptSegments, packageScripts } from "./package-scripts.js";
 import ts from "typescript";
 
@@ -197,26 +198,6 @@ function hasOxlintDenyWarnings(
           (options.requireTypeAware !== true || /--type-aware\b/u.test(segment))
       )
   );
-}
-
-function commandSegments(content: string): readonly string[] {
-  return content
-    .replaceAll("\\\n", " ")
-    .split(/\n|&&|;/u)
-    .map((segment) => normalizeCommandContent(segment).trim())
-    .filter((segment) => !segment.includes("||"))
-    .filter((segment) => segment.length > 0);
-}
-
-function normalizeCommandContent(content: string): string {
-  return content.replaceAll("\\\n", " ").replace(/\s+/g, " ").toLowerCase();
-}
-
-function asRecord(value: unknown): Readonly<Record<string, unknown>> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return {};
-  }
-  return value as Readonly<Record<string, unknown>>;
 }
 
 function arrayValues(value: unknown): readonly unknown[] {
