@@ -271,6 +271,19 @@ describe("TypeScript command failure regressions", () => {
     expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.mutation-required");
   });
 
+  it("accepts executing stryker runs with dry-run timeout tuning", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles(),
+        packageWithScripts({ mutate: "stryker run --dryRunTimeoutMinutes 10" }),
+        enabledESLintConfig()
+      ]),
+      emptyConfig()
+    );
+
+    expect(report.findings.map((finding) => finding.rule_id)).not.toContain("ts.mutation-required");
+  });
+
   it("does not accept non-run stryker invocations", () => {
     for (const weak of ["stryker init", "stryker --help"]) {
       const report = runRules(

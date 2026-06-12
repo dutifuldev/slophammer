@@ -8,38 +8,6 @@ import (
 	"github.com/dutifuldev/slophammer/go/internal/repo"
 )
 
-func contentHasDirectMutate4GoCommand(content string) bool {
-	tokensByLine := commandTokensByLine(content)
-	for _, tokens := range tokensByLine {
-		if lineHasDirectMutate4GoCommand(tokens) {
-			return true
-		}
-	}
-	return false
-}
-
-func lineHasDirectMutate4GoCommand(tokens []string) bool {
-	for i, token := range tokens {
-		token = cleanCommandToken(token)
-		if isGoToolPackageToken(token, gotools.Mutate4Go.Package) && isGoRunPackage(tokens, i) {
-			if executingMutationArgs(tokens, i) {
-				return true
-			}
-			continue
-		}
-		if isToolBinaryToken(token, gotools.Mutate4Go.Binary) && isCommandToken(tokens, i) {
-			return executingMutationArgs(tokens, i)
-		}
-	}
-	return false
-}
-
-// The scan check starts at the command token itself, which is never a flag
-// or separator, so no argument-offset arithmetic is needed.
-func executingMutationArgs(tokens []string, index int) bool {
-	return hasMutationTargetAfter(tokens, index) && !nonExecutingMutationFlagInArgs(tokens, index)
-}
-
 func contentHasGoToolCommand(content string, tool gotools.Tool) bool {
 	for _, tokens := range commandTokensByLine(content) {
 		if lineHasGoToolCommand(tokens, tool) {
@@ -462,25 +430,6 @@ func hasCommandPrefix(tokens []string, commandIndex int) bool {
 func isEnvAssignmentToken(token string) bool {
 	name, _, ok := strings.Cut(token, "=")
 	return ok && shellNamePattern.MatchString(name)
-}
-
-func hasMutationTargetAfter(tokens []string, commandIndex int) bool {
-	for _, token := range tokens[commandIndex+1:] {
-		target := cleanCommandToken(token)
-		if target == "" {
-			continue
-		}
-		if isShellSeparator(target) {
-			return false
-		}
-		if strings.HasPrefix(target, "-") {
-			continue
-		}
-		if strings.HasSuffix(target, ".go") {
-			return true
-		}
-	}
-	return false
 }
 
 func lineHasRequiredFlag(tokens []string, requiredFlag string) bool {

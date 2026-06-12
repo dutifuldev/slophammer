@@ -135,7 +135,7 @@
       "severity": "error",
       "path": ".github/workflows",
       "message": "Go projects must declare mutate4go",
-      "description": "Go projects should declare mutate4go in an inspectable workflow or script. Only executing invocations count: list, scan, check, dry-run, and manifest-only forms cannot fail on a surviving mutant and are not evidence.",
+      "description": "Go projects should declare mutate4go in an inspectable workflow or script. Only executing invocations count: list, scan, check, dry-run, and manifest-only forms cannot fail on a surviving mutant and are not evidence. mutate4go exits zero even when mutants survive, so only the gating slophammer-go wrapper counts.",
       "tool": "mutate4go",
       "status": "implemented"
     },
@@ -588,7 +588,7 @@
       "severity": "error",
       "path": ".github/workflows",
       "message": "Python projects must declare mutation testing (mutmut or cosmic-ray)",
-      "description": "Binding CI evidence must declare a mutation testing tool. Only executing invocations count: list, scan, check, dry-run, and manifest-only forms cannot fail on a surviving mutant and are not evidence.",
+      "description": "Binding CI evidence must declare a mutation testing tool. Only executing invocations count: list, scan, check, dry-run, and manifest-only forms cannot fail on a surviving mutant and are not evidence. mutmut and cosmic-ray exec exit zero even when mutants survive, so runs count only beside a kill-rate gate (--min-kill-rate or cr-rate --fail-over).",
       "status": "implemented"
     },
     {

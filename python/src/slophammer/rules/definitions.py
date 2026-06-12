@@ -169,7 +169,9 @@ DEFAULT_DEFINITIONS: tuple[Definition, ...] = (
             "Binding CI evidence must declare a mutation testing tool. Only "
             "executing invocations count: list, scan, check, dry-run, and "
             "manifest-only forms cannot fail on a surviving mutant and are "
-            "not evidence."
+            "not evidence. mutmut and cosmic-ray exec exit zero even when "
+            "mutants survive, so runs count only beside a kill-rate gate "
+            "(--min-kill-rate or cr-rate --fail-over)."
         ),
     ),
     Definition(

@@ -829,7 +829,7 @@ function hasTypeScriptMutationCommand(snapshot: Snapshot): boolean {
     commandSegments(file.content)
       .flatMap((segment) => expandedPackageScriptSegments(segment, scripts))
       .map((segment) => normalizeCommandContent(segment))
-      .some((segment) => /\bstryker run\b/u.test(segment) && !/--dry-?run/u.test(segment))
+      .some((segment) => /\bstryker run\b/u.test(segment) && !/--dry-?run-?only\b/u.test(segment))
   );
 }
 

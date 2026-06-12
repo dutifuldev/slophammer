@@ -275,7 +275,7 @@ awk -v score="0" -v maximum="$maximum_crap_score" 'BEGIN { exit !(score + 0 <= m
 }
 
 func cleanMutationScript(target string) string {
-	return gotools.Mutate4Go.GoRunLine(gotools.Latest, target) + "\n"
+	return "slophammer-go mutate . --target " + target + "\n"
 }
 
 const cleanCoverageScript = `minimum_coverage="80"

@@ -932,7 +932,7 @@ func TestUpdateManifestFalseFlagStaysExecuting(t *testing.T) {
 		".github/workflows/ci.yml": {Path: ".github/workflows/ci.yml", Content: "name: CI\non: [push]\njobs:\n  t:\n    steps:\n      - run: ./scripts/gate.sh\n"},
 		"scripts/gate.sh": {
 			Path:    "scripts/gate.sh",
-			Content: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --update-manifest=false\n",
+			Content: "slophammer-go mutate . --target main.go --update-manifest=false\n",
 		},
 	})
 	if !hasMutate4GoCommand(snapshot) {
@@ -1240,31 +1240,22 @@ jobs:
 	}
 }
 
-func TestGoMutationRuleRequiresTargetForDirectMutate4Go(t *testing.T) {
-	tests := []struct {
-		name    string
-		command string
-		want    bool
-	}{
-		{name: "package target", command: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go", want: true},
-		{name: "binary target", command: "mutate4go main.go", want: true},
-		{name: "flag before target", command: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest internal/rules/rules.go", want: true},
-		{name: "go run flag before package", command: "go run -mod=readonly github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go", want: true},
-		{name: "go global flag before run", command: "go -C tools run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go", want: true},
-		{name: "install then run", command: "go install github.com/unclebob/mutate4go/cmd/mutate4go@latest && mutate4go main.go", want: true},
-		{name: "package after semicolon", command: "cd go; go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go", want: true},
-		{name: "binary after semicolon", command: "cd go; mutate4go main.go", want: true},
-		{name: "binary after env assignment", command: "MUTATE_CACHE=/tmp mutate4go main.go", want: true},
-		{name: "package missing target", command: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest"},
-		{name: "binary missing target", command: "mutate4go"},
-		{name: "install only", command: "go install github.com/unclebob/mutate4go/cmd/mutate4go@latest"},
+func TestDirectMutate4GoIsNotAGate(t *testing.T) {
+	// mutate4go exits zero even when mutants survive, so even the
+	// strongest direct forms are not mutation-testing evidence.
+	commands := []string{
+		"go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go\n",
+		"mutate4go main.go\n",
+		"go install github.com/unclebob/mutate4go/cmd/mutate4go@latest && mutate4go main.go\n",
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := contentHasDirectMutate4GoCommand(tt.command); got != tt.want {
-				t.Fatalf("contentHasDirectMutate4GoCommand(%q) = %t, want %t", tt.command, got, tt.want)
-			}
+	for _, command := range commands {
+		snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+			"go.mod":                   {Path: "go.mod", Content: "module example.com/demo\n"},
+			".github/workflows/ci.yml": {Path: ".github/workflows/ci.yml", Content: "name: CI\non: [push]\njobs:\n  t:\n    steps:\n      - run: ./scripts/gate.sh\n"},
+			"scripts/gate.sh":          {Path: "scripts/gate.sh", Content: command},
 		})
+		if hasMutate4GoCommand(snapshot) {
+			t.Fatalf("direct mutate4go credited as a gate: %q", command)
+		}
 	}
 }

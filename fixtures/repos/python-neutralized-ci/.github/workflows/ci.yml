@@ -15,6 +15,7 @@ jobs:
       - run: uv run slophammer-py dry .
         continue-on-error: true
       - run: uv run mutmut run
+      - run: uv run python scripts/check-mutation.py --min-kill-rate 74
         continue-on-error: true
       - run: uv run pip-audit
         continue-on-error: true
