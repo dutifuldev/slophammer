@@ -154,7 +154,10 @@ DEFAULT_DEFINITIONS: tuple[Definition, ...] = (
         severity="error",
         path=".github/workflows",
         message="Python projects must declare a DRY check",
-        description="Binding CI evidence must run a duplication check (slophammer-py dry).",
+        description=(
+            "Binding CI evidence must run a duplication check "
+            "(slophammer-py dry or slophammer dry)."
+        ),
     ),
     Definition(
         id=PY_MUTATION,

@@ -29,6 +29,7 @@ go install github.com/dutifuldev/slophammer/go/cmd/slophammer-go@latest
 npm install -g slophammer-ts
 cargo install slophammer-rs --locked
 uv tool install slophammer-py
+uv tool install slophammer
 ```
 
 Then point it at a repository:
@@ -54,6 +55,7 @@ go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.3.0 check .
 npx slophammer-ts@0.3.0 check .
 cargo install slophammer-rs --version 0.3.0 --locked
 uvx slophammer-py@0.3.0 check .
+uvx slophammer@0.3.0 check .
 ```
 
 The simplest CI integration is the bundled GitHub Action, which requires an
@@ -102,6 +104,8 @@ exact checker version you verified against in CI; do not install latest.
 - Four released implementations of that spec: `slophammer-go`,
   `slophammer-ts` on npm, `slophammer-rs` on crates.io, and `slophammer-py`
   on PyPI.
+- A bare `slophammer` PyPI command package that delegates to the pinned
+  Python checker release without claiming the `import slophammer` namespace.
 - Go, TypeScript, and Python project templates with strict local checks.
 - A reference for project structure, testing, errors, reporting, and CI.
 - A source of patterns for agents working in different language ecosystems.
@@ -116,9 +120,9 @@ exact checker version you verified against in CI; do not install latest.
 ## The Checkers
 
 Slophammer is the standard; implementations carry short language-specific
-names. The bare `slophammer` name is reserved on both npm and PyPI for a
-future umbrella package. The Python checker ships as `slophammer-py` but
-owns the `import slophammer` namespace, so the umbrella stays command-only.
+names. The bare `slophammer` PyPI package is command-only. The Python checker
+ships as `slophammer-py` but owns the `import slophammer` namespace, so the
+bare package stays outside that import namespace.
 
 | Language   | Command         | Status                                  |
 | ---------- | --------------- | --------------------------------------- |
@@ -126,6 +130,7 @@ owns the `import slophammer` namespace, so the umbrella stays command-only.
 | TypeScript | `slophammer-ts` | Released to npm                          |
 | Rust       | `slophammer-rs` | Released to crates.io                    |
 | Python     | `slophammer-py` | Released to PyPI                         |
+| Bare PyPI  | `slophammer`    | Delegates to the pinned Python checker   |
 
 The language suffix names the implementation and packaging target, not a hard
 limit on what the checker inspects. Each implementation is best at its native

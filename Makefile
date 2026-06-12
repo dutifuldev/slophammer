@@ -2,9 +2,9 @@
 # Rust coverage, dependency audit, mutation listing, packaging dry runs, the
 # Python template gate, and SARIF upload.
 
-.PHONY: check check-docs check-go check-typescript check-python check-rust check-templates conformance
+.PHONY: check check-docs check-go check-typescript check-python check-python-umbrella check-rust check-templates conformance
 
-check: check-docs check-go check-typescript check-python check-rust check-templates conformance
+check: check-docs check-go check-typescript check-python check-python-umbrella check-rust check-templates conformance
 
 check-docs:
 	node scripts/check-doc-links.mjs
@@ -34,6 +34,14 @@ check-python:
 	cd python && uv run pytest --cov=src/slophammer --cov-fail-under=85
 	cd python && uv run slophammer-py dry ..
 	cd python && uv run slophammer-py check ..
+
+check-python-umbrella:
+	cd python-umbrella && uv sync --frozen
+	cd python-umbrella && uv run ruff format --check .
+	cd python-umbrella && uv run ruff check .
+	cd python-umbrella && uv run ty check src
+	cd python-umbrella && uv run pytest
+	cd python-umbrella && uv run slophammer --version
 
 check-rust:
 	cd rust && cargo fmt --check

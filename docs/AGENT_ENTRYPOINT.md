@@ -56,7 +56,7 @@ Use this selection model:
 | Go                   | `slophammer-go`    | Public Go install                                                                |
 | TypeScript           | `slophammer-ts`    | Available from npm and this repo's TypeScript implementation |
 | Rust                 | `slophammer-rs`    | Available from crates.io and this repo's Rust implementation |
-| Python               | `slophammer-py`    | Not implemented yet                                                              |
+| Python               | `slophammer-py`    | Released to PyPI                                                                 |
 
 Pin the exact checker version you verify against. Local one-off runs may use
 `@latest`, but anything you write into the target repository's CI must pin an

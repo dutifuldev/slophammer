@@ -13,7 +13,13 @@ import re
 from slophammer.repo import Snapshot, command_files
 
 CHECK_INVOCATION_WINDOW = 160
-CHECKER_BINARIES = ("slophammer-go", "slophammer-ts", "slophammer-rs", "slophammer-py")
+CHECKER_BINARIES = (
+    "slophammer",
+    "slophammer-go",
+    "slophammer-ts",
+    "slophammer-rs",
+    "slophammer-py",
+)
 
 
 def command_text(snapshot: Snapshot) -> str:
@@ -148,6 +154,7 @@ def has_complexity_command(snapshot: Snapshot) -> bool:
 def has_dry_command(snapshot: Snapshot) -> bool:
     return (
         any_segment(snapshot, rf"^{ENV_PREFIX}{RUNNER_PREFIX}slophammer-py(?:@\S+)? dry\b")
+        or any_segment(snapshot, rf"^{ENV_PREFIX}{RUNNER_PREFIX}slophammer(?:@\S+)? dry\b")
         or any_segment(snapshot, rf"^{ENV_PREFIX}{RUNNER_PREFIX}slophammer(?:@\S+)? python dry\b")
         or any_segment(snapshot, tool_pattern("jscpd"))
         or any_segment(snapshot, tool_pattern("pylint") + r"[^\n]*duplicate-code")

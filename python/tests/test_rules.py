@@ -141,6 +141,18 @@ class TestRepoRules:
         ids = rule_ids(report_for(files, only=["repo.slophammer-ci-required"]))
         assert ids == []
 
+    def test_bare_slophammer_satisfies_slophammer_ci(self):
+        files = clean_python_repo(
+            {
+                ".github/workflows/ci.yml": (
+                    "name: CI\non: [push]\njobs:\n  check:\n    steps:\n"
+                    "      - run: uvx slophammer check .\n"
+                )
+            }
+        )
+        ids = rule_ids(report_for(files, only=["repo.slophammer-ci-required"]))
+        assert ids == []
+
 
 class TestGateRules:
     def test_each_missing_gate_fires_its_rule(self):
@@ -190,6 +202,18 @@ class TestGateRules:
             "py.test-required",
             "py.typecheck-required",
         ]
+
+    def test_bare_slophammer_satisfies_dry_gate(self):
+        steps = GATE_STEPS.replace("uv run slophammer-py dry .", "uvx slophammer dry .")
+        files = clean_python_repo(
+            {
+                ".github/workflows/ci.yml": (
+                    f"name: CI\non: [push]\njobs:\n  check:\n    steps:\n{steps}\n"
+                )
+            }
+        )
+        ids = rule_ids(report_for(files, only=["py.dry-required"]))
+        assert ids == []
 
     def test_lowered_coverage_flag_fails_the_gate(self):
         files = clean_python_repo(
