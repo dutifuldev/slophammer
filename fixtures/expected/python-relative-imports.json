@@ -1,0 +1,15 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "py.absolute-imports-required",
+      "severity": "error",
+      "path": "src/app/main.py",
+      "message": "Python imports must be absolute; replace relative imports (ruff check --select TID252 --fix) (line 3)"
+    }
+  ],
+  "scope": {
+    "scanned": 3,
+    "production_files": 3
+  }
+}

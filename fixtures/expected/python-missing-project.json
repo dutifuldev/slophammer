@@ -1,0 +1,27 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "py.complexity-required",
+      "severity": "error",
+      "path": "pyproject.toml",
+      "message": "Python projects must enforce complexity at most 8 (Ruff C901 or radon)"
+    },
+    {
+      "rule_id": "py.project-required",
+      "severity": "error",
+      "path": "pyproject.toml",
+      "message": "Python projects must declare a pyproject.toml"
+    },
+    {
+      "rule_id": "py.types-strict-required",
+      "severity": "error",
+      "path": "ty.toml",
+      "message": "Python typechecking must be strict: Ruff must select the ANN rules so every signature is annotated"
+    }
+  ],
+  "scope": {
+    "scanned": 2,
+    "production_files": 2
+  }
+}

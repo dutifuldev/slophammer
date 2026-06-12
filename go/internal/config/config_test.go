@@ -484,6 +484,12 @@ func TestLoadRejectsUnknownConfigKeys(t *testing.T) {
 		{name: "typescript dry", content: "typescript:\n  dry:\n    made_up: true\n", want: "typescript.dry.made_up"},
 		{name: "typescript copied blocks", content: "typescript:\n  dry:\n    copied_blocks:\n      made_up: true\n", want: "typescript.dry.copied_blocks.made_up"},
 		{name: "typescript boundary", content: "typescript:\n  dependency_boundaries:\n    - from: src/app\n      made_up: true\n", want: "typescript.dependency_boundaries[0].made_up"},
+		{name: "python", content: "python:\n  made_up: true\n", want: "python.made_up"},
+		{name: "python coverage", content: "python:\n  coverage:\n    made_up: true\n", want: "python.coverage.made_up"},
+		{name: "python typecheck", content: "python:\n  typecheck:\n    made_up: true\n", want: "python.typecheck.made_up"},
+		{name: "python demotion", content: "python:\n  typecheck:\n    demotions:\n      - rule: deprecated\n        made_up: true\n", want: "python.typecheck.demotions[0].made_up"},
+		{name: "python boundary", content: "python:\n  dependency_boundaries:\n    - from: src/app\n      made_up: true\n", want: "python.dependency_boundaries[0].made_up"},
+		{name: "python dry exclude", content: "python:\n  dry:\n    exclude:\n      - pattern: src/**\n        made_up: true\n", want: "python.dry.exclude[0].made_up"},
 		{name: "rust", content: "rust:\n  made_up: true\n", want: "rust.made_up"},
 		{name: "rust dry", content: "rust:\n  dry:\n    made_up: true\n", want: "rust.dry.made_up"},
 		{name: "rust unsafe allow", content: "rust:\n  unsafe:\n    allow:\n      - path: src/lib.rs\n        made_up: true\n", want: "rust.unsafe.allow[0].made_up"},
@@ -716,6 +722,30 @@ typescript:
     copied_blocks:
       enabled: true
       min_tokens: 100
+python:
+  coverage:
+    threshold: 85
+    paths:
+      - python/src
+  complexity:
+    max: 8
+  dry:
+    max_findings: 0
+    paths:
+      - python/src
+    copied_blocks:
+      enabled: true
+      min_tokens: 100
+  mutation:
+    targets:
+      - python/src
+  dependency_boundaries:
+    - from: python/src
+      allow: []
+  typecheck:
+    demotions:
+      - rule: deprecated
+        reason: upstream false positive on decorators
 rust:
   coverage:
     threshold: 85

@@ -23,8 +23,11 @@ line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["A", "B", "C4", "E", "F", "I", "N", "PL", "RUF", "SIM", "UP"]
+select = ["A", "B", "C4", "E", "F", "I", "N", "PL", "RUF", "SIM", "TID", "UP"]
 ignore = ["PLR2004"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
 
 [tool.mypy]
 python_version = "3.12"

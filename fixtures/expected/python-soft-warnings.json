@@ -1,0 +1,15 @@
+{
+  "ok": false,
+  "findings": [
+    {
+      "rule_id": "py.types-strict-required",
+      "severity": "error",
+      "path": "ty.toml",
+      "message": "Python typechecking must be strict: ty must set error-on-warning so warn-tier rules block"
+    }
+  ],
+  "scope": {
+    "scanned": 2,
+    "production_files": 2
+  }
+}

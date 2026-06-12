@@ -1,0 +1,5 @@
+python:
+  coverage:
+    threshold: 85
+    paths:
+      - src/app

@@ -126,6 +126,34 @@ typescript:
         - typescript/src/rules
         - typescript/src/scan
         - typescript/src/toolchecks
+python:
+  coverage:
+    threshold: 85
+    paths:
+      - python/src
+    exclude: []
+  complexity:
+    max: 8
+  dry:
+    max_findings: 0
+    paths:
+      - python/src
+    exclude: []
+    copied_blocks:
+      enabled: true
+      min_tokens: 100
+  mutation:
+    targets:
+      - python/src/slophammer/rules
+    exclude: []
+  dependency_boundaries:
+    - from: python/src/slophammer/rules
+      allow:
+        - python/src/slophammer/config
+  typecheck:
+    demotions:
+      - rule: deprecated
+        reason: upstream false positive on sqlalchemy decorators
 rust:
   coverage:
     threshold: 85
@@ -294,6 +322,22 @@ The configured DRY budget is zero for production code.
 
 External package imports are ignored. Relative imports are resolved against the
 importing source file.
+
+## Python Config
+
+`python.coverage`, `python.complexity`, `python.dry`, `python.mutation`,
+`python.dependency_boundaries`, and `python.typecheck` are validated by every
+checker; the Python checker enforces them. The shared bounds apply:
+
+- `python.coverage.threshold` must be at least `85`.
+- `python.complexity.max` must be at most `8`.
+- `python.dry.max_findings` must be `0`.
+
+`python.typecheck.demotions` lists reasoned ty rule demotions: each entry
+names the demoted rule and the reason. Demoting a stable default-error ty
+rule anywhere else (`ty.toml`, `[tool.ty]`, or invocation flags) is a
+`py.types-strict-required` finding. For Python paths, `migrations/` joins
+the conventional non-production list.
 
 ## Rust Config
 

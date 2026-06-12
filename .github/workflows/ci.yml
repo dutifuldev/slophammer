@@ -161,10 +161,33 @@ jobs:
           go-version-file: go/go.mod
           cache: false
       - uses: dtolnay/rust-toolchain@stable
+      - uses: astral-sh/setup-uv@v7
+      - run: uv sync --frozen --directory ../python
       - run: npm ci
       - run: npm run check
       - run: npm run mutate:scan
       - run: node ../scripts/check-conformance.mjs
+
+  python-implementation:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+      - run: uv sync --frozen
+      - run: uv run ruff format --check .
+      - run: uv run ruff check .
+      - run: uv run ty check src
+      - run: uv run pytest --cov=src/slophammer --cov-fail-under=85
+      - run: uv run mutmut run
+      - name: Audit dependencies
+        run: |
+          uv export --frozen --no-emit-project -o /tmp/requirements.txt
+          uvx pip-audit -r /tmp/requirements.txt --disable-pip
+      - run: uv run slophammer-py dry ..
+      - run: uv run slophammer-py check ..
 
   rust-implementation:
     runs-on: ubuntu-latest

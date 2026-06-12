@@ -1,0 +1,8 @@
+python:
+  coverage:
+    threshold: 85
+    paths:
+      - src
+  dependency_boundaries:
+    - from: src/app
+      allow: []

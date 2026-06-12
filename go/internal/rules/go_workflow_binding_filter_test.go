@@ -99,6 +99,23 @@ jobs:
 	}
 }
 
+func TestBindingFilteredWorkflowDropsTagOnlyPushTriggers(t *testing.T) {
+	content := `name: Release
+on:
+  push:
+    tags: ["v*"]
+jobs:
+  release:
+    steps:
+      - run: go test ./...
+`
+	filtered, ok := bindingFilteredWorkflow(content)
+
+	if !ok || strings.TrimSpace(filtered) != "" {
+		t.Fatalf("filtered = %q ok = %v, want empty binding content for tag-only push", filtered, ok)
+	}
+}
+
 func TestBindingFilteredWorkflowKeepsUntouchedWorkflows(t *testing.T) {
 	content := `name: CI
 on: [push]

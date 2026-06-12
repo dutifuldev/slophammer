@@ -382,7 +382,7 @@ func validateKnownKeys(root *yaml.Node) error {
 	if err != nil || !ok {
 		return err
 	}
-	return validateMappingKeys(node, "root", set("rules", "go", "typescript", "rust"), validateTopLevelSection)
+	return validateMappingKeys(node, "root", set("rules", "go", "typescript", "rust", "python"), validateTopLevelSection)
 }
 
 func validateTopLevelSection(key string, value *yaml.Node) error {
@@ -395,9 +395,47 @@ func validateTopLevelSection(key string, value *yaml.Node) error {
 		return validateTypeScriptKeys(value)
 	case "rust":
 		return validateRustKeys(value)
+	case "python":
+		return validatePythonKeys(value)
 	default:
 		return nil
 	}
+}
+
+func validatePythonKeys(node *yaml.Node) error {
+	return validateMappingKeys(
+		node,
+		"python",
+		set("coverage", "complexity", "dry", "mutation", "dependency_boundaries", "typecheck"),
+		validatePythonSection,
+	)
+}
+
+func validatePythonSection(key string, value *yaml.Node) error {
+	switch key {
+	case "coverage":
+		return validateSectionSequenceKey(value, "python.coverage", set("threshold", "paths", "exclude"), "exclude", validateExcludeEntryKeys)
+	case "complexity":
+		return validateMappingKeys(value, "python.complexity", set("max"), nil)
+	case "mutation":
+		return validateSectionSequenceKey(value, "python.mutation", set("targets", "exclude"), "exclude", validateExcludeEntryKeys)
+	case "dry":
+		return validateCopiedBlockDryKeys(value, "python.dry")
+	case "dependency_boundaries":
+		return validateDependencyBoundaryKeys(value, "python.dependency_boundaries")
+	case "typecheck":
+		return validatePythonTypecheckKeys(value)
+	default:
+		return nil
+	}
+}
+
+// validatePythonTypecheckKeys validates reasoned ty rule demotions: each
+// entry names the demoted rule and the reason the demotion is justified.
+func validatePythonTypecheckKeys(node *yaml.Node) error {
+	return validateMappingKeys(node, "python.typecheck", set("demotions"), func(_ string, value *yaml.Node) error {
+		return validateMappingSequenceKeys(value, "python.typecheck.demotions", set("rule", "reason"))
+	})
 }
 
 func validateRulesKeys(node *yaml.Node) error {
@@ -515,6 +553,9 @@ func validateCopiedBlockDryKeys(node *yaml.Node, field string) error {
 		func(key string, value *yaml.Node) error {
 			if key == "copied_blocks" {
 				return validateMappingKeys(value, field+".copied_blocks", set("enabled", "min_tokens"), nil)
+			}
+			if key == "exclude" {
+				return validateExcludeEntryKeys(value, field+".exclude")
 			}
 			return nil
 		},

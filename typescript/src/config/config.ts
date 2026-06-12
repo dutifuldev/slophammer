@@ -87,9 +87,10 @@ export function ruleSeverity(cfg: Config, ruleID: string, fallback: Severity): S
 }
 
 function parseConfig(root: Readonly<Record<string, unknown>>): Config {
-  assertKnownKeys(root, "root", ["rules", "go", "typescript", "rust"]);
+  assertKnownKeys(root, "root", ["rules", "go", "typescript", "rust", "python"]);
   validateIgnoredGoConfig(root["go"]);
   validateIgnoredRustConfig(root["rust"]);
+  validateIgnoredPythonConfig(root["python"]);
   return {
     rules: parseRules(asSection(root["rules"], "rules")),
     typescript: parseTypeScriptConfig(asSection(root["typescript"], "typescript"))
@@ -378,6 +379,56 @@ function validateIgnoredRustConfig(value: unknown): void {
     root["dependency_boundaries"],
     "rust.dependency_boundaries"
   );
+}
+
+function validateIgnoredPythonConfig(value: unknown): void {
+  const root = asSection(value, "python");
+  assertKnownKeys(root, "python", [
+    "coverage",
+    "complexity",
+    "dry",
+    "mutation",
+    "dependency_boundaries",
+    "typecheck"
+  ]);
+  const coverage = asSection(root["coverage"], "python.coverage");
+  assertKnownKeys(coverage, "python.coverage", ["threshold", "paths", "exclude"]);
+  assertKnownKeys(asSection(root["complexity"], "python.complexity"), "python.complexity", ["max"]);
+  const dry = asSection(root["dry"], "python.dry");
+  assertKnownKeys(dry, "python.dry", ["max_findings", "paths", "exclude", "copied_blocks"]);
+  assertKnownKeys(
+    asSection(dry["copied_blocks"], "python.dry.copied_blocks"),
+    "python.dry.copied_blocks",
+    ["enabled", "min_tokens"]
+  );
+  const mutation = asSection(root["mutation"], "python.mutation");
+  assertKnownKeys(mutation, "python.mutation", ["targets", "exclude"]);
+  validateIgnoredExcludeEntries(coverage["exclude"], "python.coverage");
+  validateIgnoredExcludeEntries(dry["exclude"], "python.dry");
+  validateIgnoredExcludeEntries(mutation["exclude"], "python.mutation");
+  validateIgnoredDependencyBoundaryKeys(
+    root["dependency_boundaries"],
+    "python.dependency_boundaries"
+  );
+  validateIgnoredTypecheckDemotions(root["typecheck"]);
+}
+
+// Reasoned ty rule demotions: each entry names the demoted rule and why the
+// demotion is justified. Enforced by the Python checker; shape-checked here.
+function validateIgnoredTypecheckDemotions(value: unknown): void {
+  const typecheck = asSection(value, "python.typecheck");
+  assertKnownKeys(typecheck, "python.typecheck", ["demotions"]);
+  const demotions = typecheck["demotions"];
+  if (demotions === undefined) {
+    return;
+  }
+  if (!Array.isArray(demotions)) {
+    throw new Error("python.typecheck.demotions must be a list");
+  }
+  for (const [index, item] of demotions.entries()) {
+    const field = `python.typecheck.demotions[${String(index)}]`;
+    assertKnownKeys(asBoundaryRecord(item, field), field, ["rule", "reason"]);
+  }
 }
 
 // Exclude entries in cross-language sections are not enforced here, but

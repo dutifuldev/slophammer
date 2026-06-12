@@ -1,0 +1,16 @@
+# ty configured to the same contract py.types-strict-required enforces.
+
+[src]
+include = ["src"]
+
+[terminal]
+error-on-warning = true
+
+[analysis]
+respect-type-ignore-comments = false
+
+[rules]
+missing-type-argument = "error"
+possibly-missing-attribute = "error"
+possibly-unresolved-reference = "error"
+possibly-missing-import = "error"

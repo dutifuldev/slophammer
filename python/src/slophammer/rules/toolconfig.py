@@ -1,0 +1,464 @@
+"""Tool configuration as evidence: ty, mypy, pyright, Ruff, and coverage.
+
+Quiet weakening happens in tool config files and invocation flags, not in
+workflow text, so these are parsed structurally. The ty strictness contract
+is judged against the bundled default-severity table (ty_rules.json),
+generated from ty's source by scripts/extract-ty-rules.py.
+"""
+
+from __future__ import annotations
+
+import configparser
+import json
+import re
+import tomllib
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+from importlib import resources
+
+from slophammer.config import Config, conventional_exclude_pattern
+from slophammer.repo import Snapshot
+from slophammer.rules.evidence import snapshot_segments, tool_pattern
+
+LEVELS = ("ignore", "warn", "error")
+REQUIRED_PROMOTIONS = (
+    "missing-type-argument",
+    "possibly-missing-attribute",
+    "possibly-unresolved-reference",
+    "possibly-missing-import",
+)
+
+
+@dataclass(frozen=True)
+class TyContract:
+    """The effective ty configuration relevant to the strictness contract."""
+
+    severities: Mapping[str, str] = field(default_factory=dict)
+    error_on_warning: bool = False
+    respects_type_ignore: bool = True
+
+
+def load_ty_rules() -> Mapping[str, Mapping[str, str]]:
+    content = resources.files("slophammer").joinpath("ty_rules.json").read_text("utf-8")
+    parsed = json.loads(content)
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def parse_toml(content: str) -> Mapping[str, object]:
+    try:
+        return tomllib.loads(content)
+    except (tomllib.TOMLDecodeError, ValueError):
+        return {}
+
+
+def file_toml(snapshot: Snapshot, path: str) -> Mapping[str, object]:
+    file = snapshot.files.get(path)
+    return parse_toml(file.content) if file is not None else {}
+
+
+IGNORED_PROJECT_SEGMENTS = {
+    "tests",
+    "test",
+    "fixtures",
+    "templates",
+    "testdata",
+    "node_modules",
+    "vendor",
+    "dist",
+    "build",
+    "coverage",
+    "target",
+    "scripts",
+    "migrations",
+}
+
+
+# Python projects can live in nested directories (the slophammer repo's own
+# checker lives under python/). Tool config lookups search the repo root and
+# every non-conventional directory carrying a pyproject.toml.
+def project_dirs(snapshot: Snapshot) -> list[str]:
+    dirs: list[str] = []
+    for path in snapshot.files:
+        if path.rsplit("/", 1)[-1] != "pyproject.toml":
+            continue
+        if set(path.split("/")[:-1]) & IGNORED_PROJECT_SEGMENTS:
+            continue
+        dirs.append(path.rsplit("/", 1)[0] if "/" in path else "")
+    return sorted(dirs, key=len)
+
+
+def project_file_toml(snapshot: Snapshot, name: str) -> Mapping[str, object]:
+    for directory in ["", *project_dirs(snapshot)]:
+        path = f"{directory}/{name}" if directory else name
+        config = file_toml(snapshot, path)
+        if config:
+            return config
+    return {}
+
+
+def project_file(snapshot: Snapshot, name: str) -> str | None:
+    for directory in ["", *project_dirs(snapshot)]:
+        path = f"{directory}/{name}" if directory else name
+        if path in snapshot.files:
+            return path
+    return None
+
+
+def pyproject_tool(snapshot: Snapshot, tool: str) -> Mapping[str, object]:
+    for directory in ["", *project_dirs(snapshot)]:
+        path = f"{directory}/pyproject.toml" if directory else "pyproject.toml"
+        section = as_mapping(as_mapping(file_toml(snapshot, path).get("tool")).get(tool))
+        if section:
+            return section
+    return {}
+
+
+# The effective severity per rule is the weakest seen anywhere: a demoting
+# invocation flag is part of the effective command, so config never masks it.
+def ty_contract(snapshot: Snapshot) -> TyContract:
+    config = project_file_toml(snapshot, "ty.toml") or pyproject_tool(snapshot, "ty")
+    severities: dict[str, str] = {}
+    for rule, level in as_mapping(config.get("rules")).items():
+        if isinstance(level, str):
+            severities[str(rule)] = level
+    for rule, level in flag_severities(snapshot).items():
+        current = severities.get(rule)
+        if current is None or level_rank(level) < level_rank(current):
+            severities[rule] = level
+    terminal = as_mapping(config.get("terminal"))
+    analysis = as_mapping(config.get("analysis"))
+    return TyContract(
+        severities=severities,
+        error_on_warning=terminal.get("error-on-warning") is True
+        or any("--error-on-warning" in segment for segment in ty_segments(snapshot)),
+        respects_type_ignore=analysis.get("respect-type-ignore-comments") is not False,
+    )
+
+
+TY_INVOCATION = re.compile(r"\bty(?: [\w./=-]+)* (?:check|server)\b")
+
+
+def ty_segments(snapshot: Snapshot) -> list[str]:
+    return [segment for segment in snapshot_segments(snapshot) if TY_INVOCATION.search(segment)]
+
+
+def flag_severities(snapshot: Snapshot) -> dict[str, str]:
+    severities: dict[str, str] = {}
+    for segment in ty_segments(snapshot):
+        for flag, level in (("--ignore", "ignore"), ("--warn", "warn"), ("--error", "error")):
+            for match in re.finditer(rf"{flag}[ =]([\w-]+)", segment):
+                severities[match.group(1)] = level
+    return severities
+
+
+def demoted_stable_rules(contract: TyContract, config: Config) -> list[str]:
+    table = load_ty_rules()
+    allowed = {
+        demotion.rule
+        for demotion in (
+            config.python.typecheck.demotions
+            if config.python is not None and config.python.typecheck is not None
+            else []
+        )
+    }
+    demoted: list[str] = []
+    for rule, level in contract.severities.items():
+        entry = table.get(rule)
+        if entry is None or entry.get("stability") != "stable":
+            continue
+        if entry.get("default_level") != "error":
+            continue
+        if level_rank(level) < level_rank("error") and rule not in allowed:
+            demoted.append(rule)
+    return sorted(demoted)
+
+
+def missing_promotions(contract: TyContract) -> list[str]:
+    return [rule for rule in REQUIRED_PROMOTIONS if contract.severities.get(rule) != "error"]
+
+
+def level_rank(level: str) -> int:
+    return LEVELS.index(level) if level in LEVELS else len(LEVELS)
+
+
+def typechecker_in_use(snapshot: Snapshot) -> str | None:
+    segments = snapshot_segments(snapshot)
+    for tool, pattern in (
+        ("ty", tool_pattern("ty") + r"(?: [\w./=-]+)* check\b"),
+        ("mypy", tool_pattern("mypy")),
+        ("pyright", tool_pattern("pyright")),
+    ):
+        if any(re.search(pattern, segment) for segment in segments):
+            return tool
+    return None
+
+
+def mypy_strict(snapshot: Snapshot) -> bool:
+    if any(
+        re.search(r"\bmypy\b[^\n]* --strict(?=\s|$)", segment)
+        for segment in snapshot_segments(snapshot)
+    ):
+        return True
+    section = pyproject_tool(snapshot, "mypy")
+    if section.get("strict") is True or section.get("disallow_untyped_defs") is True:
+        return True
+    return mypy_ini_strict(snapshot)
+
+
+def mypy_ini_strict(snapshot: Snapshot) -> bool:
+    for name in ("mypy.ini", "setup.cfg"):
+        path = project_file(snapshot, name)
+        file = snapshot.files.get(path) if path is not None else None
+        if file is None:
+            continue
+        parser = configparser.ConfigParser()
+        try:
+            parser.read_string(file.content)
+        except configparser.Error:
+            continue
+        if not parser.has_section("mypy"):
+            continue
+        if ini_boolean(parser, "mypy", "strict") or ini_boolean(
+            parser, "mypy", "disallow_untyped_defs"
+        ):
+            return True
+    return False
+
+
+# Malformed external tool config never crashes the checker; an unreadable
+# value is just absent strictness.
+def ini_boolean(parser: configparser.ConfigParser, section: str, option: str) -> bool:
+    try:
+        return parser.getboolean(section, option, fallback=False)
+    except ValueError:
+        return False
+
+
+def mypy_pydantic_plugin(snapshot: Snapshot) -> bool:
+    plugins = pyproject_tool(snapshot, "mypy").get("plugins")
+    if isinstance(plugins, list) and any("pydantic" in str(plugin) for plugin in plugins):
+        return True
+    if isinstance(plugins, str) and "pydantic" in plugins:
+        return True
+    for name in ("mypy.ini", "setup.cfg"):
+        path = project_file(snapshot, name)
+        file = snapshot.files.get(path) if path is not None else None
+        if file is not None and re.search(r"plugins\s*=.*pydantic", file.content):
+            return True
+    return False
+
+
+def pydantic_dependency(snapshot: Snapshot) -> bool:
+    for pyproject in project_pyprojects(snapshot):
+        project = as_mapping(pyproject.get("project"))
+        dependencies = project.get("dependencies")
+        if isinstance(dependencies, list) and any(
+            str(dependency).strip().lower().startswith("pydantic") for dependency in dependencies
+        ):
+            return True
+    return False
+
+
+def project_pyprojects(snapshot: Snapshot) -> list[Mapping[str, object]]:
+    configs: list[Mapping[str, object]] = []
+    for directory in ["", *project_dirs(snapshot)]:
+        path = f"{directory}/pyproject.toml" if directory else "pyproject.toml"
+        config = file_toml(snapshot, path)
+        if config:
+            configs.append(config)
+    return configs
+
+
+def pyright_strict(snapshot: Snapshot) -> bool:
+    config_path = project_file(snapshot, "pyrightconfig.json")
+    file = snapshot.files.get(config_path) if config_path is not None else None
+    if file is not None:
+        try:
+            parsed = json.loads(file.content)
+        except ValueError:
+            parsed = {}
+        if isinstance(parsed, dict) and parsed.get("typeCheckingMode") == "strict":
+            return True
+    return pyproject_tool(snapshot, "pyright").get("typeCheckingMode") == "strict"
+
+
+# Each project directory is searched for the lint table itself: a root
+# [tool.ruff] with only formatting settings must not mask a nested
+# project's [tool.ruff.lint] configuration.
+def ruff_lint_config(snapshot: Snapshot) -> Mapping[str, object]:
+    for directory in dict.fromkeys(["", *project_dirs(snapshot)]):
+        prefix = f"{directory}/" if directory else ""
+        for name in ("ruff.toml", ".ruff.toml"):
+            config = file_toml(snapshot, f"{prefix}{name}")
+            lint = as_mapping(config.get("lint")) or lint_settings_only(config)
+            if lint:
+                return lint
+        pyproject = file_toml(snapshot, f"{prefix}pyproject.toml")
+        lint = as_mapping(as_mapping(as_mapping(pyproject.get("tool")).get("ruff")).get("lint"))
+        if lint:
+            return lint
+    return {}
+
+
+# A Ruff file without lint settings (formatter or global options only) must
+# not mask a nested project's lint configuration.
+def lint_settings_only(config: Mapping[str, object]) -> Mapping[str, object]:
+    lint_keys = {
+        "select",
+        "extend-select",
+        "ignore",
+        "extend-ignore",
+        "per-file-ignores",
+        "extend-per-file-ignores",
+        "mccabe",
+    }
+    if any(key in config for key in lint_keys):
+        return config
+    return {}
+
+
+# A rule family counts as enforced only when selected and not ignored:
+# `select = ["ALL"]` with `ignore = ["ANN"]` enforces nothing from ANN, and
+# ignoring any rule inside the family (such as ANN401) breaks the contract.
+def ruff_selects(snapshot: Snapshot, code: str) -> bool:
+    config = ruff_lint_config(snapshot)
+    selected = any(
+        isinstance(selection := config.get(key), list)
+        and any(selection_covers(item, code) for item in selection)
+        for key in ("select", "extend-select")
+    )
+    if not selected:
+        return False
+    for key in ("ignore", "extend-ignore"):
+        ignored = config.get(key)
+        if isinstance(ignored, list) and any(overlapping_code(item, code) for item in ignored):
+            return False
+    return not production_per_file_ignore(config, code)
+
+
+# A selection entry covers a requested code when it is the code itself, a
+# rule-family prefix of it (C90 covers C901, A does not cover ANN), or ALL —
+# but never a more specific member (selecting only ANN401 does not enforce
+# the ANN family).
+def selection_covers(item: object, code: str) -> bool:
+    return str(item) == "ALL" or family_prefix(str(item), code)
+
+
+def family_prefix(prefix: str, code: str) -> bool:
+    if prefix == code:
+        return True
+    return code.startswith(prefix) and code[len(prefix) :][:1].isdigit()
+
+
+def overlapping_code(item: object, code: str) -> bool:
+    return family_prefix(str(item), code) or family_prefix(code, str(item))
+
+
+# Per-file ignores on conventional non-production paths (tests, migrations)
+# are normal; on production paths they carve the family out of enforcement.
+def production_per_file_ignore(config: Mapping[str, object], code: str) -> bool:
+    for key in ("per-file-ignores", "extend-per-file-ignores"):
+        for pattern, codes in as_mapping(config.get(key)).items():
+            if not isinstance(codes, list):
+                continue
+            if not any(overlapping_code(item, code) for item in codes):
+                continue
+            if not conventional_exclude_pattern(str(pattern)):
+                return True
+    return False
+
+
+def ruff_complexity_limit(snapshot: Snapshot) -> int | None:
+    mccabe = as_mapping(ruff_lint_config(snapshot).get("mccabe"))
+    limit = mccabe.get("max-complexity")
+    return limit if isinstance(limit, int) and not isinstance(limit, bool) else None
+
+
+def coverage_fail_under(snapshot: Snapshot) -> float | None:
+    report = as_mapping(pyproject_tool(snapshot, "coverage").get("report"))
+    value = report.get("fail_under")
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value)
+    coveragerc = project_file(snapshot, ".coveragerc")
+    file = snapshot.files.get(coveragerc) if coveragerc is not None else None
+    if file is not None:
+        parser = configparser.ConfigParser()
+        try:
+            parser.read_string(file.content)
+        except configparser.Error:
+            return None
+        try:
+            value = parser.getfloat("report", "fail_under", fallback=None)
+        except ValueError:
+            return None
+        if value is not None:
+            return value
+    return None
+
+
+# Each built package needs its own marker: a tests/py.typed elsewhere in a
+# monorepo does nothing for consumers of an unmarked sibling package.
+def packaged_dirs_without_typed_marker(snapshot: Snapshot) -> list[str]:
+    missing: list[str] = []
+    for directory in dict.fromkeys(["", *project_dirs(snapshot)]):
+        path = f"{directory}/pyproject.toml" if directory else "pyproject.toml"
+        pyproject = file_toml(snapshot, path)
+        if "build-system" not in pyproject or "project" not in pyproject:
+            continue
+        if not has_typed_marker_under(snapshot, directory):
+            missing.append(path)
+    return missing
+
+
+# Every importable package the project ships needs its own marker; a marker
+# in a sibling package or under conventional non-production paths does not
+# type this one.
+def has_typed_marker_under(snapshot: Snapshot, directory: str) -> bool:
+    packages = package_source_dirs(snapshot, directory)
+    if not packages:
+        return any_typed_marker_under(snapshot, directory)
+    return all(
+        f"{package}/py.typed" in snapshot.files or f"{package}.py.typed" in snapshot.files
+        for package in packages
+    )
+
+
+def any_typed_marker_under(snapshot: Snapshot, directory: str) -> bool:
+    prefix = f"{directory}/" if directory else ""
+    for path in snapshot.files:
+        if not path.startswith(prefix) or path.rsplit("/", 1)[-1] != "py.typed":
+            continue
+        relative_segments = set(path[len(prefix) :].split("/")[:-1])
+        if not relative_segments & IGNORED_PROJECT_SEGMENTS:
+            return True
+    return False
+
+
+# Shipped package directories: src-layout packages first, flat-layout
+# top-level packages otherwise, conventional directories excluded.
+def package_source_dirs(snapshot: Snapshot, directory: str) -> list[str]:
+    prefix = f"{directory}/" if directory else ""
+    src_packages = {
+        path.rsplit("/__init__.py", 1)[0]
+        for path in snapshot.files
+        if path.startswith(f"{prefix}src/")
+        and path.endswith("/__init__.py")
+        and path.count("/") == len(f"{prefix}src/x/__init__.py".split("/")) - 1
+    }
+    if src_packages:
+        return sorted(src_packages)
+    flat_packages = {
+        path.rsplit("/__init__.py", 1)[0]
+        for path in snapshot.files
+        if path.startswith(prefix)
+        and path.endswith("/__init__.py")
+        and path[len(prefix) :].count("/") == 1
+        and path[len(prefix) :].split("/")[0] not in IGNORED_PROJECT_SEGMENTS
+    }
+    return sorted(flat_packages)
+
+
+def as_mapping(value: object) -> Mapping[str, object]:
+    if isinstance(value, dict):
+        return {str(key): item for key, item in value.items()}
+    return {}
