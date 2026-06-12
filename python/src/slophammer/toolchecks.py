@@ -79,14 +79,15 @@ def execute_python_checks(
     wanted = set(only_rule_ids or [])
     working_directory = execution_directory(snapshot)
     findings: list[Finding] = []
-    for rule_id, label, command in selected_gate_commands(snapshot, config, wanted):
-        full_command = run_prefix(snapshot) + command
-        result = runner(working_directory, full_command)
-        if result.missing:
-            raise ExecutionError(f"cannot run {' '.join(full_command)}: command not found")
-        if result.code == 0:
-            continue
-        findings.append(executed_finding(rule_id, label, result))
+    for rule_id, label, commands in selected_gate_commands(snapshot, config, wanted):
+        for command in commands:
+            full_command = run_prefix(snapshot) + command
+            result = runner(working_directory, full_command)
+            if result.missing:
+                raise ExecutionError(f"cannot run {' '.join(full_command)}: command not found")
+            if result.code != 0:
+                findings.append(executed_finding(rule_id, label, result))
+                break
     if not wanted or PY_DRY in wanted:
         findings.extend(executed_dry_findings(snapshot, config))
     return findings
@@ -96,7 +97,7 @@ def execute_python_checks(
 # test gate; a --only selection that names just the test rule still runs it.
 def selected_gate_commands(
     snapshot: Snapshot, config: Config, wanted: set[str]
-) -> list[tuple[str, str, list[str]]]:
+) -> list[tuple[str, str, list[list[str]]]]:
     commands = [
         (rule_id, label, command)
         for rule_id, label, command in gate_commands(snapshot, config)
@@ -121,21 +122,29 @@ def execution_directory(snapshot: Snapshot) -> str:
 # Each executed command follows the tool the static evidence credited, so
 # execute mode validates the gates the repo actually declares. Mutation and
 # audit gates stay declaration-only, matching the other implementations.
-def gate_commands(snapshot: Snapshot, config: Config) -> list[tuple[str, str, list[str]]]:
+def gate_commands(snapshot: Snapshot, config: Config) -> list[tuple[str, str, list[list[str]]]]:
     commands = [
-        (PY_FORMAT, "formatter check failed", format_command(snapshot)),
-        (PY_LINT, "lint failed", lint_command(snapshot)),
-        (PY_TEST, "tests failed", test_command(snapshot)),
-        (
-            PY_COVERAGE,
-            "coverage gate failed",
-            ["pytest", f"--cov-fail-under={coverage_threshold(config)}", "--cov", "."],
-        ),
+        (PY_FORMAT, "formatter check failed", [format_command(snapshot)]),
+        (PY_LINT, "lint failed", [lint_command(snapshot)]),
+        (PY_TEST, "tests failed", [test_command(snapshot)]),
+        (PY_COVERAGE, "coverage gate failed", coverage_commands(snapshot, config)),
     ]
     typecheck = typecheck_command(snapshot)
     if typecheck is not None:
-        commands.insert(2, (PY_TYPECHECK, "typecheck failed", typecheck))
+        commands.insert(2, (PY_TYPECHECK, "typecheck failed", [typecheck]))
     return commands
+
+
+# Coverage executes the form the static evidence credited: coverage.py
+# repos run collect-then-report, pytest-cov repos run the single command.
+def coverage_commands(snapshot: Snapshot, config: Config) -> list[list[str]]:
+    threshold = coverage_threshold(config)
+    if evidence_matches(snapshot, evidence.tool_pattern("coverage") + r" report\b"):
+        return [
+            ["coverage", "run", "-m", "pytest"],
+            ["coverage", "report", f"--fail-under={threshold}"],
+        ]
+    return [["pytest", f"--cov-fail-under={threshold}", "--cov", "."]]
 
 
 def format_command(snapshot: Snapshot) -> list[str]:

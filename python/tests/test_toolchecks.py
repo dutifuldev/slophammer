@@ -83,6 +83,19 @@ class TestExecute:
         assert any("--cov-fail-under=85" in command for command in joined)
         assert not any(command.endswith(" pytest") or command == "pytest" for command in joined)
 
+    def test_coverage_py_repos_execute_collect_then_report(self):
+        runner = FakeRunner()
+        files = clean_python_repo()
+        files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
+            "uv run pytest --cov=src --cov-fail-under=85",
+            "uv run coverage run -m pytest\n      - run: uv run coverage report --fail-under=85",
+        )
+        run_checks(files, runner, only=["py.coverage-required"])
+        joined = [" ".join(command) for command in runner.commands]
+        assert any("coverage run -m pytest" in command for command in joined)
+        assert any("coverage report --fail-under=85" in command for command in joined)
+        assert not any("--cov-fail-under" in command and "pytest" in command for command in joined)
+
     def test_alternate_tools_drive_executed_commands(self):
         runner = FakeRunner()
         files = clean_python_repo()

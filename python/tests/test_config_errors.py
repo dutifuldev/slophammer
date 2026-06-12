@@ -76,6 +76,18 @@ class TestPolicyErrors:
             "reason is required",
         )
 
+    def test_substring_lookalikes_are_production(self):
+        rejects(
+            "python:\n  coverage:\n    exclude:\n      - src/latest_feature/**\n",
+            "requires a reason for production paths",
+        )
+
+    def test_conftest_and_test_dir_are_conventional(self):
+        parse_config(
+            "python:\n  coverage:\n    exclude:\n      - conftest.py\n      - test/**\n"
+            '      - "**/test_*.py"\n'
+        )
+
     def test_production_exclude_needs_reason(self):
         rejects(
             "python:\n  coverage:\n    exclude:\n      - src/core/**\n",

@@ -19,26 +19,27 @@ CONFIG_FILE_NAMES = ("slophammer.yml", "slophammer.yaml")
 
 # The conventional non-production list from specs/CONFIG.md; for Python
 # paths, migrations join it (Alembic and Django migrations are as standard a
-# carve-out as testdata is for Go).
-CONVENTIONAL_EXCLUDE_MARKERS = (
-    "_test.",
-    ".test.",
-    ".spec.",
-    "test_",
-    "tests/",
-    "fixtures/",
-    "templates/",
-    "testdata/",
-    "dist/",
-    "build/",
-    "coverage/",
-    "target/",
-    "node_modules/",
-    "vendor/",
-    "generated",
-    "scripts/",
-    "migrations/",
+# carve-out as testdata is for Go). Classification is path-aware: whole
+# segments and file-name shapes, never raw substrings, so a directory that
+# merely contains "test_" in its name stays production.
+CONVENTIONAL_DIR_SEGMENTS = frozenset(
+    {
+        "tests",
+        "test",
+        "fixtures",
+        "templates",
+        "testdata",
+        "dist",
+        "build",
+        "coverage",
+        "target",
+        "node_modules",
+        "vendor",
+        "scripts",
+        "migrations",
+    }
 )
+CONVENTIONAL_BASENAME_MARKERS = ("_test.", ".test.", ".spec.")
 
 
 class ConfigError(Exception):
@@ -339,7 +340,23 @@ def validate_excludes(python: PythonConfig) -> None:
 
 
 def conventional_exclude_pattern(pattern: str) -> bool:
-    return any(marker in pattern for marker in CONVENTIONAL_EXCLUDE_MARKERS)
+    if "generated" in pattern:
+        return True
+    segments = [segment for segment in pattern.split("/") if segment not in ("", "*", "**")]
+    if not segments:
+        return False
+    if any(segment in CONVENTIONAL_DIR_SEGMENTS for segment in segments):
+        return True
+    return conventional_file_pattern(segments[-1])
+
+
+def conventional_file_pattern(basename: str) -> bool:
+    name = basename.lstrip("*")
+    if name.startswith("test_") or name == "conftest.py":
+        return True
+    if name.endswith("_test.py") or basename.endswith("_test.py"):
+        return True
+    return any(marker in basename for marker in CONVENTIONAL_BASENAME_MARKERS)
 
 
 def exclude_entries(value: object, section: str) -> list[ExcludeEntry]:

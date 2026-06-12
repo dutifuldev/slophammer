@@ -161,7 +161,7 @@ def has_mutation_command(snapshot: Snapshot) -> bool:
 
 
 def has_audit_command(snapshot: Snapshot) -> bool:
-    return any_segment(snapshot, tool_pattern("pip-audit")) or any_segment(
+    return any_segment(snapshot, tool_pattern("pip[-_]audit")) or any_segment(
         snapshot, rf"^{ENV_PREFIX}uvx? (?:tool run )?(?:pip-)?audit\b"
     )
 

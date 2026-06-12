@@ -329,6 +329,14 @@ class TestGateRules:
         ids = rule_ids(report_for(files, only=["py.coverage-required"]))
         assert ids == ["py.coverage-required"]
 
+    def test_module_spelling_pip_audit_counts(self):
+        files = clean_python_repo()
+        files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
+            "uv run pip-audit", "python -m pip_audit"
+        )
+        ids = rule_ids(report_for(files, only=["py.dependency-audit-required"]))
+        assert ids == []
+
     def test_pytest_without_coverage_still_satisfies_tests(self):
         files = clean_python_repo()
         ids = rule_ids(report_for(files, only=["py.test-required"]))
