@@ -149,13 +149,15 @@ fn cargo_command(snapshot: &Snapshot, rule_id: &str, command: &str) -> Vec<Findi
     )
 }
 
-/// A `cargo mutants --list` enumerates mutants and cannot fail on a
-/// survivor, so it is not mutation-testing evidence; executing forms
-/// (including `--in-diff`) count.
+/// `cargo mutants --list` enumerates mutants and `--check` only builds
+/// them; neither runs tests, so neither can fail on a survivor. Executing
+/// forms (including `--in-diff`) count.
 fn rust_mutation(snapshot: &Snapshot) -> Vec<Finding> {
-    let executing = evidence::command_segments(snapshot)
-        .iter()
-        .any(|segment| segment.contains("cargo mutants") && !segment.contains("--list"));
+    let executing = evidence::command_segments(snapshot).iter().any(|segment| {
+        segment.contains("cargo mutants")
+            && !segment.contains("--list")
+            && !segment.contains("--check")
+    });
     missing(
         is_rust_project(snapshot) && !executing,
         rule_ids::RUST_MUTATION_REQUIRED,
@@ -398,10 +400,13 @@ mod tests {
         assert_eq!(dry[0].rule_id, rule_ids::RUST_DRY_REQUIRED);
     }
 
-    #[test]
-    fn list_command_beside_executing_gate_stays_credited() {
-        let workflow = "name: CI\non: [push]\njobs:\n  ci:\n    steps:\n      - run: cargo mutants --workspace --list\n      - run: cargo mutants --workspace --in-diff pr.diff\n";
-        let snapshot = Snapshot {
+    fn mutation_workflow_snapshot(commands: &[&str]) -> Snapshot {
+        let steps: String = commands
+            .iter()
+            .map(|command| format!("      - run: {command}\n"))
+            .collect();
+        let workflow = format!("name: CI\non: [push]\njobs:\n  ci:\n    steps:\n{steps}");
+        Snapshot {
             root: PathBuf::from("."),
             files: BTreeMap::from([
                 (
@@ -415,59 +420,49 @@ mod tests {
                     ".github/workflows/ci.yml".to_owned(),
                     RepoFile {
                         path: ".github/workflows/ci.yml".to_owned(),
-                        content: workflow.to_owned(),
+                        content: workflow,
                     },
                 ),
             ]),
-        };
+        }
+    }
+
+    #[test]
+    fn list_command_beside_executing_gate_stays_credited() {
+        let snapshot = mutation_workflow_snapshot(&[
+            "cargo mutants --workspace --list",
+            "cargo mutants --workspace --in-diff pr.diff",
+        ]);
         assert!(rust_mutation(&snapshot).is_empty());
     }
 
     #[test]
     fn list_only_mutation_commands_are_not_evidence() {
-        let workflow = "name: CI\non: [push]\njobs:\n  ci:\n    steps:\n      - run: cargo mutants --workspace --list\n";
-        let snapshot = Snapshot {
-            root: PathBuf::from("."),
-            files: BTreeMap::from([
-                (
-                    "Cargo.toml".to_owned(),
-                    RepoFile {
-                        path: "Cargo.toml".to_owned(),
-                        content: "[package]\nname = \"x\"\n".to_owned(),
-                    },
-                ),
-                (
-                    ".github/workflows/ci.yml".to_owned(),
-                    RepoFile {
-                        path: ".github/workflows/ci.yml".to_owned(),
-                        content: workflow.to_owned(),
-                    },
-                ),
-            ]),
-        };
-        let findings = rust_mutation(&snapshot);
+        let findings = rust_mutation(&mutation_workflow_snapshot(&[
+            "cargo mutants --workspace --list",
+        ]));
         assert_eq!(findings.len(), 1, "list-only run must not satisfy the rule");
 
-        let executing = Snapshot {
-            root: PathBuf::from("."),
-            files: BTreeMap::from([
-                (
-                    "Cargo.toml".to_owned(),
-                    RepoFile {
-                        path: "Cargo.toml".to_owned(),
-                        content: "[package]\nname = \"x\"\n".to_owned(),
-                    },
-                ),
-                (
-                    ".github/workflows/ci.yml".to_owned(),
-                    RepoFile {
-                        path: ".github/workflows/ci.yml".to_owned(),
-                        content: workflow.replace(" --list", "").to_owned(),
-                    },
-                ),
-            ]),
-        };
+        let executing = mutation_workflow_snapshot(&["cargo mutants --workspace"]);
         assert!(rust_mutation(&executing).is_empty());
+    }
+
+    #[test]
+    fn check_only_mutation_commands_are_not_evidence() {
+        let findings = rust_mutation(&mutation_workflow_snapshot(&[
+            "cargo mutants --workspace --check",
+        ]));
+        assert_eq!(
+            findings.len(),
+            1,
+            "a build-only --check run cannot fail on a survivor"
+        );
+
+        let snapshot = mutation_workflow_snapshot(&[
+            "cargo mutants --workspace --check",
+            "cargo mutants --workspace --in-diff pr.diff",
+        ]);
+        assert!(rust_mutation(&snapshot).is_empty());
     }
 
     #[test]

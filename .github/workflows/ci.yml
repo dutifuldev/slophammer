@@ -234,10 +234,16 @@ jobs:
       - name: Mutation testing on changed code
         run: |
           set -euo pipefail
-          git fetch --no-tags --depth=50 origin main
-          base="$(git merge-base origin/main HEAD || echo "")"
-          if [ -z "$base" ] || [ "$base" = "$(git rev-parse HEAD)" ]; then
-            echo "no changed code to mutate"
+          # A shallow checkout that cannot reach the real merge base must
+          # fail loudly here instead of passing as "no changes".
+          if [ -f "$(git rev-parse --git-dir)/shallow" ]; then
+            git fetch --no-tags --unshallow origin main
+          else
+            git fetch --no-tags origin main
+          fi
+          base="$(git merge-base origin/main HEAD)"
+          if [ "$base" = "$(git rev-parse HEAD)" ]; then
+            echo "HEAD is on main; no changed code to mutate"
             exit 0
           fi
           git -c diff.mnemonicPrefix=false diff --relative "$base"...HEAD -- . > /tmp/pr.diff

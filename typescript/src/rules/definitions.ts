@@ -198,7 +198,7 @@ export const defaultDefinitions: readonly Definition[] = [
     path: ".github/workflows",
     message: "TypeScript projects must declare mutation testing",
     description:
-      "TypeScript projects should declare TypeScript mutation testing, normally through StrykerJS. Only executing invocations count: list, scan, and dry-run forms cannot fail on a surviving mutant and are not evidence.",
+      "TypeScript projects should declare TypeScript mutation testing, normally through StrykerJS. Only executing invocations count: list, scan, check, dry-run, and manifest-only forms cannot fail on a surviving mutant and are not evidence.",
     tool: "stryker",
     status: "implemented"
   },

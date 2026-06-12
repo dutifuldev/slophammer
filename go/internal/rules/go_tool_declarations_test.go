@@ -890,6 +890,56 @@ func TestPackagePathTokenAloneIsNotMutationEvidence(t *testing.T) {
 	}
 }
 
+func TestArgumentPositionSlophammerGoIsNotMutationEvidence(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"go.mod":                   {Path: "go.mod", Content: "module example.com/demo\n"},
+		".github/workflows/ci.yml": {Path: ".github/workflows/ci.yml", Content: "name: CI\non: [push]\njobs:\n  t:\n    steps:\n      - run: ./scripts/gate.sh\n"},
+		"scripts/gate.sh": {
+			Path:    "scripts/gate.sh",
+			Content: "echo slophammer-go mutate . --target main.go\n",
+		},
+	})
+	if hasMutate4GoCommand(snapshot) {
+		t.Fatal("slophammer-go quoted as an argument must not be mutation evidence")
+	}
+}
+
+// Every rejection path returns argsStart 0 alongside ok false; callers
+// rely on ok, but the zero is the documented contract and pins the
+// constants against mutation.
+func TestSlophammerGoCommandArgsStartRejectionsReturnZero(t *testing.T) {
+	cases := []struct {
+		name         string
+		tokens       []string
+		commandIndex int
+	}{
+		{"not a slophammer token", []string{"echo", "hi"}, 0},
+		{"argument position", []string{"echo", "slophammer-go", "mutate", "."}, 1},
+		{"wrong subcommand", []string{"slophammer-go", "crap", "."}, 0},
+		{"scan flag", []string{"slophammer-go", "mutate", ".", "--target", "main.go", "--scan"}, 0},
+	}
+	for _, testCase := range cases {
+		argsStart, ok := slophammerGoCommandArgsStart(testCase.tokens, testCase.commandIndex, "mutate")
+		if ok || argsStart != 0 {
+			t.Fatalf("%s: argsStart, ok = %d, %v; want 0, false", testCase.name, argsStart, ok)
+		}
+	}
+}
+
+func TestUpdateManifestFalseFlagStaysExecuting(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"go.mod":                   {Path: "go.mod", Content: "module example.com/demo\n"},
+		".github/workflows/ci.yml": {Path: ".github/workflows/ci.yml", Content: "name: CI\non: [push]\njobs:\n  t:\n    steps:\n      - run: ./scripts/gate.sh\n"},
+		"scripts/gate.sh": {
+			Path:    "scripts/gate.sh",
+			Content: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --update-manifest=false\n",
+		},
+	})
+	if !hasMutate4GoCommand(snapshot) {
+		t.Fatal("--update-manifest=false explicitly keeps the run executing and must stay credited")
+	}
+}
+
 func TestScanFalseFlagStaysExecuting(t *testing.T) {
 	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
 		"go.mod":                   {Path: "go.mod", Content: "module example.com/demo\n"},
@@ -936,6 +986,9 @@ func TestScanOnlyMutationCommandsAreNotEvidence(t *testing.T) {
 		"go run ./cmd/slophammer go mutate . --target main.go --scan\n",
 		"go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan\n",
 		"go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan=true\n",
+		"go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --update-manifest\n",
+		"go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --update-manifest=true\n",
+		"slophammer-go mutate . --target main.go --update-manifest\n",
 	}
 	for _, content := range contents {
 		snapshot := repo.NewSnapshot("/repo", map[string]repo.File{

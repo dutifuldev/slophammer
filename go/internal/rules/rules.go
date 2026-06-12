@@ -215,7 +215,7 @@ var defaultDefinitions = []Definition{
 		Severity:    SeverityError,
 		Path:        ".github/workflows",
 		Message:     "Go projects must declare mutate4go",
-		Description: "Go projects should declare mutate4go in an inspectable workflow or script. Only executing invocations count: list, scan, and dry-run forms cannot fail on a surviving mutant and are not evidence.",
+		Description: "Go projects should declare mutate4go in an inspectable workflow or script. Only executing invocations count: list, scan, check, dry-run, and manifest-only forms cannot fail on a surviving mutant and are not evidence.",
 		Tool:        "mutate4go",
 		Status:      "implemented",
 	},
