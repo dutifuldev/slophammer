@@ -102,8 +102,6 @@ exact checker version you verified against in CI; do not install latest.
 - Four released implementations of that spec: `slophammer-go`,
   `slophammer-ts` on npm, `slophammer-rs` on crates.io, and `slophammer-py`
   on PyPI.
-- A reserved bare `slophammer` PyPI placeholder that does not claim the
-  `import slophammer` namespace.
 - Go, TypeScript, and Python project templates with strict local checks.
 - A reference for project structure, testing, errors, reporting, and CI.
 - A source of patterns for agents working in different language ecosystems.
@@ -118,9 +116,8 @@ exact checker version you verified against in CI; do not install latest.
 ## The Checkers
 
 Slophammer is the standard; implementations carry short language-specific
-names. The bare `slophammer` PyPI package is currently a placeholder. The
-Python checker ships as `slophammer-py` but owns the `import slophammer`
-namespace, so the bare package stays outside that import namespace.
+names. The Python checker ships as `slophammer-py` and owns the
+`import slophammer` namespace.
 
 | Language   | Command         | Status                                  |
 | ---------- | --------------- | --------------------------------------- |
@@ -128,7 +125,6 @@ namespace, so the bare package stays outside that import namespace.
 | TypeScript | `slophammer-ts` | Released to npm                          |
 | Rust       | `slophammer-rs` | Released to crates.io                    |
 | Python     | `slophammer-py` | Released to PyPI                         |
-| Bare PyPI  | `slophammer`    | Reserved placeholder                     |
 
 The language suffix names the implementation and packaging target, not a hard
 limit on what the checker inspects. Each implementation is best at its native
@@ -318,14 +314,10 @@ Run `make check` from the repo root to run the same gates CI runs, or a
 per-language target such as `make check-go`. CI also runs every checker
 against this repository itself, so Slophammer must pass Slophammer before
 anything merges. Release tags (`go/vX.Y.Z`, `typescript/vX.Y.Z`,
-`rust/vX.Y.Z`, `python/vX.Y.Z`, and `python-placeholder/vX.Y.Z`) drive workflows
-that validate, publish, and create the
-[GitHub releases](https://github.com/dutifuldev/slophammer/releases); the
-release policy and shared architecture live in [Product](specs/PRODUCT.md) and
-[Implementation Model](docs/IMPLEMENTATION_MODEL.md).
-
-The bare PyPI placeholder release uses `python/utils/slophammer-placeholder` and
-publishes through PyPI trusted publishing.
+`rust/vX.Y.Z`, and `python/vX.Y.Z`) drive workflows that validate, publish,
+and create the [GitHub releases](https://github.com/dutifuldev/slophammer/releases);
+the release policy and shared architecture live in [Product](specs/PRODUCT.md)
+and [Implementation Model](docs/IMPLEMENTATION_MODEL.md).
 
 ## Guardrail Principles
 
