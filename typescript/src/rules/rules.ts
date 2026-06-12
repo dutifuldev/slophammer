@@ -820,15 +820,16 @@ function directTestCommand(content: string): boolean {
   ].some((pattern) => pattern.test(content));
 }
 
-// A dry-run Stryker invocation validates configuration and cannot fail on a
-// surviving mutant, so it is not mutation-testing evidence.
+// Only an executing `stryker run` counts: init and help invocations never
+// execute a mutant, and a dry run validates configuration without being
+// able to fail on a survivor.
 function hasTypeScriptMutationCommand(snapshot: Snapshot): boolean {
   const scripts = packageScripts(snapshot);
   return commandFiles(snapshot).some((file) =>
     commandSegments(file.content)
       .flatMap((segment) => expandedPackageScriptSegments(segment, scripts))
       .map((segment) => normalizeCommandContent(segment))
-      .some((segment) => /\bstryker\b/u.test(segment) && !/--dry-?run/u.test(segment))
+      .some((segment) => /\bstryker run\b/u.test(segment) && !/--dry-?run/u.test(segment))
   );
 }
 

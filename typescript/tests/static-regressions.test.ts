@@ -271,6 +271,21 @@ describe("TypeScript command failure regressions", () => {
     expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.mutation-required");
   });
 
+  it("does not accept non-run stryker invocations", () => {
+    for (const weak of ["stryker init", "stryker --help"]) {
+      const report = runRules(
+        newSnapshot("/repo", [
+          ...baseTypeScriptFiles(),
+          packageWithScripts({ mutate: weak }),
+          enabledESLintConfig()
+        ]),
+        emptyConfig()
+      );
+
+      expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.mutation-required");
+    }
+  });
+
   it("does not accept mutation commands whose failures are ignored", () => {
     const report = runRules(
       newSnapshot("/repo", [

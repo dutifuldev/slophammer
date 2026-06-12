@@ -162,10 +162,11 @@ def has_dry_command(snapshot: Snapshot) -> bool:
 
 
 # Only executing invocations count: mutmut must run (results/show cannot
-# fail on survivors), and list or dry-run forms are not gates.
+# fail on survivors), cosmic-ray must exec (init/report only prepare or
+# read a session), and list or dry-run forms are not gates.
 def has_mutation_command(snapshot: Snapshot) -> bool:
     cannot_fail = re.compile(r"--(?:list|dry-?run)")
-    for pattern in (tool_pattern("mutmut") + r" run\b", tool_pattern("cosmic-ray")):
+    for pattern in (tool_pattern("mutmut") + r" run\b", tool_pattern("cosmic-ray") + r" exec\b"):
         compiled = re.compile(pattern)
         for segment in snapshot_segments(snapshot):
             if compiled.search(segment) and not cannot_fail.search(segment):

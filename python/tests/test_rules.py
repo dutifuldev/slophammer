@@ -354,13 +354,27 @@ class TestGateRules:
         assert ids == ["py.coverage-required"]
 
     def test_cannot_fail_mutation_forms_are_not_evidence(self):
-        for weak in ("uv run mutmut results", "uv run mutmut run --dry-run"):
+        weak_forms = (
+            "uv run mutmut results",
+            "uv run mutmut run --dry-run",
+            "uv run cosmic-ray init config.toml session.sqlite",
+            "uv run cosmic-ray report session.sqlite",
+        )
+        for weak in weak_forms:
             files = clean_python_repo()
             files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
                 "uv run mutmut run", weak
             )
             ids = rule_ids(report_for(files, only=["py.mutation-required"]))
             assert ids == ["py.mutation-required"], weak
+
+    def test_executing_cosmic_ray_counts(self):
+        files = clean_python_repo()
+        files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
+            "uv run mutmut run", "uv run cosmic-ray exec config.toml session.sqlite"
+        )
+        ids = rule_ids(report_for(files, only=["py.mutation-required"]))
+        assert ids == []
 
     def test_module_spelling_pip_audit_counts(self):
         files = clean_python_repo()
