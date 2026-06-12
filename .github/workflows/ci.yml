@@ -237,9 +237,9 @@ jobs:
           # A shallow checkout that cannot reach the real merge base must
           # fail loudly here instead of passing as "no changes".
           if [ -f "$(git rev-parse --git-dir)/shallow" ]; then
-            git fetch --no-tags --unshallow origin main
+            git fetch --no-tags --unshallow origin "+main:refs/remotes/origin/main"
           else
-            git fetch --no-tags origin main
+            git fetch --no-tags origin "+main:refs/remotes/origin/main"
           fi
           base="$(git merge-base origin/main HEAD)"
           if [ "$base" = "$(git rev-parse HEAD)" ]; then
