@@ -39,7 +39,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Comma-separated rule ids to run; repeatable",
     )
     check_parser.add_argument(
-        "--execute", action="store_true", help="Run the real gates and report failures"
+        "--execute",
+        action="store_true",
+        help=(
+            "Run the executable gates (format, lint, typecheck, tests, coverage, dry) "
+            "and report failures; mutation and audit stay declaration-only"
+        ),
     )
     baseline = check_parser.add_mutually_exclusive_group()
     baseline.add_argument("--baseline", action="store_true", help="Apply the checked-in baseline")

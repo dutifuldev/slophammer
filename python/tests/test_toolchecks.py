@@ -83,6 +83,20 @@ class TestExecute:
         assert any("--cov-fail-under=85" in command for command in joined)
         assert not any(command.endswith(" pytest") or command == "pytest" for command in joined)
 
+    def test_alternate_tools_drive_executed_commands(self):
+        runner = FakeRunner()
+        files = clean_python_repo()
+        files[".github/workflows/ci.yml"] = (
+            files[".github/workflows/ci.yml"]
+            .replace("uv run ruff format --check .", "uv run black --check .")
+            .replace("uv run ruff check .", "uv run flake8 src")
+        )
+        run_checks(files, runner)
+        joined = [" ".join(command) for command in runner.commands]
+        assert any(command.endswith("black --check .") for command in joined)
+        assert any("flake8" in command for command in joined)
+        assert not any("ruff format" in command for command in joined)
+
     def test_typechecker_command_follows_detection(self):
         runner = FakeRunner()
         run_checks(clean_python_repo(), runner)

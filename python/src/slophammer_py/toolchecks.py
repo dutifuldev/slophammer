@@ -17,7 +17,7 @@ from .config import Config
 from .core import Finding
 from .dry import dry_findings, max_findings
 from .repo import Snapshot, has_file
-from .rules import coverage_threshold, python_project_present
+from .rules import coverage_threshold, evidence, python_project_present
 from .rules.definitions import (
     PY_COVERAGE,
     PY_DRY,
@@ -118,11 +118,14 @@ def execution_directory(snapshot: Snapshot) -> str:
     return f"{snapshot.root}/{directories[0]}"
 
 
+# Each executed command follows the tool the static evidence credited, so
+# execute mode validates the gates the repo actually declares. Mutation and
+# audit gates stay declaration-only, matching the other implementations.
 def gate_commands(snapshot: Snapshot, config: Config) -> list[tuple[str, str, list[str]]]:
     commands = [
-        (PY_FORMAT, "formatter check failed", ["ruff", "format", "--check", "."]),
-        (PY_LINT, "lint failed", ["ruff", "check", "."]),
-        (PY_TEST, "tests failed", ["pytest"]),
+        (PY_FORMAT, "formatter check failed", format_command(snapshot)),
+        (PY_LINT, "lint failed", lint_command(snapshot)),
+        (PY_TEST, "tests failed", test_command(snapshot)),
         (
             PY_COVERAGE,
             "coverage gate failed",
@@ -133,6 +136,31 @@ def gate_commands(snapshot: Snapshot, config: Config) -> list[tuple[str, str, li
     if typecheck is not None:
         commands.insert(2, (PY_TYPECHECK, "typecheck failed", typecheck))
     return commands
+
+
+def format_command(snapshot: Snapshot) -> list[str]:
+    if evidence_matches(snapshot, evidence.tool_pattern("black")):
+        return ["black", "--check", "."]
+    return ["ruff", "format", "--check", "."]
+
+
+def lint_command(snapshot: Snapshot) -> list[str]:
+    for tool in ("flake8", "pylint"):
+        if evidence_matches(snapshot, evidence.tool_pattern(tool)):
+            return [tool, "."]
+    return ["ruff", "check", "."]
+
+
+def test_command(snapshot: Snapshot) -> list[str]:
+    if evidence_matches(snapshot, evidence.tool_pattern("tox")):
+        return ["tox"]
+    if evidence_matches(snapshot, r"python3? -m unittest\b"):
+        return ["python", "-m", "unittest", "discover"]
+    return ["pytest"]
+
+
+def evidence_matches(snapshot: Snapshot, pattern: str) -> bool:
+    return evidence.any_segment(snapshot, pattern)
 
 
 def typecheck_command(snapshot: Snapshot) -> list[str] | None:

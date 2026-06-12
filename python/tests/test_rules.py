@@ -466,6 +466,27 @@ class TestScopeCoverage:
         ids = rule_ids(report_for(files, only=["py.scope-incomplete"]))
         assert ids == ["py.scope-incomplete"]
 
+    def test_single_star_does_not_cross_directories(self):
+        files = clean_python_repo(
+            {
+                "slophammer.yml": (
+                    "python:\n"
+                    "  coverage:\n"
+                    "    threshold: 85\n"
+                    "    paths:\n"
+                    "      - src/demo\n"
+                    "    exclude:\n"
+                    "      - pattern: corner/*.py\n"
+                    "        reason: top-level corner prototypes only\n"
+                ),
+                "corner/top.py": "def top() -> int:\n    return 1\n",
+                "corner/nested/hidden.py": "def hidden() -> int:\n    return 1\n",
+            }
+        )
+        report = report_for(files, only=["py.scope-incomplete"])
+        assert len(report.findings) == 1
+        assert "corner/nested" in report.findings[0].message
+
     def test_reasoned_exclude_covers_carved_scope(self):
         files = clean_python_repo(
             {

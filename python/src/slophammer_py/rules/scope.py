@@ -5,7 +5,7 @@ paths, DRY paths, and mutation targets all participate in the scope union.
 
 from __future__ import annotations
 
-import fnmatch
+import re
 
 from ..config import Config, ExcludeEntry, PythonConfig
 from ..core import Finding, ScopeCoverage
@@ -122,10 +122,37 @@ def excluded(path: str, patterns: list[str]) -> bool:
     return any(matches_pattern(path, pattern) for pattern in patterns)
 
 
+# Glob semantics keep `*` and `?` within one path segment; only `**`
+# crosses directories, so `src/*.py` cannot hide `src/nested/hidden.py`.
 def matches_pattern(path: str, pattern: str) -> bool:
-    if fnmatch.fnmatch(path, pattern):
+    if glob_regex(pattern).fullmatch(path):
         return True
     # `dir/**` covers everything under dir, including dir itself.
     if pattern.endswith("/**"):
-        return path.startswith(pattern[:-3] + "/") or fnmatch.fnmatch(path, pattern[:-3])
+        return (
+            path.startswith(pattern[:-3] + "/")
+            or glob_regex(pattern[:-3]).fullmatch(path) is not None
+        )
     return False
+
+
+def glob_regex(pattern: str) -> re.Pattern[str]:
+    parts: list[str] = []
+    index = 0
+    while index < len(pattern):
+        if pattern.startswith("**/", index):
+            parts.append("(?:[^/]+/)*")
+            index += 3
+        elif pattern.startswith("**", index):
+            parts.append(".*")
+            index += 2
+        elif pattern[index] == "*":
+            parts.append("[^/]*")
+            index += 1
+        elif pattern[index] == "?":
+            parts.append("[^/]")
+            index += 1
+        else:
+            parts.append(re.escape(pattern[index]))
+            index += 1
+    return re.compile("".join(parts))
