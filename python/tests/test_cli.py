@@ -79,6 +79,11 @@ class TestCheck:
         assert main(["check", str(tmp_path)]) == 2
         assert "at least 85" in capsys.readouterr().err
 
+    def test_missing_root_is_a_usage_error(self, tmp_path: Path, capsys):
+        assert main(["check", str(tmp_path / "missing")]) == 2
+        assert "is not a directory" in capsys.readouterr().err
+        assert main(["dry", str(tmp_path / "missing")]) == 2
+
     def test_baseline_flags_conflict(self, tmp_path: Path):
         write_repo(tmp_path, CLEAN)
         with pytest.raises(SystemExit):

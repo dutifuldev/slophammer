@@ -100,6 +100,17 @@ class TestTyContract:
         )
         assert rule_ids(report_for(files, only=ONLY)) == []
 
+    def test_ignored_ann_family_is_a_finding(self):
+        files = clean_python_repo(
+            {
+                "pyproject.toml": STRICT_PYPROJECT.replace(
+                    'select = ["E", "F", "ANN", "C90"]',
+                    'select = ["ALL"]\nignore = ["ANN401"]',
+                )
+            }
+        )
+        assert "ANN" in messages(files)
+
     def test_missing_ann_selection_is_a_finding(self):
         files = clean_python_repo({"pyproject.toml": STRICT_PYPROJECT.replace('"ANN", ', "")})
         assert "ANN" in messages(files)

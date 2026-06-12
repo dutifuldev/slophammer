@@ -274,13 +274,25 @@ def ruff_lint_config(snapshot: Snapshot) -> Mapping[str, object]:
     return as_mapping(pyproject_tool(snapshot, "ruff").get("lint"))
 
 
+# A rule family counts as enforced only when selected and not ignored:
+# `select = ["ALL"]` with `ignore = ["ANN"]` enforces nothing from ANN, and
+# ignoring any rule inside the family (such as ANN401) breaks the contract.
 def ruff_selects(snapshot: Snapshot, code: str) -> bool:
     config = ruff_lint_config(snapshot)
-    for key in ("select", "extend-select"):
-        selection = config.get(key)
-        if isinstance(selection, list) and any(str(item) in ("ALL", code) for item in selection):
-            return True
-    return False
+    selected = any(
+        isinstance(selection := config.get(key), list)
+        and any(str(item) in ("ALL", code) for item in selection)
+        for key in ("select", "extend-select")
+    )
+    if not selected:
+        return False
+    for key in ("ignore", "extend-ignore"):
+        ignored = config.get(key)
+        if isinstance(ignored, list) and any(
+            str(item).startswith(code) or code.startswith(str(item)) for item in ignored
+        ):
+            return False
+    return True
 
 
 def ruff_complexity_limit(snapshot: Snapshot) -> int | None:

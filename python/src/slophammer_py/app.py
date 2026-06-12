@@ -61,7 +61,7 @@ def dry(root: str, output_format: str = "text") -> CommandResult:
     try:
         snapshot = scan_repo(root)
         config = load_config(snapshot)
-    except ConfigError as error:
+    except (ConfigError, OSError) as error:
         return CommandResult(code=2, stderr=f"dry failed: {error}\n")
     findings = dry_findings(snapshot, config)
     allowed = max_findings(config)

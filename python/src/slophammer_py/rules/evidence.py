@@ -41,11 +41,18 @@ def any_segment(snapshot: Snapshot, pattern: str) -> bool:
     return any(compiled.search(segment) for segment in snapshot_segments(snapshot))
 
 
-# A tool invocation: bare, `uv run [--directory d] [--frozen|--locked] tool`,
-# `uvx tool`, or `python -m tool`.
+# A tool invocation anchored to command position, so package names inside
+# `pip install pytest mypy` segments are not evidence. Tools count bare, via
+# `uv run [flags] tool`, `uvx [flags] tool`, or `python -m tool`, optionally
+# behind environment-variable assignments.
+ENV_PREFIX = r"(?:[A-Za-z_][A-Za-z0-9_]*=\S+ )*"
+RUNNER_PREFIX = (
+    r"(?:uv run(?: -[\w-]+(?: [\w./=-]+)?)* |uvx(?: -[\w-]+(?: [\w./=-]+)?)* |python3? -m )?"
+)
+
+
 def tool_pattern(tool: str) -> str:
-    runner = r"(?:uv run(?: -[\w-]+(?: [\w./-]+)?)* |uvx(?: -[\w-]+(?: [\w./-]+)?)* |python3? -m )?"
-    return rf"\b{runner}{tool}\b"
+    return rf"^{ENV_PREFIX}{RUNNER_PREFIX}{tool}\b"
 
 
 def has_typecheck_command(snapshot: Snapshot) -> bool:
@@ -73,17 +80,23 @@ def has_format_command(snapshot: Snapshot) -> bool:
 def has_test_command(snapshot: Snapshot) -> bool:
     return (
         any_segment(snapshot, tool_pattern("pytest"))
-        or any_segment(snapshot, r"\bpython3? -m unittest\b")
+        or any_segment(snapshot, rf"^{ENV_PREFIX}python3? -m unittest\b")
         or any_segment(snapshot, tool_pattern("tox"))
     )
 
 
+# An explicit below-threshold --cov-fail-under is a weakened gate, not a
+# missing one: it wins over config in pytest-cov, so it fails the rule
+# instead of falling back to the configured threshold.
 def has_coverage_command(snapshot: Snapshot, threshold: int) -> bool:
     pattern = re.compile(r"--cov-fail-under[ =](\d+(?:\.\d+)?)")
-    for segment in snapshot_segments(snapshot):
-        match = pattern.search(segment)
-        if match is not None and float(match.group(1)) >= threshold:
-            return True
+    values = [
+        float(match.group(1))
+        for segment in snapshot_segments(snapshot)
+        for match in pattern.finditer(segment)
+    ]
+    if values:
+        return min(values) >= threshold
     return has_coverage_run(snapshot) and has_coverage_config_threshold(snapshot, threshold)
 
 
@@ -108,10 +121,10 @@ def has_complexity_command(snapshot: Snapshot) -> bool:
 
 def has_dry_command(snapshot: Snapshot) -> bool:
     return (
-        any_segment(snapshot, r"\bslophammer-py(?:@\S+)? dry\b")
-        or any_segment(snapshot, r"\bslophammer(?:@\S+)? python dry\b")
+        any_segment(snapshot, rf"^{ENV_PREFIX}{RUNNER_PREFIX}slophammer-py(?:@\S+)? dry\b")
+        or any_segment(snapshot, rf"^{ENV_PREFIX}{RUNNER_PREFIX}slophammer(?:@\S+)? python dry\b")
         or any_segment(snapshot, tool_pattern("jscpd"))
-        or any_segment(snapshot, tool_pattern("pylint") + r"\b[^\n]*duplicate-code")
+        or any_segment(snapshot, tool_pattern("pylint") + r"[^\n]*duplicate-code")
     )
 
 
@@ -123,7 +136,7 @@ def has_mutation_command(snapshot: Snapshot) -> bool:
 
 def has_audit_command(snapshot: Snapshot) -> bool:
     return any_segment(snapshot, tool_pattern("pip-audit")) or any_segment(
-        snapshot, r"\buv(?:x)? (?:tool run )?(?:pip-)?audit\b"
+        snapshot, rf"^{ENV_PREFIX}uvx? (?:tool run )?(?:pip-)?audit\b"
     )
 
 

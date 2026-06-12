@@ -214,13 +214,120 @@ pub fn load(snapshot: &Snapshot) -> Result<Config, ConfigError> {
 
 pub fn parse(content: &str) -> Result<Config, ConfigError> {
     let root: RootConfig = yaml_serde::from_str(content)?;
-    let _known_sections = (&root.go, &root.typescript, &root.python);
+    let _known_sections = (&root.go, &root.typescript);
+    if let Some(python) = &root.python {
+        validate_python_section(python)?;
+    }
     let config = Config {
         rules: root.rules,
         rust: root.rust,
     };
     validate(&config)?;
     Ok(config)
+}
+
+/// The shared python section is enforced by the Python checker but
+/// shape-validated by every implementation, so typos in shared config fail
+/// everywhere. Key trees mirror specs/CONFIG.md.
+fn validate_python_section(value: &Value) -> Result<(), ConfigError> {
+    let allowed = [
+        "coverage",
+        "complexity",
+        "dry",
+        "mutation",
+        "dependency_boundaries",
+        "typecheck",
+    ];
+    validate_value_keys(value, "python", &allowed)?;
+    let Some(mapping) = value.as_mapping() else {
+        return Ok(());
+    };
+    if let Some(coverage) = mapping.get("coverage") {
+        validate_value_keys(
+            coverage,
+            "python.coverage",
+            &["threshold", "paths", "exclude"],
+        )?;
+        validate_value_excludes(coverage.get("exclude"), "python.coverage.exclude")?;
+    }
+    if let Some(complexity) = mapping.get("complexity") {
+        validate_value_keys(complexity, "python.complexity", &["max"])?;
+    }
+    if let Some(dry) = mapping.get("dry") {
+        validate_value_keys(
+            dry,
+            "python.dry",
+            &["max_findings", "paths", "exclude", "copied_blocks"],
+        )?;
+        validate_value_excludes(dry.get("exclude"), "python.dry.exclude")?;
+        if let Some(copied) = dry.get("copied_blocks") {
+            validate_value_keys(
+                copied,
+                "python.dry.copied_blocks",
+                &["enabled", "min_tokens"],
+            )?;
+        }
+    }
+    if let Some(mutation) = mapping.get("mutation") {
+        validate_value_keys(mutation, "python.mutation", &["targets", "exclude"])?;
+        validate_value_excludes(mutation.get("exclude"), "python.mutation.exclude")?;
+    }
+    validate_value_entries(
+        mapping.get("dependency_boundaries"),
+        "python.dependency_boundaries",
+        &["from", "allow"],
+    )?;
+    if let Some(typecheck) = mapping.get("typecheck") {
+        validate_value_keys(typecheck, "python.typecheck", &["demotions"])?;
+        validate_value_entries(
+            typecheck.get("demotions"),
+            "python.typecheck.demotions",
+            &["rule", "reason"],
+        )?;
+    }
+    Ok(())
+}
+
+fn validate_value_keys(value: &Value, field: &str, allowed: &[&str]) -> Result<(), ConfigError> {
+    let Some(mapping) = value.as_mapping() else {
+        return Ok(());
+    };
+    for (key, _) in mapping {
+        let name = key.as_str().unwrap_or_default();
+        if !allowed.contains(&name) {
+            return Err(ConfigError::Validation(format!(
+                "{field}.{name} is not supported"
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn validate_value_entries(
+    value: Option<&Value>,
+    field: &str,
+    allowed: &[&str],
+) -> Result<(), ConfigError> {
+    let Some(entries) = value.and_then(Value::as_sequence) else {
+        return Ok(());
+    };
+    for (index, entry) in entries.iter().enumerate() {
+        validate_value_keys(entry, &format!("{field}[{index}]"), allowed)?;
+    }
+    Ok(())
+}
+
+fn validate_value_excludes(value: Option<&Value>, field: &str) -> Result<(), ConfigError> {
+    let Some(entries) = value.and_then(Value::as_sequence) else {
+        return Ok(());
+    };
+    for (index, entry) in entries.iter().enumerate() {
+        if entry.as_str().is_some() {
+            continue;
+        }
+        validate_value_keys(entry, &format!("{field}[{index}]"), &["pattern", "reason"])?;
+    }
+    Ok(())
 }
 
 fn validate(config: &Config) -> Result<(), ConfigError> {
@@ -433,6 +540,23 @@ mod tests {
     }
 
     #[test]
+    fn rejects_unknown_python_keys() {
+        let error = parse("python:\n  made_up: true\n").unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("python.made_up is not supported")
+        );
+        let nested = parse("python:\n  typecheck:\n    demotions:\n      - rule: deprecated\n        made_up: true\n")
+            .unwrap_err();
+        assert!(
+            nested
+                .to_string()
+                .contains("python.typecheck.demotions[0].made_up is not supported")
+        );
+    }
+
+    #[test]
     fn parses_full_rust_config() {
         let config = parse(
             r#"
@@ -441,7 +565,8 @@ go:
 typescript:
   ignored: true
 python:
-  ignored: true
+  complexity:
+    max: 8
 rules:
   repo.readme-required:
     severity: warn

@@ -26,6 +26,8 @@ SKIPPED_DIRECTORIES = {
 
 def scan_repo(root: str) -> Snapshot:
     absolute_root = Path(root).resolve()
+    if not absolute_root.is_dir():
+        raise FileNotFoundError(f"target root {root} is not a directory")
     files: list[RepoFile] = []
     for current, directories, names in os.walk(absolute_root):
         directories[:] = sorted(name for name in directories if name not in SKIPPED_DIRECTORIES)

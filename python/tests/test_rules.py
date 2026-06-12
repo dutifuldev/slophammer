@@ -151,6 +151,52 @@ class TestGateRules:
             ids = rule_ids(report_for(files, only=[rule]))
             assert ids == [rule], f"{rule} should fire when {needle!r} is removed"
 
+    def test_install_steps_are_not_tool_evidence(self):
+        files = clean_python_repo(
+            {
+                ".github/workflows/ci.yml": (
+                    "name: CI\non: [push]\njobs:\n  check:\n    steps:\n"
+                    "      - run: pip install pytest mypy mutmut pip-audit ruff\n"
+                    "      - run: uv pip install pytest-cov\n"
+                )
+            }
+        )
+        report = report_for(
+            files,
+            only=[
+                "py.test-required",
+                "py.typecheck-required",
+                "py.mutation-required",
+                "py.dependency-audit-required",
+            ],
+        )
+        assert sorted(rule_ids(report)) == [
+            "py.dependency-audit-required",
+            "py.mutation-required",
+            "py.test-required",
+            "py.typecheck-required",
+        ]
+
+    def test_lowered_coverage_flag_fails_the_gate(self):
+        files = clean_python_repo(
+            {
+                "pyproject.toml": STRICT_PYPROJECT + "\n[tool.coverage.report]\nfail_under = 85\n",
+            }
+        )
+        files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
+            "--cov-fail-under=85", "--cov-fail-under=50"
+        )
+        ids = rule_ids(report_for(files, only=["py.coverage-required"]))
+        assert ids == ["py.coverage-required"]
+
+    def test_env_prefixed_commands_are_evidence(self):
+        files = clean_python_repo()
+        files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
+            "uv run pytest", "CI=1 uv run pytest"
+        )
+        ids = rule_ids(report_for(files, only=["py.test-required", "py.coverage-required"]))
+        assert ids == []
+
     def test_pytest_without_coverage_still_satisfies_tests(self):
         files = clean_python_repo()
         ids = rule_ids(report_for(files, only=["py.test-required"]))
