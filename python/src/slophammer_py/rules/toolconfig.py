@@ -333,9 +333,14 @@ def coverage_fail_under(snapshot: Snapshot) -> float | None:
     coveragerc = project_file(snapshot, ".coveragerc")
     file = snapshot.files.get(coveragerc) if coveragerc is not None else None
     if file is not None:
-        match = re.search(r"fail_under\s*=\s*(\d+(?:\.\d+)?)", file.content)
-        if match is not None:
-            return float(match.group(1))
+        parser = configparser.ConfigParser()
+        try:
+            parser.read_string(file.content)
+        except configparser.Error:
+            return None
+        value = parser.getfloat("report", "fail_under", fallback=None)
+        if value is not None:
+            return value
     return None
 
 

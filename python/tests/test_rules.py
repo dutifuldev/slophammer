@@ -246,6 +246,44 @@ class TestGateRules:
         ids = rule_ids(report_for(files, only=["py.coverage-required"]))
         assert ids == []
 
+    def test_detached_fail_under_flag_is_not_a_gate(self):
+        files = clean_python_repo()
+        files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
+            "uv run pytest --cov=src --cov-fail-under=85",
+            "echo --cov-fail-under=85\n      - run: uv run pytest",
+        )
+        ids = rule_ids(report_for(files, only=["py.coverage-required"]))
+        assert ids == ["py.coverage-required"]
+
+    def test_fail_under_without_cov_collection_is_not_a_gate(self):
+        files = clean_python_repo()
+        files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
+            "uv run pytest --cov=src --cov-fail-under=85",
+            "uv run pytest --cov-fail-under=85",
+        )
+        ids = rule_ids(report_for(files, only=["py.coverage-required"]))
+        assert ids == ["py.coverage-required"]
+
+    def test_commented_coveragerc_fail_under_is_not_a_gate(self):
+        files = clean_python_repo()
+        files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
+            "uv run pytest --cov=src --cov-fail-under=85",
+            "uv run coverage run -m pytest\n      - run: uv run coverage report",
+        )
+        files[".coveragerc"] = "[report]\n# fail_under = 85\n"
+        ids = rule_ids(report_for(files, only=["py.coverage-required"]))
+        assert ids == ["py.coverage-required"]
+
+    def test_active_coveragerc_fail_under_is_a_gate(self):
+        files = clean_python_repo()
+        files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
+            "uv run pytest --cov=src --cov-fail-under=85",
+            "uv run coverage run -m pytest\n      - run: uv run coverage report",
+        )
+        files[".coveragerc"] = "[report]\nfail_under = 85\n"
+        ids = rule_ids(report_for(files, only=["py.coverage-required"]))
+        assert ids == []
+
     def test_pytest_without_coverage_still_satisfies_tests(self):
         files = clean_python_repo()
         ids = rule_ids(report_for(files, only=["py.test-required"]))

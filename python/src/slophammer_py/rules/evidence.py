@@ -86,19 +86,29 @@ def has_test_command(snapshot: Snapshot) -> bool:
     )
 
 
-# An explicit below-threshold --cov-fail-under is a weakened gate, not a
-# missing one: it wins over config in pytest-cov, so it fails the rule
-# instead of falling back to the configured threshold.
+FAIL_UNDER_FLAG = re.compile(r"--cov-fail-under[ =](\d+(?:\.\d+)?)")
+
+
+# Threshold flags only count on a pytest-cov invocation that actually
+# collects coverage; an explicit below-threshold value is a weakened gate
+# and fails the rule instead of falling back to the configured threshold.
 def has_coverage_command(snapshot: Snapshot, threshold: int) -> bool:
-    pattern = re.compile(r"--cov-fail-under[ =](\d+(?:\.\d+)?)")
     values = [
         float(match.group(1))
         for segment in snapshot_segments(snapshot)
-        for match in pattern.finditer(segment)
+        if pytest_cov_segment(segment)
+        for match in FAIL_UNDER_FLAG.finditer(segment)
     ]
     if values:
         return min(values) >= threshold
     return has_coverage_run(snapshot) and has_coverage_config_threshold(snapshot, threshold)
+
+
+def pytest_cov_segment(segment: str) -> bool:
+    return (
+        re.search(tool_pattern("pytest"), segment) is not None
+        and re.search(r"--cov(?:[= ]|$)", segment) is not None
+    )
 
 
 # Only commands that evaluate the threshold count: pytest-cov reporting and
