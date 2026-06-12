@@ -166,9 +166,25 @@ def has_dry_command(snapshot: Snapshot) -> bool:
 # a kill-rate check for mutmut (which may also run mutmut itself) or
 # cr-rate --fail-over reading a session that cosmic-ray exec produced.
 def has_mutation_command(snapshot: Snapshot) -> bool:
-    if any_segment(snapshot, r"--min-kill-rate\b"):
+    if has_kill_rate_gate(snapshot):
         return True
     return has_gated_cosmic_ray(snapshot)
+
+
+KILL_RATE_FLOOR = re.compile(r"--min-kill-rate[= ]+(\d+(?:\.\d+)?)")
+
+
+# The flag only gates when it rides a mutation command and the floor can
+# actually fail: an unrelated command mentioning the flag, or a floor of
+# zero, is not evidence.
+def has_kill_rate_gate(snapshot: Snapshot) -> bool:
+    for segment in snapshot_segments(snapshot):
+        if "mutmut" not in segment and "mutation" not in segment:
+            continue
+        match = KILL_RATE_FLOOR.search(segment)
+        if match is not None and float(match.group(1)) > 0:
+            return True
+    return False
 
 
 def has_gated_cosmic_ray(snapshot: Snapshot) -> bool:

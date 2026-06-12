@@ -337,6 +337,7 @@ describe("TypeScript command failure regressions", () => {
 
 function baseTypeScriptFiles(): readonly { readonly path: string; readonly content: string }[] {
   return [
+    { path: "stryker.conf.json", content: '{"thresholds":{"high":70,"low":50,"break":50}}' },
     { path: "README.md", content: "# Repo\n" },
     { path: "AGENTS.md", content: "# Agents\n" },
     { path: ".github/workflows/ci.yml", content: bindingScriptWorkflow() },

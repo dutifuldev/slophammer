@@ -401,6 +401,7 @@ function nestedPackageFiles(): readonly { readonly path: string; readonly conten
       content: JSON.stringify({ devDependencies: { typescript: "^5.0.0" } })
     },
     { path: "pkg/tsconfig.json", content: strictTSConfig() },
+    { path: "pkg/stryker.conf.json", content: '{"thresholds":{"high":70,"low":50,"break":50}}' },
     { path: "pkg/eslint.config.mjs", content: eslintConfig() },
     { path: "pkg/vitest.config.ts", content: coverageConfig() }
   ];
@@ -417,6 +418,10 @@ function nestedPackageWithoutPackageFile(): readonly {
     { path: "package.json", content: JSON.stringify({ scripts: { test: "echo ok" } }) },
     { path: "packages/app/src/index.ts", content: "export const value: number = 1;\n" },
     { path: "packages/app/tsconfig.json", content: strictTSConfig() },
+    {
+      path: "packages/app/stryker.conf.json",
+      content: '{"thresholds":{"high":70,"low":50,"break":50}}'
+    },
     { path: "packages/app/eslint.config.mjs", content: eslintConfig() },
     { path: "packages/app/vitest.config.ts", content: coverageConfig() }
   ];
@@ -500,6 +505,7 @@ function rootAndNestedPackageFiles(): readonly {
     { path: ".github/workflows/ci.yml", content: "name: CI\n" },
     { path: "package.json", content: JSON.stringify({ scripts: packageScripts() }) },
     { path: "tsconfig.json", content: strictTSConfig() },
+    { path: "stryker.conf.json", content: '{"thresholds":{"high":70,"low":50,"break":50}}' },
     { path: "eslint.config.mjs", content: eslintConfig() },
     { path: "vitest.config.ts", content: coverageConfig() },
     ...packageFilesWithTSConfig("packages/app", weakTSConfig())
@@ -526,6 +532,7 @@ function rootProjectWithNestedOnlyCommands(): readonly {
     },
     { path: "src/index.ts", content: "export const value: number = 1;\n" },
     { path: "tsconfig.json", content: strictTSConfig() },
+    { path: "stryker.conf.json", content: '{"thresholds":{"high":70,"low":50,"break":50}}' },
     { path: "eslint.config.mjs", content: eslintConfig() },
     { path: "vitest.config.ts", content: coverageConfig() },
     ...packageFiles("packages/app")
@@ -543,6 +550,7 @@ function rootAndNestedWithRootOnlyCommands(): readonly {
     { path: "package.json", content: JSON.stringify({ scripts: packageScripts() }) },
     { path: "src/index.ts", content: "export const value: number = 1;\n" },
     { path: "tsconfig.json", content: strictTSConfig() },
+    { path: "stryker.conf.json", content: '{"thresholds":{"high":70,"low":50,"break":50}}' },
     { path: "eslint.config.mjs", content: eslintConfig() },
     { path: "vitest.config.ts", content: coverageConfig() },
     ...packageFiles("packages/app")
@@ -639,6 +647,10 @@ function packageFilesWithTSConfig(
     {
       path: `${root}/package.json`,
       content: JSON.stringify({ devDependencies: { typescript: "^5.0.0" } })
+    },
+    {
+      path: `${root}/stryker.conf.json`,
+      content: '{"thresholds":{"high":70,"low":50,"break":50}}'
     },
     { path: `${root}/src/index.ts`, content: "export const value: number = 1;\n" },
     { path: `${root}/tsconfig.json`, content: tsconfig },

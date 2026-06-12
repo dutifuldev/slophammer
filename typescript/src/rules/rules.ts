@@ -822,8 +822,13 @@ function directTestCommand(content: string): boolean {
 
 // Only an executing `stryker run` counts: init and help invocations never
 // execute a mutant, and a dry run validates configuration without being
-// able to fail on a survivor.
+// able to fail on a survivor. Stryker itself exits zero on surviving
+// mutants unless thresholds.break is configured, so the run only gates
+// beside a positive breaking threshold.
 function hasTypeScriptMutationCommand(snapshot: Snapshot): boolean {
+  if (!hasStrykerBreakThreshold(snapshot)) {
+    return false;
+  }
   const scripts = packageScripts(snapshot);
   return commandFiles(snapshot).some((file) =>
     commandSegments(file.content)
@@ -831,6 +836,20 @@ function hasTypeScriptMutationCommand(snapshot: Snapshot): boolean {
       .map((segment) => normalizeCommandContent(segment))
       .some((segment) => /\bstryker run\b/u.test(segment) && !/--dry-?run-?only\b/u.test(segment))
   );
+}
+
+function hasStrykerBreakThreshold(snapshot: Snapshot): boolean {
+  for (const file of snapshot.files.values()) {
+    const name = file.path.split("/").at(-1) ?? "";
+    if (!/^stryker\.(?:conf|config)\./u.test(name)) {
+      continue;
+    }
+    const match = /\bbreak["']?\s*:\s*(\d+(?:\.\d+)?)/u.exec(file.content);
+    if (match?.[1] !== undefined && Number(match[1]) > 0) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function productionFilesNamed(

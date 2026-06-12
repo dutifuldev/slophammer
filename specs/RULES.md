@@ -43,7 +43,9 @@ Diff-scoped and incremental executing forms count. Tools that execute
 mutants but exit zero when they survive are held to the same bar: bare
 `mutate4go` and bare `mutmut run` are not gates, so Go credits only the
 `slophammer-go mutate` wrapper and Python credits the kill-rate check
-(`--min-kill-rate`) or `cr-rate --fail-over` beside `cosmic-ray exec`.
+(`--min-kill-rate` with a positive floor) or `cr-rate --fail-over` beside
+`cosmic-ray exec`. Stryker likewise exits zero without `thresholds.break`,
+so `stryker run` counts only beside a positive breaking threshold.
 
 Accepted limitations: expressions are only neutralizing when literal — the
 checkers ship no expression evaluator, so a non-literal always-false

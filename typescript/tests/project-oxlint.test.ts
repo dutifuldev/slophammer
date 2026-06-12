@@ -45,6 +45,7 @@ function nestedPackageWithRootOxlintConfig(): readonly {
     },
     { path: "pkg/src/index.ts", content: "export const value: number = 1;\n" },
     { path: "pkg/tsconfig.json", content: strictTSConfig() },
+    { path: "pkg/stryker.conf.json", content: '{"thresholds":{"high":70,"low":50,"break":50}}' },
     { path: "pkg/vitest.config.ts", content: coverageConfig() }
   ];
 }

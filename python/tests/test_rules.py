@@ -376,6 +376,21 @@ class TestGateRules:
             ids = rule_ids(report_for(files, only=["py.mutation-required"]))
             assert ids == ["py.mutation-required"], weak
 
+    def test_unanchored_or_zero_kill_rate_flags_are_not_evidence(self):
+        weak_forms = (
+            "echo --min-kill-rate 74",
+            "uv run python scripts/check-mutation.py --min-kill-rate 0",
+        )
+        for weak in weak_forms:
+            files = clean_python_repo()
+            files[".github/workflows/ci.yml"] = (
+                files[".github/workflows/ci.yml"]
+                .replace("      - run: uv run mutmut run\n", "")
+                .replace("uv run python scripts/check-mutation.py --min-kill-rate 74", weak)
+            )
+            ids = rule_ids(report_for(files, only=["py.mutation-required"]))
+            assert ids == ["py.mutation-required"], weak
+
     def test_kill_rate_gate_alone_counts(self):
         # check-mutation.py runs mutmut itself when no stats file is given,
         # so the gate line is complete evidence on its own.
