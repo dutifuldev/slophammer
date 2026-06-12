@@ -104,6 +104,29 @@ class TestOtherCommands:
         assert main(["explain", "no.such-rule"]) == 2
         assert "unknown rule" in capsys.readouterr().err
 
+    def test_repeated_only_flags_accumulate(self, tmp_path: Path, capsys):
+        write_repo(tmp_path, {})
+        code = main(
+            [
+                "check",
+                str(tmp_path),
+                "--only",
+                "repo.readme-required",
+                "--only",
+                "repo.ci-required",
+            ]
+        )
+        assert code == 1
+        out = capsys.readouterr().out
+        assert "repo.readme-required" in out
+        assert "repo.ci-required" in out
+
+    def test_rules_catalog_as_json(self, capsys):
+        assert main(["rules", "--format", "json"]) == 0
+        catalog = json.loads(capsys.readouterr().out)
+        assert {"id", "title", "severity", "path", "message", "description"} <= set(catalog[0])
+        assert any(entry["id"] == "py.types-strict-required" for entry in catalog)
+
     def test_rules_lists_all_ids(self, capsys):
         assert main(["rules"]) == 0
         out = capsys.readouterr().out

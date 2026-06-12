@@ -64,6 +64,16 @@ class TestTyContract:
         files = clean_python_repo({"ty.toml": ty_toml})
         assert "respect-type-ignore-comments" in messages(files)
 
+    def test_flags_before_check_subcommand_still_judged(self):
+        files = clean_python_repo()
+        files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
+            "uv run ty check src --error-on-warning",
+            "uv run ty --error-on-warning check src",
+        )
+        ty_toml = STRICT_TY_TOML.replace('missing-type-argument = "error"\n', "")
+        files["ty.toml"] = ty_toml
+        assert "missing-type-argument" in messages(files)
+
     def test_unknown_rules_are_tolerated(self):
         files = clean_python_repo(
             {"ty.toml": STRICT_TY_TOML + '\nrule-from-the-future = "ignore"\n'}

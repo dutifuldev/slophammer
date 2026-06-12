@@ -177,7 +177,7 @@ def complexity_findings(
         return []
     limit = toolconfig.ruff_complexity_limit(snapshot)
     enforced = (
-        toolconfig.ruff_selects(snapshot, "C90")
+        toolconfig.ruff_selects(snapshot, "C901")
         and limit is not None
         and limit <= complexity_limit(config)
     )

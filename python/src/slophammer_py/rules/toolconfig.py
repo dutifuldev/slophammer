@@ -129,12 +129,11 @@ def ty_contract(snapshot: Snapshot) -> TyContract:
     )
 
 
+TY_INVOCATION = re.compile(r"\bty(?: [\w./=-]+)* (?:check|server)\b")
+
+
 def ty_segments(snapshot: Snapshot) -> list[str]:
-    return [
-        segment
-        for segment in snapshot_segments(snapshot)
-        if re.search(r"\bty (?:check|server)\b", segment)
-    ]
+    return [segment for segment in snapshot_segments(snapshot) if TY_INVOCATION.search(segment)]
 
 
 def flag_severities(snapshot: Snapshot) -> dict[str, str]:
@@ -179,7 +178,7 @@ def level_rank(level: str) -> int:
 def typechecker_in_use(snapshot: Snapshot) -> str | None:
     segments = snapshot_segments(snapshot)
     for tool, pattern in (
-        ("ty", r"\bty (?:check)\b"),
+        ("ty", r"\bty(?: [\w./=-]+)* check\b"),
         ("mypy", r"\bmypy\b"),
         ("pyright", r"\bpyright\b"),
     ):
@@ -283,7 +282,7 @@ def ruff_selects(snapshot: Snapshot, code: str) -> bool:
     config = ruff_lint_config(snapshot)
     selected = any(
         isinstance(selection := config.get(key), list)
-        and any(str(item) in ("ALL", code) for item in selection)
+        and any(selection_covers(item, code) for item in selection)
         for key in ("select", "extend-select")
     )
     if not selected:
@@ -293,6 +292,13 @@ def ruff_selects(snapshot: Snapshot, code: str) -> bool:
         if isinstance(ignored, list) and any(overlapping_code(item, code) for item in ignored):
             return False
     return not production_per_file_ignore(config, code)
+
+
+# A selection entry covers a requested code when it is the code itself, a
+# family prefix of it (C90 covers C901), or ALL — but never a more specific
+# member (selecting only ANN401 does not enforce the ANN family).
+def selection_covers(item: object, code: str) -> bool:
+    return str(item) == "ALL" or code.startswith(str(item))
 
 
 def overlapping_code(item: object, code: str) -> bool:

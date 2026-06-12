@@ -82,6 +82,7 @@ def has_test_command(snapshot: Snapshot) -> bool:
         any_segment(snapshot, tool_pattern("pytest"))
         or any_segment(snapshot, rf"^{ENV_PREFIX}python3? -m unittest\b")
         or any_segment(snapshot, tool_pattern("tox"))
+        or any_segment(snapshot, tool_pattern("coverage") + r" run\b[^\n]*\b(?:pytest|unittest)\b")
     )
 
 
@@ -100,9 +101,11 @@ def has_coverage_command(snapshot: Snapshot, threshold: int) -> bool:
     return has_coverage_run(snapshot) and has_coverage_config_threshold(snapshot, threshold)
 
 
+# Only commands that evaluate the threshold count: pytest-cov reporting and
+# `coverage report` honor fail_under, a bare `coverage run` never does.
 def has_coverage_run(snapshot: Snapshot) -> bool:
     return any_segment(snapshot, tool_pattern("pytest") + r"\b[^\n]*--cov\b") or any_segment(
-        snapshot, tool_pattern("coverage") + r" (?:run|report)\b"
+        snapshot, tool_pattern("coverage") + r" report\b"
     )
 
 

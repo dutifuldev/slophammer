@@ -211,6 +211,41 @@ class TestGateRules:
         ids = rule_ids(report_for(files, only=["py.test-required", "py.coverage-required"]))
         assert ids == []
 
+    def test_coverage_run_pytest_satisfies_tests(self):
+        files = clean_python_repo()
+        files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
+            "uv run pytest --cov=src --cov-fail-under=85",
+            "uv run coverage run -m pytest",
+        )
+        ids = rule_ids(report_for(files, only=["py.test-required"]))
+        assert ids == []
+
+    def test_bare_coverage_run_is_not_a_gate(self):
+        files = clean_python_repo(
+            {
+                "pyproject.toml": STRICT_PYPROJECT + "\n[tool.coverage.report]\nfail_under = 85\n",
+            }
+        )
+        files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
+            "uv run pytest --cov=src --cov-fail-under=85",
+            "uv run coverage run -m pytest",
+        )
+        ids = rule_ids(report_for(files, only=["py.coverage-required"]))
+        assert ids == ["py.coverage-required"]
+
+    def test_coverage_report_with_config_threshold_is_a_gate(self):
+        files = clean_python_repo(
+            {
+                "pyproject.toml": STRICT_PYPROJECT + "\n[tool.coverage.report]\nfail_under = 85\n",
+            }
+        )
+        files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
+            "uv run pytest --cov=src --cov-fail-under=85",
+            "uv run coverage run -m pytest\n      - run: uv run coverage report",
+        )
+        ids = rule_ids(report_for(files, only=["py.coverage-required"]))
+        assert ids == []
+
     def test_pytest_without_coverage_still_satisfies_tests(self):
         files = clean_python_repo()
         ids = rule_ids(report_for(files, only=["py.test-required"]))
@@ -221,6 +256,17 @@ class TestGateRules:
         del files["pyproject.toml"]
         ids = rule_ids(report_for(files, only=["py.project-required"]))
         assert ids == ["py.project-required"]
+
+    def test_exact_c901_selection_counts(self):
+        files = clean_python_repo(
+            {
+                "pyproject.toml": STRICT_PYPROJECT.replace(
+                    'select = ["E", "F", "ANN", "C90"]', 'select = ["E", "F", "ANN", "C901"]'
+                )
+            }
+        )
+        ids = rule_ids(report_for(files, only=["py.complexity-required"]))
+        assert ids == []
 
     def test_complexity_via_xenon_command(self):
         files = clean_python_repo({"pyproject.toml": '[project]\nname = "demo"\nversion = "0"\n'})

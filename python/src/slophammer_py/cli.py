@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from importlib import metadata
 
@@ -32,7 +33,11 @@ def build_parser() -> argparse.ArgumentParser:
     check_parser = commands.add_parser("check", help="Check a repository against the rules")
     check_parser.add_argument("path")
     check_parser.add_argument("--format", choices=FORMATS, default="text")
-    check_parser.add_argument("--only", help="Comma-separated rule ids to run")
+    check_parser.add_argument(
+        "--only",
+        action="append",
+        help="Comma-separated rule ids to run; repeatable",
+    )
     baseline = check_parser.add_mutually_exclusive_group()
     baseline.add_argument("--baseline", action="store_true", help="Apply the checked-in baseline")
     baseline.add_argument(
@@ -46,7 +51,8 @@ def build_parser() -> argparse.ArgumentParser:
     explain_parser = commands.add_parser("explain", help="Explain a rule")
     explain_parser.add_argument("rule_id")
 
-    commands.add_parser("rules", help="List rule ids")
+    rules_parser = commands.add_parser("rules", help="List rule ids")
+    rules_parser.add_argument("--format", choices=("text", "json"), default="text")
     return parser
 
 
@@ -57,6 +63,23 @@ def dispatch(arguments: argparse.Namespace) -> CommandResult:
         return dry(arguments.path, output_format=arguments.format)
     if arguments.command == "explain":
         return run_explain(arguments.rule_id)
+    return run_rules_catalog(arguments.format)
+
+
+def run_rules_catalog(output_format: str) -> CommandResult:
+    if output_format == "json":
+        catalog = [
+            {
+                "id": definition.id,
+                "title": definition.title,
+                "severity": definition.severity,
+                "path": definition.path,
+                "message": definition.message,
+                "description": definition.description,
+            }
+            for definition in DEFAULT_DEFINITIONS
+        ]
+        return CommandResult(code=0, stdout=json.dumps(catalog, indent=2) + "\n")
     return CommandResult(
         code=0, stdout="".join(f"{definition.id}\n" for definition in DEFAULT_DEFINITIONS)
     )
@@ -79,11 +102,11 @@ def run_check(arguments: argparse.Namespace) -> CommandResult:
     )
 
 
-def parse_only(value: str | None) -> tuple[list[str] | None, str | None]:
-    if value is None:
+def parse_only(values: list[str] | None) -> tuple[list[str] | None, str | None]:
+    if values is None:
         return None, None
     known = {definition.id for definition in DEFAULT_DEFINITIONS}
-    rule_ids = [rule_id.strip() for rule_id in value.split(",")]
+    rule_ids = [rule_id.strip() for value in values for rule_id in value.split(",")]
     if not any(rule_ids) or "" in rule_ids:
         return None, "check failed: --only requires rule ids\n"
     unknown = [rule_id for rule_id in rule_ids if rule_id not in known]
