@@ -325,7 +325,7 @@ release policy and shared architecture live in [Product](specs/PRODUCT.md) and
 [Implementation Model](docs/IMPLEMENTATION_MODEL.md).
 
 The bare PyPI placeholder release uses `python/utils/slophammer-placeholder` and
-publishes with the repository secret `PYPI_API_TOKEN`.
+publishes through PyPI trusted publishing.
 
 ## Guardrail Principles
 

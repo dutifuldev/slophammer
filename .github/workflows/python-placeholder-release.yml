@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
     defaults:
       run:
         working-directory: python/utils/slophammer-placeholder
@@ -94,15 +95,7 @@ jobs:
         run: uv build
 
       - name: Publish to PyPI
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ -z "${UV_PUBLISH_TOKEN:-}" ]; then
-            echo "PYPI_API_TOKEN repository secret is not set or is not available to this workflow."
-            exit 1
-          fi
-          uv publish --token "$UV_PUBLISH_TOKEN"
+        run: uv publish --trusted-publishing always
 
       - name: Create GitHub Release
         working-directory: .
