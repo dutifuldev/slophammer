@@ -989,6 +989,35 @@ func TestCheckMutationFailsOnSurvivors(t *testing.T) {
 	}
 }
 
+func TestCheckMutationFailsOnUncoveredChangedSites(t *testing.T) {
+	runner := &fakeRunner{output: []byte(
+		"Changed mutation sites: 3\nSelected mutation sites: 0\n" +
+			"Mutation Report\nKilled: 0\nSurvived: 0\nUncovered: 3\n")}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckMutation(context.Background(), MutationOptions{Root: "/repo", Target: "main.go"}, &out, &errOut, runner)
+
+	if code != 1 {
+		t.Fatalf("code = %d, want 1", code)
+	}
+	if !bytes.Contains(errOut.Bytes(), []byte("no test coverage")) {
+		t.Fatalf("errOut = %q, want uncovered-changed message", errOut.String())
+	}
+}
+
+func TestCheckMutationScanModeIgnoresCounts(t *testing.T) {
+	runner := &fakeRunner{output: []byte("Changed mutation sites: 9\nSelected mutation sites: 0\n")}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckMutation(context.Background(), MutationOptions{Root: "/repo", Target: "main.go", Scan: true}, &out, &errOut, runner)
+
+	if code != 0 {
+		t.Fatalf("code = %d, want 0 for scan mode", code)
+	}
+}
+
 func TestCheckMutationPassesWithoutSurvivors(t *testing.T) {
 	runner := &fakeRunner{output: []byte("Killed: 5\nSurvived: 0\n")}
 	var out bytes.Buffer

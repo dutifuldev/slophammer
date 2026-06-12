@@ -876,6 +876,31 @@ jobs:
 	}
 }
 
+func TestScanRejectionScopesToTheMatchedCommand(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"go.mod":                   {Path: "go.mod", Content: "module example.com/demo\n"},
+		".github/workflows/ci.yml": {Path: ".github/workflows/ci.yml", Content: "name: CI\non: [push]\njobs:\n  t:\n    steps:\n      - run: ./scripts/gate.sh\n"},
+		"scripts/gate.sh": {
+			Path:    "scripts/gate.sh",
+			Content: "slophammer-go mutate . --target main.go && echo --scan\n",
+		},
+	})
+	if !hasMutate4GoCommand(snapshot) {
+		t.Fatal("a later command's --scan token must not discredit the executing gate")
+	}
+}
+
+func TestWorkingDirectoryScanOnlyMutationIsNotEvidence(t *testing.T) {
+	content := "cd go && go run ./cmd/slophammer go mutate . --scan"
+	if contentHasConfigBackedSlophammerGoCommandInWorkingDir(content, "mutate", "go") {
+		t.Fatal("scan-only mutation must not satisfy the working-directory matcher")
+	}
+	executing := "cd go && go run ./cmd/slophammer go mutate ."
+	if !contentHasConfigBackedSlophammerGoCommandInWorkingDir(executing, "mutate", "go") {
+		t.Fatal("executing mutation must satisfy the working-directory matcher")
+	}
+}
+
 func TestScanOnlyMutationCommandsAreNotEvidence(t *testing.T) {
 	contents := []string{
 		"slophammer-go mutate . --target main.go --scan\n",

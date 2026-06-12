@@ -677,6 +677,7 @@ func CheckMutation(ctx context.Context, options MutationOptions, out io.Writer, 
 		return 2
 	}
 	survived := 0
+	uncoveredChanged := 0
 	for _, target := range targets {
 		args := gotools.Mutate4Go.GoRunArgs(gotools.Latest, target)
 		if options.Scan {
@@ -690,32 +691,42 @@ func CheckMutation(ctx context.Context, options MutationOptions, out io.Writer, 
 			_, _ = fmt.Fprintf(errOut, "mutate4go failed for %s: %v\n", target, err)
 			return 2
 		}
-		survived += survivedMutants(result.Stdout)
+		survived += reportedCount(result.Stdout, "Survived: ")
+		changed := reportedCount(result.Stdout, "Changed mutation sites: ")
+		selected := reportedCount(result.Stdout, "Selected mutation sites: ")
+		if changed > selected {
+			uncoveredChanged += changed - selected
+		}
+	}
+	if options.Scan {
+		return 0
 	}
 	if survived > 0 {
 		_, _ = fmt.Fprintf(errOut, "%d mutant(s) survived; strengthen the tests or refresh the manifest deliberately\n", survived)
 		return 1
 	}
+	// Changed sites that no test covers never get mutated, so they would
+	// pass silently; an untested change is a failing gate, not a skipped one.
+	if uncoveredChanged > 0 {
+		_, _ = fmt.Fprintf(errOut, "%d changed mutation site(s) have no test coverage; cover them before relying on the gate\n", uncoveredChanged)
+		return 1
+	}
 	return 0
 }
 
-// A mutation run that reports survivors is a failing gate: the executing
-// mode mutates only functions changed since their manifest stamp, so any
-// survivor is new, untested behavior.
-func survivedMutants(output []byte) int {
-	survived := 0
+func reportedCount(output []byte, prefix string) int {
+	total := 0
 	for _, line := range strings.Split(string(output), "\n") {
-		trimmed := strings.TrimSpace(line)
-		value, found := strings.CutPrefix(trimmed, "Survived: ")
+		value, found := strings.CutPrefix(strings.TrimSpace(line), prefix)
 		if !found {
 			continue
 		}
 		count, err := strconv.Atoi(strings.TrimSpace(value))
 		if err == nil {
-			survived += count
+			total += count
 		}
 	}
-	return survived
+	return total
 }
 
 func CountDRYCandidates(report []byte) (int, error) {
