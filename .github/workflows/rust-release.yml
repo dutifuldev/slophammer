@@ -139,6 +139,22 @@ jobs:
       - name: Sync the Python implementation
         working-directory: .
         run: uv sync --frozen --directory python
+      - name: Mutation gate on changes since the previous release
+        run: |
+          set -euo pipefail
+          cargo install cargo-mutants --locked
+          previous="$(git describe --tags --match 'rust/v*' --abbrev=0 HEAD^ 2>/dev/null || true)"
+          if [ -z "$previous" ]; then
+            echo "no previous rust release tag; skipping diff-scoped mutation"
+            exit 0
+          fi
+          git -c diff.mnemonicPrefix=false diff --relative "$previous"...HEAD -- . > /tmp/release.diff
+          if [ ! -s /tmp/release.diff ]; then
+            echo "no rust changes since $previous"
+            exit 0
+          fi
+          cargo mutants --workspace --timeout 120 --in-diff /tmp/release.diff
+
       - name: Validate shared conformance
         working-directory: .
         run: |

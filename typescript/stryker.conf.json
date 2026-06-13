@@ -8,5 +8,10 @@
   "coverageAnalysis": "perTest",
   "checkers": ["typescript"],
   "tsconfigFile": "tsconfig.json",
-  "mutate": ["src/rules/**/*.ts"]
+  "mutate": ["src/rules/**/*.ts"],
+  "thresholds": {
+    "high": 70,
+    "low": 50,
+    "break": 44
+  }
 }

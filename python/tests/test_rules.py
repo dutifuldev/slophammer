@@ -11,6 +11,7 @@ GATE_STEPS = """\
       - run: uv run pytest --cov=src --cov-fail-under=85
       - run: uv run slophammer-py dry .
       - run: uv run mutmut run
+      - run: uv run python scripts/check-mutation.py --min-kill-rate 74
       - run: uv run pip-audit
       - run: uvx slophammer-py check .
 """
@@ -162,7 +163,7 @@ class TestGateRules:
             "ruff format --check .": "py.format-required",
             "pytest --cov=src --cov-fail-under=85": "py.coverage-required",
             "slophammer-py dry .": "py.dry-required",
-            "mutmut run": "py.mutation-required",
+            "min-kill-rate": "py.mutation-required",
             "pip-audit": "py.dependency-audit-required",
         }
         for needle, rule in cases.items():
@@ -352,6 +353,118 @@ class TestGateRules:
         )
         ids = rule_ids(report_for(files, only=["py.coverage-required"]))
         assert ids == ["py.coverage-required"]
+
+    def test_cannot_fail_mutation_forms_are_not_evidence(self):
+        weak_forms = (
+            "uv run mutmut run",
+            "uv run mutmut results",
+            "uv run mutmut run --dry-run",
+            "uv run cosmic-ray init config.toml session.sqlite",
+            "uv run cosmic-ray report session.sqlite",
+            "uv run cosmic-ray exec config.toml session.sqlite",
+        )
+        for weak in weak_forms:
+            files = clean_python_repo()
+            files[".github/workflows/ci.yml"] = (
+                files[".github/workflows/ci.yml"]
+                .replace("uv run mutmut run", weak)
+                .replace(
+                    "      - run: uv run python scripts/check-mutation.py --min-kill-rate 74\n",
+                    "",
+                )
+            )
+            ids = rule_ids(report_for(files, only=["py.mutation-required"]))
+            assert ids == ["py.mutation-required"], weak
+
+    def test_unanchored_or_zero_kill_rate_flags_are_not_evidence(self):
+        weak_forms = (
+            "echo --min-kill-rate 74",
+            "echo mutation --min-kill-rate 74",
+            "echo check-mutation.py --min-kill-rate 74",
+            "uv run python scripts/check-mutation.py --min-kill-rate 0",
+        )
+        for weak in weak_forms:
+            files = clean_python_repo()
+            files[".github/workflows/ci.yml"] = (
+                files[".github/workflows/ci.yml"]
+                .replace("      - run: uv run mutmut run\n", "")
+                .replace("uv run python scripts/check-mutation.py --min-kill-rate 74", weak)
+            )
+            ids = rule_ids(report_for(files, only=["py.mutation-required"]))
+            assert ids == ["py.mutation-required"], weak
+
+    def test_stats_file_gate_requires_an_executing_run(self):
+        files = clean_python_repo()
+        files[".github/workflows/ci.yml"] = (
+            files[".github/workflows/ci.yml"]
+            .replace("      - run: uv run mutmut run\n", "")
+            .replace(
+                "uv run python scripts/check-mutation.py --min-kill-rate 74",
+                "uv run python scripts/check-mutation.py --stats-file /tmp/mutmut.log"
+                " --min-kill-rate 74",
+            )
+        )
+        ids = rule_ids(report_for(files, only=["py.mutation-required"]))
+        assert ids == ["py.mutation-required"]
+
+    def test_stats_file_gate_beside_executing_run_counts(self):
+        files = clean_python_repo()
+        files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
+            "uv run python scripts/check-mutation.py --min-kill-rate 74",
+            "uv run python scripts/check-mutation.py --stats-file /tmp/mutmut.log"
+            " --min-kill-rate 74",
+        )
+        ids = rule_ids(report_for(files, only=["py.mutation-required"]))
+        assert ids == []
+
+    def test_kill_rate_gate_alone_counts(self):
+        # check-mutation.py runs mutmut itself when no stats file is given,
+        # so the gate line is complete evidence on its own.
+        files = clean_python_repo()
+        files[".github/workflows/ci.yml"] = files[".github/workflows/ci.yml"].replace(
+            "      - run: uv run mutmut run\n", ""
+        )
+        ids = rule_ids(report_for(files, only=["py.mutation-required"]))
+        assert ids == []
+
+    def test_gated_cosmic_ray_counts(self):
+        files = clean_python_repo()
+        files[".github/workflows/ci.yml"] = (
+            files[".github/workflows/ci.yml"]
+            .replace("uv run mutmut run", "uv run cosmic-ray exec config.toml session.sqlite")
+            .replace(
+                "uv run python scripts/check-mutation.py --min-kill-rate 74",
+                "uv run cr-rate --fail-over 74 session.sqlite",
+            )
+        )
+        ids = rule_ids(report_for(files, only=["py.mutation-required"]))
+        assert ids == []
+
+    def test_cosmic_ray_fail_over_at_hundred_is_not_evidence(self):
+        files = clean_python_repo()
+        files[".github/workflows/ci.yml"] = (
+            files[".github/workflows/ci.yml"]
+            .replace("uv run mutmut run", "uv run cosmic-ray exec config.toml session.sqlite")
+            .replace(
+                "uv run python scripts/check-mutation.py --min-kill-rate 74",
+                "uv run cr-rate --fail-over 100 session.sqlite",
+            )
+        )
+        ids = rule_ids(report_for(files, only=["py.mutation-required"]))
+        assert ids == ["py.mutation-required"]
+
+    def test_cosmic_ray_exec_without_rate_gate_is_not_evidence(self):
+        files = clean_python_repo()
+        files[".github/workflows/ci.yml"] = (
+            files[".github/workflows/ci.yml"]
+            .replace("uv run mutmut run", "uv run cosmic-ray exec config.toml session.sqlite")
+            .replace(
+                "      - run: uv run python scripts/check-mutation.py --min-kill-rate 74\n",
+                "",
+            )
+        )
+        ids = rule_ids(report_for(files, only=["py.mutation-required"]))
+        assert ids == ["py.mutation-required"]
 
     def test_module_spelling_pip_audit_counts(self):
         files = clean_python_repo()

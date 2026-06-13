@@ -328,6 +328,44 @@ func TestCheckExecuteReusesConfiguredCoverageProfile(t *testing.T) {
 	}
 }
 
+// The static go.mutation-required rule credits `check --execute` as
+// mutation evidence, so the execute path must run the survivor-failing
+// gate instead of a scan.
+func TestCheckExecuteRunsSurvivorFailingMutationGate(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"go.mod":              {Path: "go.mod"},
+		"internal/example.go": {Path: "internal/example.go"},
+	})
+	cfg := config.Config{Go: config.GoConfig{Targets: []string{"internal"}}}
+	runner := &survivorMutationRunner{}
+
+	findings := executeGoChecks(context.Background(), snapshot, CheckOptions{Root: "/repo", Execute: true}, cfg, runner)
+
+	if len(findings) != 1 || findings[0].RuleID != rules.GoMutationRequiredRuleID {
+		t.Fatalf("findings = %#v, want one go.mutation-required finding", findings)
+	}
+	if !strings.Contains(findings[0].Message, "mutation gate failed") {
+		t.Fatalf("message = %q, want gate failure message", findings[0].Message)
+	}
+	if len(runner.calls) == 0 {
+		t.Fatal("no mutation command ran")
+	}
+	for _, call := range runner.calls {
+		if strings.Contains(strings.Join(call.args, " "), "--scan") {
+			t.Fatalf("call = %#v, want an executing run without --scan", call)
+		}
+	}
+}
+
+type survivorMutationRunner struct {
+	calls []recordedCall
+}
+
+func (r *survivorMutationRunner) Run(_ context.Context, dir string, _ string, args ...string) (toolchecks.CommandResult, error) {
+	r.calls = append(r.calls, recordedCall{dir: dir, args: append([]string(nil), args...)})
+	return toolchecks.CommandResult{Stdout: []byte("Killed: 1\nSurvived: 1\n")}, nil
+}
+
 func TestApplyCommandConfigUsesConfiguredDefaults(t *testing.T) {
 	cfg := config.Config{Go: config.GoConfig{
 		DRYMaxCandidates:    0,

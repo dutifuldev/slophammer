@@ -34,6 +34,19 @@ through `make`, `task`, or `just`), following script-to-script references one
 level deep. `package.json` scripts count only when invoked by name from
 binding evidence, with one level of chained run-script references.
 
+Mutation evidence must be able to fail: list, scan, check, dry-run, and
+manifest-only forms (`cargo mutants --list`, `cargo mutants --check`,
+`mutate --scan`, `mutate --update-manifest`, `stryker --dryRunOnly`,
+`mutmut results`) enumerate, build, or baseline without executing a single
+mutant against the tests, so they are not mutation-testing evidence.
+Diff-scoped and incremental executing forms count. Tools that execute
+mutants but exit zero when they survive are held to the same bar: bare
+`mutate4go` and bare `mutmut run` are not gates, so Go credits only the
+`slophammer-go mutate` wrapper and Python credits the kill-rate check
+(`--min-kill-rate` with a positive floor) or `cr-rate --fail-over` beside
+`cosmic-ray exec`. Stryker likewise exits zero without `thresholds.break`,
+so `stryker run` counts only beside a positive breaking threshold.
+
 Accepted limitations: expressions are only neutralizing when literal — the
 checkers ship no expression evaluator, so a non-literal always-false
 condition stays credited. Reusable workflows (`uses:` at the job level) stay

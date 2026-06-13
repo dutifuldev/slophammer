@@ -22,6 +22,11 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/slophammer"]
 
+# mutmut writes its working copy under mutants/; it must never reach the
+# published source distribution.
+[tool.hatch.build.targets.sdist]
+exclude = ["mutants/"]
+
 [dependency-groups]
 dev = [
     "mutmut>=3.2",
@@ -74,7 +79,7 @@ fail_under = 85
 show_missing = true
 
 [tool.mutmut]
-paths_to_mutate = ["src/slophammer/rules/", "src/slophammer/repo.py"]
+source_paths = ["src/slophammer/rules/", "src/slophammer/repo.py"]
 also_copy = [
     "src/slophammer/__init__.py",
     "src/slophammer/app.py",

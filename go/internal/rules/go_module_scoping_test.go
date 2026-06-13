@@ -121,7 +121,7 @@ awk -v score="0" -v maximum="$maximum_crap_score" 'BEGIN { exit !(score + 0 <= m
 		},
 		"scripts/check-mutation.sh": {
 			Path:    "scripts/check-mutation.sh",
-			Content: "cd go && go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan\n",
+			Content: "cd go && slophammer-go mutate . --target main.go\n",
 		},
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
@@ -194,7 +194,7 @@ awk -v score="0" -v maximum="$maximum_crap_score" 'BEGIN { exit !(score + 0 <= m
 		},
 		"scripts/check-mutation.sh": {
 			Path:    "scripts/check-mutation.sh",
-			Content: "cd go && go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan\n",
+			Content: "cd go && slophammer-go mutate . --target main.go\n",
 		},
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",

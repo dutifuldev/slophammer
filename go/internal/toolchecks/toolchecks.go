@@ -669,30 +669,6 @@ func nonEmptyStrings(values []string) []string {
 	return kept
 }
 
-func CheckMutation(ctx context.Context, options MutationOptions, out io.Writer, errOut io.Writer, runner Runner) int {
-	root := defaultRoot(options.Root)
-	targets := mutationTargets(options)
-	if len(targets) == 0 {
-		_, _ = fmt.Fprintln(errOut, "--target is required")
-		return 2
-	}
-	for _, target := range targets {
-		args := gotools.Mutate4Go.GoRunArgs(gotools.Latest, target)
-		if options.Scan {
-			args = append(args, "--scan")
-		}
-
-		result, err := runner.Run(ctx, root, "go", args...)
-		writeBytes(out, result.Stdout)
-		writeBytes(errOut, result.Stderr)
-		if err != nil {
-			_, _ = fmt.Fprintf(errOut, "mutate4go failed for %s: %v\n", target, err)
-			return 2
-		}
-	}
-	return 0
-}
-
 func CountDRYCandidates(report []byte) (int, error) {
 	var parsed map[string][]json.RawMessage
 	if err := json.Unmarshal(report, &parsed); err != nil {
@@ -752,19 +728,6 @@ func dryPaths(options DryOptions) []string {
 		return []string{"."}
 	}
 	return paths
-}
-
-func mutationTargets(options MutationOptions) []string {
-	if options.Target != "" {
-		return []string{options.Target}
-	}
-	targets := make([]string, 0, len(options.Targets))
-	for _, target := range options.Targets {
-		if target != "" {
-			targets = append(targets, target)
-		}
-	}
-	return targets
 }
 
 func writeBytes(out io.Writer, content []byte) {

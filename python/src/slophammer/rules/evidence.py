@@ -161,9 +161,67 @@ def has_dry_command(snapshot: Snapshot) -> bool:
     )
 
 
+# mutmut and cosmic-ray exec both exit zero when mutants survive, so an
+# executing run alone is not a gate. Evidence is the gate that can fail:
+# a kill-rate check for mutmut (which may also run mutmut itself) or
+# cr-rate --fail-over reading a session that cosmic-ray exec produced.
 def has_mutation_command(snapshot: Snapshot) -> bool:
-    return any_segment(snapshot, tool_pattern("mutmut")) or any_segment(
-        snapshot, tool_pattern("cosmic-ray")
+    if has_kill_rate_gate(snapshot):
+        return True
+    return has_gated_cosmic_ray(snapshot)
+
+
+KILL_RATE_FLOOR = re.compile(r"--min-kill-rate[= ]+(\d+(?:\.\d+)?)")
+
+# A mutation gate in command position: a script or module whose name
+# mentions mutation/mutmut, optionally behind a runner and interpreter.
+# Echoed or logged text never sits in command position, so it never
+# counts.
+KILL_RATE_GATE_COMMAND = re.compile(
+    rf"^{ENV_PREFIX}{RUNNER_PREFIX}(?:python3? )?\S*(?:mutation|mutmut)\S*(?:\s|$)"
+)
+
+
+# The flag only gates when it rides a mutation command and the floor can
+# actually fail: an unrelated command mentioning the flag, or a floor of
+# zero, is not evidence. A --stats-file invocation only parses a log, so
+# it counts only beside an executing mutmut run that produced the log.
+def has_kill_rate_gate(snapshot: Snapshot) -> bool:
+    for segment in snapshot_segments(snapshot):
+        if KILL_RATE_GATE_COMMAND.search(segment) is None:
+            continue
+        match = KILL_RATE_FLOOR.search(segment)
+        if match is None or float(match.group(1)) <= 0:
+            continue
+        if "--stats-file" in segment and not has_executing_mutmut_run(snapshot):
+            continue
+        return True
+    return False
+
+
+def has_executing_mutmut_run(snapshot: Snapshot) -> bool:
+    cannot_fail = re.compile(r"--(?:list|dry-?run)")
+    run = re.compile(tool_pattern("mutmut") + r" run\b")
+    return any(
+        run.search(segment) and not cannot_fail.search(segment)
+        for segment in snapshot_segments(snapshot)
+    )
+
+
+def has_gated_cosmic_ray(snapshot: Snapshot) -> bool:
+    cannot_fail = re.compile(r"--(?:list|dry-?run)")
+    executing = re.compile(tool_pattern("cosmic-ray") + r" exec\b")
+    if not any(
+        executing.search(segment) and not cannot_fail.search(segment)
+        for segment in snapshot_segments(snapshot)
+    ):
+        return False
+    # cr-rate fails when the survival rate exceeds the maximum, and the
+    # rate cannot exceed 100, so a threshold of 100 or more never fails.
+    gate = re.compile(tool_pattern("cr-rate") + r"[^\n]*--fail-over[= ]+(\d+(?:\.\d+)?)")
+    return any(
+        (match := gate.search(segment)) is not None and float(match.group(1)) < 100
+        for segment in snapshot_segments(snapshot)
     )
 
 

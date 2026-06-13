@@ -449,6 +449,9 @@ func executeGoMetricChecks(ctx context.Context, env goToolEnv) []rules.Finding {
 	return findings
 }
 
+// The static rule credits `check --execute` as mutation evidence, so
+// execute must run the survivor-failing gate, not a scan that cannot fail
+// on a surviving mutant.
 func executeGoMutationCheck(ctx context.Context, env goToolEnv) []rules.Finding {
 	targets, exclude := env.cfg.GoMutationScope()
 	if !ruleSelected(env.options.OnlyRuleIDs, rules.GoMutationRequiredRuleID) || len(targets) == 0 {
@@ -458,9 +461,8 @@ func executeGoMutationCheck(ctx context.Context, env goToolEnv) []rules.Finding 
 		Root:    env.root,
 		Targets: targets,
 		Exclude: exclude,
-		Scan:    true,
 	}
-	return appendToolFinding(nil, rules.GoMutationRequiredRuleID, env.cfg, "mutate4go failed for at least one configured target", func(out, errOut io.Writer) int {
+	return appendToolFinding(nil, rules.GoMutationRequiredRuleID, env.cfg, "mutation gate failed for at least one configured target", func(out, errOut io.Writer) int {
 		return checkMutationInModules(ctx, env.snapshot, options, out, errOut, env.runner)
 	})
 }

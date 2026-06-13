@@ -153,6 +153,10 @@ async function nestedTypeScriptRepo(): Promise<string> {
     JSON.stringify({ scripts: packageScripts() })
   );
   await writeFile(path.join(root, "pkg", "tsconfig.json"), strictTSConfig());
+  await writeFile(
+    path.join(root, "pkg", "stryker.conf.json"),
+    '{"thresholds":{"high":70,"low":50,"break":50}}'
+  );
   await writeFile(path.join(root, "pkg", "eslint.config.mjs"), eslintConfig());
   await writeFile(path.join(root, "pkg", "vitest.config.ts"), coverageConfig());
   return root;

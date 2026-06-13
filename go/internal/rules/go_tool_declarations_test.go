@@ -102,7 +102,7 @@ jobs:
       - run: ./scripts/check-mutation.sh
       - run: go run ./cmd/slophammer go dry ..
       - run: go run ./cmd/slophammer go crap ..
-      - run: go run ./cmd/slophammer go mutate .. --scan
+      - run: go run ./cmd/slophammer go mutate ..
       - run: go run ./cmd/slophammer-go check ..
 `,
 		},
@@ -147,7 +147,7 @@ jobs:
       - run: ./scripts/check-mutation.sh
       - run: go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.1 dry .. --max-candidates 0
       - run: go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.1 crap ..
-      - run: go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.1 mutate .. --scan
+      - run: go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.1 mutate ..
       - run: go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.1.1 check ..
 `,
 		},
@@ -250,7 +250,7 @@ defaults:
 jobs:
   test:
     steps:
-      - run: go run ./cmd/slophammer go mutate . --scan
+      - run: go run ./cmd/slophammer go mutate .
       - run: ./scripts/check-go-coverage.sh
         working-directory: go
       - run: ./scripts/check-dry.sh
@@ -289,7 +289,7 @@ defaults:
 jobs:
   test:
     steps:
-      - run: slophammer-go mutate . --scan
+      - run: slophammer-go mutate .
       - run: ./scripts/check-go-coverage.sh
         working-directory: go
       - run: ./scripts/check-dry.sh
@@ -325,7 +325,7 @@ func TestGoToolRulesAcceptConfigBackedSlophammerCommands(t *testing.T) {
 		},
 		"scripts/check-mutation.sh": {
 			Path:    "scripts/check-mutation.sh",
-			Content: "cd go && go run ./cmd/slophammer go mutate .. --scan\n",
+			Content: "cd go && go run ./cmd/slophammer go mutate ..\n",
 		},
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
@@ -376,7 +376,7 @@ jobs:
       - run: ./scripts/check-mutation.sh
       - run: ./scripts/check-dry.sh
       - run: ./scripts/check-crap.sh
-      - run: go run ./cmd/slophammer go mutate .. --scan
+      - run: go run ./cmd/slophammer go mutate ..
       - run: go run ./cmd/slophammer-go check ..
 `,
 		},
@@ -404,7 +404,7 @@ func TestGoMutationRuleAcceptsRootConfigCommandForMultipleModules(t *testing.T) 
 		},
 		"scripts/check-mutation.sh": {
 			Path:    "scripts/check-mutation.sh",
-			Content: "slophammer-go mutate . --scan\n",
+			Content: "slophammer-go mutate .\n",
 		},
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
@@ -442,7 +442,7 @@ func TestGoMutationRuleSkipsModulesOutsideConfiguredTargets(t *testing.T) {
 		},
 		"scripts/check-mutation.sh": {
 			Path:    "scripts/check-mutation.sh",
-			Content: "slophammer-go mutate . --scan\n",
+			Content: "slophammer-go mutate .\n",
 		},
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
@@ -480,7 +480,7 @@ func TestGoMutationRuleRejectsUnrelatedModuleScriptForRootConfig(t *testing.T) {
 		},
 		"b/scripts/check-mutation.sh": {
 			Path:    "b/scripts/check-mutation.sh",
-			Content: "slophammer-go mutate --scan\n",
+			Content: "slophammer-go mutate\n",
 		},
 	})
 	roots := goProjectRoots(snapshot)
@@ -513,7 +513,7 @@ func TestGoMutationRuleDoesNotAcceptUnrelatedModuleLocalConfig(t *testing.T) {
 		},
 		"scripts/check-mutation.sh": {
 			Path:    "scripts/check-mutation.sh",
-			Content: "cd a && slophammer-go mutate --scan\n",
+			Content: "cd a && slophammer-go mutate\n",
 		},
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
@@ -565,7 +565,7 @@ on: [push]
 jobs:
   test:
     steps:
-      - run: slophammer-go mutate . --scan
+      - run: slophammer-go mutate .
 `,
 		},
 	})
@@ -595,7 +595,7 @@ on: [push]
 jobs:
   test:
     steps:
-      - run: go test ./go/... && slophammer-go mutate --scan
+      - run: go test ./go/... && slophammer-go mutate
 `,
 		},
 	})
@@ -620,7 +620,7 @@ func TestGoMutationRuleUsesSingleModuleFallbackForRootConfig(t *testing.T) {
 		},
 		"scripts/check-mutation.sh": {
 			Path:    "scripts/check-mutation.sh",
-			Content: "slophammer-go mutate . --scan\n",
+			Content: "slophammer-go mutate .\n",
 		},
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
@@ -661,7 +661,7 @@ func TestGoMutationRuleAllowsRootCoverageWithUnrelatedLocalConfig(t *testing.T) 
 		},
 		"scripts/check-mutation.sh": {
 			Path:    "scripts/check-mutation.sh",
-			Content: "slophammer-go mutate . --scan\n",
+			Content: "slophammer-go mutate .\n",
 		},
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
@@ -702,7 +702,7 @@ func TestGoMutationRuleResolvesModuleLocalConfigTargets(t *testing.T) {
 		},
 		"scripts/check-mutation.sh": {
 			Path:    "scripts/check-mutation.sh",
-			Content: "cd go && slophammer-go mutate --scan\n",
+			Content: "cd go && slophammer-go mutate\n",
 		},
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
@@ -736,7 +736,7 @@ func TestGoMutationRuleAcceptsRepoRootCommandForModuleLocalConfig(t *testing.T) 
 		},
 		"scripts/check-mutation.sh": {
 			Path:    "scripts/check-mutation.sh",
-			Content: "slophammer-go mutate go --scan\n",
+			Content: "slophammer-go mutate go\n",
 		},
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
@@ -778,7 +778,7 @@ defaults:
 jobs:
   test:
     steps:
-      - run: slophammer-go mutate go --scan
+      - run: slophammer-go mutate go
       - run: ./scripts/check-go-coverage.sh
         working-directory: go
       - run: ./scripts/check-dry.sh
@@ -811,7 +811,7 @@ func TestGoMutationRuleAcceptsCdCommandForModuleLocalConfig(t *testing.T) {
 		},
 		"scripts/check-mutation.sh": {
 			Path:    "scripts/check-mutation.sh",
-			Content: "cd go && slophammer-go mutate --scan\n",
+			Content: "cd go && slophammer-go mutate\n",
 		},
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
@@ -855,7 +855,7 @@ jobs:
   test:
     steps:
       - run: go run ./cmd/slophammer go crap ../tmp
-      - run: go run ./cmd/slophammer go mutate ../tmp --scan
+      - run: go run ./cmd/slophammer go mutate ../tmp
       - run: ./scripts/check-go-coverage.sh
         working-directory: go
       - run: ./scripts/check-dry.sh
@@ -873,6 +873,106 @@ jobs:
 	}
 	if hasMutate4GoCommand(snapshot) {
 		t.Fatal("hasMutate4GoCommand = true, want false for non-root parent path")
+	}
+}
+
+func TestPackagePathTokenAloneIsNotMutationEvidence(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"go.mod":                   {Path: "go.mod", Content: "module example.com/demo\n"},
+		".github/workflows/ci.yml": {Path: ".github/workflows/ci.yml", Content: "name: CI\non: [push]\njobs:\n  t:\n    steps:\n      - run: ./scripts/gate.sh\n"},
+		"scripts/gate.sh": {
+			Path:    "scripts/gate.sh",
+			Content: "echo github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go\n",
+		},
+	})
+	if hasMutate4GoCommand(snapshot) {
+		t.Fatal("a package path mentioned outside go run must not be mutation evidence")
+	}
+}
+
+func TestArgumentPositionSlophammerGoIsNotMutationEvidence(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"go.mod":                   {Path: "go.mod", Content: "module example.com/demo\n"},
+		".github/workflows/ci.yml": {Path: ".github/workflows/ci.yml", Content: "name: CI\non: [push]\njobs:\n  t:\n    steps:\n      - run: ./scripts/gate.sh\n"},
+		"scripts/gate.sh": {
+			Path:    "scripts/gate.sh",
+			Content: "echo slophammer-go mutate . --target main.go\n",
+		},
+	})
+	if hasMutate4GoCommand(snapshot) {
+		t.Fatal("slophammer-go quoted as an argument must not be mutation evidence")
+	}
+}
+
+// Every rejection path returns argsStart 0 alongside ok false; callers
+// rely on ok, but the zero is the documented contract and pins the
+// constants against mutation.
+func TestSlophammerGoCommandArgsStartRejectionsReturnZero(t *testing.T) {
+	cases := []struct {
+		name         string
+		tokens       []string
+		commandIndex int
+	}{
+		{"not a slophammer token", []string{"echo", "hi"}, 0},
+		{"argument position", []string{"echo", "slophammer-go", "mutate", "."}, 1},
+		{"wrong subcommand", []string{"slophammer-go", "crap", "."}, 0},
+		{"scan flag", []string{"slophammer-go", "mutate", ".", "--target", "main.go", "--scan"}, 0},
+	}
+	for _, testCase := range cases {
+		argsStart, ok := slophammerGoCommandArgsStart(testCase.tokens, testCase.commandIndex, "mutate")
+		if ok || argsStart != 0 {
+			t.Fatalf("%s: argsStart, ok = %d, %v; want 0, false", testCase.name, argsStart, ok)
+		}
+	}
+}
+
+func TestScanRejectionScopesToTheMatchedCommand(t *testing.T) {
+	snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+		"go.mod":                   {Path: "go.mod", Content: "module example.com/demo\n"},
+		".github/workflows/ci.yml": {Path: ".github/workflows/ci.yml", Content: "name: CI\non: [push]\njobs:\n  t:\n    steps:\n      - run: ./scripts/gate.sh\n"},
+		"scripts/gate.sh": {
+			Path:    "scripts/gate.sh",
+			Content: "slophammer-go mutate . --target main.go && echo --scan\n",
+		},
+	})
+	if !hasMutate4GoCommand(snapshot) {
+		t.Fatal("a later command's --scan token must not discredit the executing gate")
+	}
+}
+
+func TestWorkingDirectoryScanOnlyMutationIsNotEvidence(t *testing.T) {
+	content := "cd go && go run ./cmd/slophammer go mutate . --scan"
+	if contentHasConfigBackedSlophammerGoCommandInWorkingDir(content, "mutate", "go") {
+		t.Fatal("scan-only mutation must not satisfy the working-directory matcher")
+	}
+	executing := "cd go && go run ./cmd/slophammer go mutate ."
+	if !contentHasConfigBackedSlophammerGoCommandInWorkingDir(executing, "mutate", "go") {
+		t.Fatal("executing mutation must satisfy the working-directory matcher")
+	}
+}
+
+func TestScanOnlyMutationCommandsAreNotEvidence(t *testing.T) {
+	contents := []string{
+		"slophammer-go mutate . --target main.go --scan\n",
+		"slophammer-go mutate . --target main.go --scan=true\n",
+		"go run ./cmd/slophammer go mutate . --target main.go --scan\n",
+		"go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan\n",
+		"go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan=true\n",
+		"go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --update-manifest\n",
+		"go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --update-manifest=true\n",
+		"slophammer-go mutate . --target main.go --update-manifest\n",
+		"slophammer-go mutate . --target main.go --scan=false\n",
+		"slophammer-go mutate . --target main.go --update-manifest=false\n",
+	}
+	for _, content := range contents {
+		snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+			"go.mod":                   {Path: "go.mod", Content: "module example.com/demo\n"},
+			".github/workflows/ci.yml": {Path: ".github/workflows/ci.yml", Content: "name: CI\non: [push]\njobs:\n  t:\n    steps:\n      - run: ./scripts/gate.sh\n"},
+			"scripts/gate.sh":          {Path: "scripts/gate.sh", Content: content},
+		})
+		if hasMutate4GoCommand(snapshot) {
+			t.Fatalf("scan-only command credited as mutation evidence: %q", content)
+		}
 	}
 }
 
@@ -905,7 +1005,7 @@ func TestGoToolRulesRequireConfigRootForDeepWorkingDirectory(t *testing.T) {
 			snapshotFiles["scripts/check-tools.sh"] = repo.File{
 				Path: "scripts/check-tools.sh",
 				Content: "cd services/api && go run ./cmd/slophammer go crap " + tt.path + "\n" +
-					"cd services/api && go run ./cmd/slophammer go mutate " + tt.path + " --scan\n",
+					"cd services/api && go run ./cmd/slophammer go mutate " + tt.path + "\n",
 			}
 			snapshotFiles[".github/workflows/ci.yml"] = repo.File{
 				Path: ".github/workflows/ci.yml",
@@ -936,10 +1036,10 @@ func TestConfigBackedMutationCommandWorkflowWorkingDir(t *testing.T) {
 		run  string
 		want bool
 	}{
-		{name: "default module command", root: "go", run: "slophammer-go mutate --scan", want: true},
-		{name: "dot module command", root: "go", run: "slophammer-go mutate . --scan", want: true},
-		{name: "double module path", root: "go", run: "slophammer-go mutate go --scan"},
-		{name: "different module", root: "services/api", run: "slophammer-go mutate --scan"},
+		{name: "default module command", root: "go", run: "slophammer-go mutate", want: true},
+		{name: "dot module command", root: "go", run: "slophammer-go mutate .", want: true},
+		{name: "double module path", root: "go", run: "slophammer-go mutate go"},
+		{name: "different module", root: "services/api", run: "slophammer-go mutate"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1050,7 +1150,7 @@ func TestGoToolRulesAcceptConfigBackedRootSlophammerCommands(t *testing.T) {
 		},
 		"scripts/check-mutation.sh": {
 			Path:    "scripts/check-mutation.sh",
-			Content: "go run ./cmd/slophammer go mutate . --scan\n",
+			Content: "go run ./cmd/slophammer go mutate .\n",
 		},
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
@@ -1091,7 +1191,7 @@ func TestGoToolRulesAcceptConfigBackedRootSlophammerCommandsWithDefaultPath(t *t
 		},
 		"scripts/check-mutation.sh": {
 			Path:    "scripts/check-mutation.sh",
-			Content: "go run ./cmd/slophammer go mutate --scan\n",
+			Content: "go run ./cmd/slophammer go mutate\n",
 		},
 		".github/workflows/ci.yml": {
 			Path: ".github/workflows/ci.yml",
@@ -1114,31 +1214,22 @@ jobs:
 	}
 }
 
-func TestGoMutationRuleRequiresTargetForDirectMutate4Go(t *testing.T) {
-	tests := []struct {
-		name    string
-		command string
-		want    bool
-	}{
-		{name: "package target", command: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan", want: true},
-		{name: "binary target", command: "mutate4go main.go --scan", want: true},
-		{name: "flag before target", command: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest --scan internal/rules/rules.go", want: true},
-		{name: "go run flag before package", command: "go run -mod=readonly github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan", want: true},
-		{name: "go global flag before run", command: "go -C tools run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan", want: true},
-		{name: "install then run", command: "go install github.com/unclebob/mutate4go/cmd/mutate4go@latest && mutate4go main.go --scan", want: true},
-		{name: "package after semicolon", command: "cd go; go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go --scan", want: true},
-		{name: "binary after semicolon", command: "cd go; mutate4go main.go --scan", want: true},
-		{name: "binary after env assignment", command: "MUTATE_CACHE=/tmp mutate4go main.go --scan", want: true},
-		{name: "package missing target", command: "go run github.com/unclebob/mutate4go/cmd/mutate4go@latest --scan"},
-		{name: "binary missing target", command: "mutate4go --scan"},
-		{name: "install only", command: "go install github.com/unclebob/mutate4go/cmd/mutate4go@latest"},
+func TestDirectMutate4GoIsNotAGate(t *testing.T) {
+	// mutate4go exits zero even when mutants survive, so even the
+	// strongest direct forms are not mutation-testing evidence.
+	commands := []string{
+		"go run github.com/unclebob/mutate4go/cmd/mutate4go@latest main.go\n",
+		"mutate4go main.go\n",
+		"go install github.com/unclebob/mutate4go/cmd/mutate4go@latest && mutate4go main.go\n",
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := contentHasDirectMutate4GoCommand(tt.command); got != tt.want {
-				t.Fatalf("contentHasDirectMutate4GoCommand(%q) = %t, want %t", tt.command, got, tt.want)
-			}
+	for _, command := range commands {
+		snapshot := repo.NewSnapshot("/repo", map[string]repo.File{
+			"go.mod":                   {Path: "go.mod", Content: "module example.com/demo\n"},
+			".github/workflows/ci.yml": {Path: ".github/workflows/ci.yml", Content: "name: CI\non: [push]\njobs:\n  t:\n    steps:\n      - run: ./scripts/gate.sh\n"},
+			"scripts/gate.sh":          {Path: "scripts/gate.sh", Content: command},
 		})
+		if hasMutate4GoCommand(snapshot) {
+			t.Fatalf("direct mutate4go credited as a gate: %q", command)
+		}
 	}
 }

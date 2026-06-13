@@ -13,6 +13,7 @@ import {
   hasOxlintRule,
   hasTypeAwareOxlintRule
 } from "./oxlint-evidence.js";
+import { hasTypeScriptMutationCommand } from "./mutation-evidence.js";
 import { expandedPackageScriptSegments, packageScripts } from "./package-scripts.js";
 import { scopeSnapshot } from "./project-scope.js";
 import { scopeFindings } from "./scope.js";
@@ -818,15 +819,6 @@ function directTestCommand(content: string): boolean {
     /\btsx\s+--test\b/u,
     /\bplaywright\s+test\b/u
   ].some((pattern) => pattern.test(content));
-}
-
-function hasTypeScriptMutationCommand(snapshot: Snapshot): boolean {
-  const scripts = packageScripts(snapshot);
-  return commandFiles(snapshot).some((file) =>
-    commandSegments(file.content)
-      .flatMap((segment) => expandedPackageScriptSegments(segment, scripts))
-      .some((segment) => /\bstryker\b/u.test(normalizeCommandContent(segment)))
-  );
 }
 
 function productionFilesNamed(

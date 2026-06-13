@@ -1,0 +1,75 @@
+name: Full Mutation Sweep
+
+# Dispatched on demand: the per-PR gates mutate changed code; this sweep
+# re-tests everything. Release workflows run the same sweeps before
+# publishing, so every release is preceded by a full run.
+on:
+  workflow_dispatch:
+    inputs:
+      implementation:
+        description: "Implementation to sweep"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - go
+          - typescript
+          - python
+          - rust
+
+jobs:
+  go:
+    if: ${{ inputs.implementation == 'all' || inputs.implementation == 'go' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: go
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go/go.mod
+          cache: false
+      - name: Strip manifests for a from-scratch run
+        run: |
+          find internal -name '*.go' -exec sed -i '/mutate4go-manifest-begin/,/mutate4go-manifest-end/d' {} +
+      - run: go run ./cmd/slophammer-go mutate ..
+
+  typescript:
+    if: ${{ inputs.implementation == 'all' || inputs.implementation == 'typescript' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: typescript
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - run: npm ci
+      - run: npm run mutate
+
+  python:
+    if: ${{ inputs.implementation == 'all' || inputs.implementation == 'python' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+      - run: uv sync --frozen
+      - run: uv run python scripts/check-mutation.py --min-kill-rate 74
+
+  rust:
+    if: ${{ inputs.implementation == 'all' || inputs.implementation == 'rust' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo install cargo-mutants --locked
+      - run: cargo mutants --workspace --timeout 120

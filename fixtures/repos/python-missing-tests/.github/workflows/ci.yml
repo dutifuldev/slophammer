@@ -10,5 +10,6 @@ jobs:
       - run: uv run coverage report --fail-under=85
       - run: uv run slophammer-py dry .
       - run: uv run mutmut run
+      - run: uv run python scripts/check-mutation.py --min-kill-rate 74
       - run: uv run pip-audit
       - run: uvx slophammer-py check .

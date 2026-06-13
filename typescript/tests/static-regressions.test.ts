@@ -216,6 +216,200 @@ describe("TypeScript tool evidence false positives", () => {
   });
 });
 
+describe("TypeScript mutation evidence regressions", () => {
+  it("does not accept missing TypeScript mutation command placeholders", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles(),
+        packageWithScripts({
+          mutate: "slophammer typescript mutate . && echo typescript mutation"
+        }),
+        enabledESLintConfig()
+      ]),
+      emptyConfig()
+    );
+
+    expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.mutation-required");
+  });
+
+  it("does not accept dry-run mutation commands", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles(),
+        packageWithScripts({ mutate: "stryker run --dryRunOnly" }),
+        enabledESLintConfig()
+      ]),
+      emptyConfig()
+    );
+
+    expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.mutation-required");
+  });
+
+  it("accepts executing stryker runs with dry-run timeout tuning", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles(),
+        packageWithScripts({ mutate: "stryker run --dryRunTimeoutMinutes 10" }),
+        enabledESLintConfig()
+      ]),
+      emptyConfig()
+    );
+
+    expect(report.findings.map((finding) => finding.rule_id)).not.toContain("ts.mutation-required");
+  });
+
+  it("does not accept fixture stryker configs as the breaking threshold", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles().filter((file) => file.path !== "stryker.conf.json"),
+        {
+          path: "fixtures/demo/stryker.conf.json",
+          content: '{"thresholds":{"high":70,"low":50,"break":50}}'
+        },
+        packageWithScripts({ mutate: "stryker run" }),
+        enabledESLintConfig()
+      ]),
+      emptyConfig()
+    );
+
+    expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.mutation-required");
+  });
+});
+
+describe("TypeScript mutation threshold regressions", () => {
+  it("does not accept commented-out or malformed breaking thresholds", () => {
+    const weakConfigs = [
+      { path: "stryker.conf.mjs", content: "// thresholds: { break: 50 }\nexport default {};\n" },
+      { path: "stryker.conf.json", content: '{"thresholds":{"break":50}' },
+      { path: "stryker.conf.json", content: '{"thresholds":{"break":0}}' },
+      { path: "stryker.conf.json", content: '{"dryRunOnly":true,"thresholds":{"break":50}}' },
+      {
+        path: "stryker.conf.mjs",
+        content: "export default { dryRunOnly: true, thresholds: { break: 50 } };\n"
+      }
+    ];
+    for (const config of weakConfigs) {
+      const report = runRules(
+        newSnapshot("/repo", [
+          ...baseTypeScriptFiles().filter((file) => file.path !== "stryker.conf.json"),
+          config,
+          packageWithScripts({ mutate: "stryker run" }),
+          enabledESLintConfig()
+        ]),
+        emptyConfig()
+      );
+
+      expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.mutation-required");
+    }
+  });
+
+  it("does not accept a subdirectory stryker config the run never loads", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles().filter((file) => file.path !== "stryker.conf.json"),
+        {
+          path: "docs/stryker.conf.json",
+          content: '{"thresholds":{"high":70,"low":50,"break":50}}'
+        },
+        packageWithScripts({ mutate: "stryker run" }),
+        enabledESLintConfig()
+      ]),
+      emptyConfig()
+    );
+
+    expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.mutation-required");
+  });
+
+  it("honors an explicit stryker config with a breaking threshold", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles().filter((file) => file.path !== "stryker.conf.json"),
+        {
+          path: "config/stryker.conf.json",
+          content: '{"thresholds":{"high":70,"low":50,"break":50}}'
+        },
+        packageWithScripts({ mutate: "stryker run config/stryker.conf.json" }),
+        enabledESLintConfig()
+      ]),
+      emptyConfig()
+    );
+
+    expect(report.findings.map((finding) => finding.rule_id)).not.toContain("ts.mutation-required");
+  });
+
+  it("does not accept an explicit stryker config without a breaking threshold", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles().filter((file) => file.path !== "stryker.conf.json"),
+        { path: "config/stryker.conf.json", content: '{"thresholds":{"high":70,"low":50}}' },
+        packageWithScripts({ mutate: "stryker run config/stryker.conf.json" }),
+        enabledESLintConfig()
+      ]),
+      emptyConfig()
+    );
+
+    expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.mutation-required");
+  });
+
+  it("accepts an uncommented breaking threshold in a js config", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles().filter((file) => file.path !== "stryker.conf.json"),
+        {
+          path: "stryker.config.mjs",
+          content: "export default { thresholds: { high: 70, low: 50, break: 50 } };\n"
+        },
+        packageWithScripts({ mutate: "stryker run" }),
+        enabledESLintConfig()
+      ]),
+      emptyConfig()
+    );
+
+    expect(report.findings.map((finding) => finding.rule_id)).not.toContain("ts.mutation-required");
+  });
+
+  it("does not accept stryker runs without a breaking threshold", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles().filter((file) => file.path !== "stryker.conf.json"),
+        packageWithScripts({ mutate: "stryker run" }),
+        enabledESLintConfig()
+      ]),
+      emptyConfig()
+    );
+
+    expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.mutation-required");
+  });
+
+  it("does not accept non-run stryker invocations", () => {
+    for (const weak of ["stryker init", "stryker --help"]) {
+      const report = runRules(
+        newSnapshot("/repo", [
+          ...baseTypeScriptFiles(),
+          packageWithScripts({ mutate: weak }),
+          enabledESLintConfig()
+        ]),
+        emptyConfig()
+      );
+
+      expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.mutation-required");
+    }
+  });
+
+  it("does not accept mutation commands whose failures are ignored", () => {
+    const report = runRules(
+      newSnapshot("/repo", [
+        ...baseTypeScriptFiles(),
+        packageWithScripts({ mutate: "stryker run || true" }),
+        enabledESLintConfig()
+      ]),
+      emptyConfig()
+    );
+
+    expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.mutation-required");
+  });
+});
+
 describe("TypeScript command failure regressions", () => {
   it("does not accept lint commands whose failures are ignored", () => {
     const report = runRules(
@@ -243,34 +437,6 @@ describe("TypeScript command failure regressions", () => {
     expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.dry-required");
   });
 
-  it("does not accept missing TypeScript mutation command placeholders", () => {
-    const report = runRules(
-      newSnapshot("/repo", [
-        ...baseTypeScriptFiles(),
-        packageWithScripts({
-          mutate: "slophammer typescript mutate . && echo typescript mutation"
-        }),
-        enabledESLintConfig()
-      ]),
-      emptyConfig()
-    );
-
-    expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.mutation-required");
-  });
-
-  it("does not accept mutation commands whose failures are ignored", () => {
-    const report = runRules(
-      newSnapshot("/repo", [
-        ...baseTypeScriptFiles(),
-        packageWithScripts({ mutate: "stryker run || true" }),
-        enabledESLintConfig()
-      ]),
-      emptyConfig()
-    );
-
-    expect(report.findings.map((finding) => finding.rule_id)).toContain("ts.mutation-required");
-  });
-
   it("checks import type expressions against dependency boundaries", () => {
     const report = runRules(
       newSnapshot("/repo", [
@@ -296,6 +462,7 @@ describe("TypeScript command failure regressions", () => {
 
 function baseTypeScriptFiles(): readonly { readonly path: string; readonly content: string }[] {
   return [
+    { path: "stryker.conf.json", content: '{"thresholds":{"high":70,"low":50,"break":50}}' },
     { path: "README.md", content: "# Repo\n" },
     { path: "AGENTS.md", content: "# Agents\n" },
     { path: ".github/workflows/ci.yml", content: bindingScriptWorkflow() },

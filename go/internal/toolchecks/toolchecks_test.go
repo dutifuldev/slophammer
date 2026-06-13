@@ -974,6 +974,62 @@ func TestCheckMutationRunsMutate4GoScan(t *testing.T) {
 	}
 }
 
+func TestCheckMutationFailsOnSurvivors(t *testing.T) {
+	runner := &fakeRunner{output: []byte("Mutation Report\n===============\nKilled: 4\nSurvived: 3\nUncovered: 0\n")}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckMutation(context.Background(), MutationOptions{Root: "/repo", Target: "main.go"}, &out, &errOut, runner)
+
+	if code != 1 {
+		t.Fatalf("code = %d, want 1", code)
+	}
+	if !bytes.Contains(errOut.Bytes(), []byte("3 mutant(s) survived")) {
+		t.Fatalf("errOut = %q, want survivor message", errOut.String())
+	}
+}
+
+func TestCheckMutationFailsOnUncoveredChangedSites(t *testing.T) {
+	runner := &fakeRunner{output: []byte(
+		"Changed mutation sites: 3\nSelected mutation sites: 0\n" +
+			"Mutation Report\nKilled: 0\nSurvived: 0\nUncovered: 3\n")}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckMutation(context.Background(), MutationOptions{Root: "/repo", Target: "main.go"}, &out, &errOut, runner)
+
+	if code != 1 {
+		t.Fatalf("code = %d, want 1", code)
+	}
+	if !bytes.Contains(errOut.Bytes(), []byte("no test coverage")) {
+		t.Fatalf("errOut = %q, want uncovered-changed message", errOut.String())
+	}
+}
+
+func TestCheckMutationScanModeIgnoresCounts(t *testing.T) {
+	runner := &fakeRunner{output: []byte("Changed mutation sites: 9\nSelected mutation sites: 0\n")}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckMutation(context.Background(), MutationOptions{Root: "/repo", Target: "main.go", Scan: true}, &out, &errOut, runner)
+
+	if code != 0 {
+		t.Fatalf("code = %d, want 0 for scan mode", code)
+	}
+}
+
+func TestCheckMutationPassesWithoutSurvivors(t *testing.T) {
+	runner := &fakeRunner{output: []byte("Killed: 5\nSurvived: 0\n")}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckMutation(context.Background(), MutationOptions{Root: "/repo", Target: "main.go"}, &out, &errOut, runner)
+
+	if code != 0 {
+		t.Fatalf("code = %d, want 0; errOut=%s", code, errOut.String())
+	}
+}
+
 func TestCheckMutationRunsConfiguredTargets(t *testing.T) {
 	runner := &fakeRunner{}
 	var out bytes.Buffer
@@ -1019,6 +1075,151 @@ func TestToolFailureReturnsInfrastructureError(t *testing.T) {
 	}
 	if !strings.Contains(errOut.String(), "mutate4go failed") {
 		t.Fatalf("stderr = %q", errOut.String())
+	}
+}
+
+// stampingRunner rewrites the target file before answering, the way
+// mutate4go rewrites in-source manifests during every run.
+type stampingRunner struct {
+	path    string
+	stamped string
+	output  []byte
+	err     error
+}
+
+func (runner *stampingRunner) Run(_ context.Context, _ string, _ string, _ ...string) (CommandResult, error) {
+	if err := os.WriteFile(runner.path, []byte(runner.stamped), 0o600); err != nil {
+		panic(err)
+	}
+	return CommandResult{Stdout: runner.output}, runner.err
+}
+
+func stampedMutationRun(t *testing.T, output string, runErr error) (string, int, string) {
+	t.Helper()
+	root := t.TempDir()
+	writeFile(t, root, "main.go", "package main // original manifest\n")
+	runner := &stampingRunner{
+		path:    filepath.Join(root, "main.go"),
+		stamped: "package main // restamped manifest\n",
+		output:  []byte(output),
+		err:     runErr,
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	code := CheckMutation(context.Background(), MutationOptions{Root: root, Target: "main.go"}, &out, &errOut, runner)
+	content, err := os.ReadFile(runner.path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(content), code, errOut.String()
+}
+
+func TestCheckMutationFailingRunRestoresManifests(t *testing.T) {
+	content, code, stderr := stampedMutationRun(t,
+		"Changed mutation sites: 2\nSelected mutation sites: 2\nKilled: 1\nSurvived: 1\n", nil)
+
+	if code != 1 {
+		t.Fatalf("code = %d, want 1; stderr=%q", code, stderr)
+	}
+	if !strings.Contains(content, "original manifest") {
+		t.Fatalf("content = %q, want survivors' manifest stamp reverted", content)
+	}
+}
+
+func TestCheckMutationErroringRunRestoresManifests(t *testing.T) {
+	content, code, _ := stampedMutationRun(t, "", errors.New("boom"))
+
+	if code != 2 {
+		t.Fatalf("code = %d, want 2", code)
+	}
+	if !strings.Contains(content, "original manifest") {
+		t.Fatalf("content = %q, want manifest stamp reverted", content)
+	}
+}
+
+func TestCheckMutationPassingRunKeepsEarnedManifests(t *testing.T) {
+	content, code, stderr := stampedMutationRun(t,
+		"Changed mutation sites: 2\nSelected mutation sites: 2\nKilled: 2\nSurvived: 0\n", nil)
+
+	if code != 0 {
+		t.Fatalf("code = %d, want 0; stderr=%q", code, stderr)
+	}
+	if !strings.Contains(content, "restamped manifest") {
+		t.Fatalf("content = %q, want earned manifest stamp kept", content)
+	}
+}
+
+func TestCheckMutationNoChangeRunDoesNotChurnManifests(t *testing.T) {
+	content, code, stderr := stampedMutationRun(t,
+		"Changed mutation sites: 0\nSelected mutation sites: 0\nKilled: 0\nSurvived: 0\n", nil)
+
+	if code != 0 {
+		t.Fatalf("code = %d, want 0; stderr=%q", code, stderr)
+	}
+	if !strings.Contains(content, "original manifest") {
+		t.Fatalf("content = %q, want tested_at churn reverted", content)
+	}
+}
+
+func TestCheckMutationUncoveredChangeRunRestoresManifests(t *testing.T) {
+	content, code, _ := stampedMutationRun(t,
+		"Changed mutation sites: 3\nSelected mutation sites: 1\nKilled: 1\nSurvived: 0\n", nil)
+
+	if code != 1 {
+		t.Fatalf("code = %d, want 1", code)
+	}
+	if !strings.Contains(content, "original manifest") {
+		t.Fatalf("content = %q, want manifest stamp reverted", content)
+	}
+}
+
+func TestCheckMutationScanNeverMovesManifests(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "main.go", "package main // original manifest\n")
+	runner := &stampingRunner{
+		path:    filepath.Join(root, "main.go"),
+		stamped: "package main // restamped manifest\n",
+		output:  []byte("Changed mutation sites: 5\nSelected mutation sites: 5\n"),
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckMutation(context.Background(), MutationOptions{Root: root, Target: "main.go", Scan: true}, &out, &errOut, runner)
+
+	if code != 0 {
+		t.Fatalf("code = %d, want 0", code)
+	}
+	content, err := os.ReadFile(runner.path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(content), "original manifest") {
+		t.Fatalf("content = %q, want scan to leave manifests alone", content)
+	}
+}
+
+func TestCheckMutationSnapshotsDirectoryTargets(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "pkg/main.go", "package pkg // original manifest\n")
+	runner := &stampingRunner{
+		path:    filepath.Join(root, "pkg", "main.go"),
+		stamped: "package pkg // restamped manifest\n",
+		output:  []byte("Killed: 0\nSurvived: 1\n"),
+	}
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := CheckMutation(context.Background(), MutationOptions{Root: root, Target: "pkg"}, &out, &errOut, runner)
+
+	if code != 1 {
+		t.Fatalf("code = %d, want 1", code)
+	}
+	content, err := os.ReadFile(runner.path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(content), "original manifest") {
+		t.Fatalf("content = %q, want directory snapshot restored", content)
 	}
 }
 
