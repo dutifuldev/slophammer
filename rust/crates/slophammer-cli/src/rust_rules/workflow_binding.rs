@@ -299,6 +299,21 @@ jobs:
     }
 
     #[test]
+    fn branches_ignore_push_triggers_still_bind() {
+        let workflow = r#"
+on:
+  push:
+    branches-ignore: [release-only]
+jobs:
+  ci:
+    steps:
+      - run: cargo test --workspace
+"#;
+        let text = binding_workflow_text(workflow).expect("binding text");
+        assert!(text.contains("cargo test --workspace"));
+    }
+
+    #[test]
     fn unparseable_workflows_fall_back_to_raw() {
         assert_eq!(binding_workflow_text("cargo test --workspace"), None);
         assert_eq!(binding_workflow_text(": ["), None);

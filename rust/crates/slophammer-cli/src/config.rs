@@ -591,6 +591,15 @@ mod tests {
                 .to_string()
                 .contains("python.typecheck.demotions[0].made_up is not supported")
         );
+        let exclude = parse(
+            "python:\n  coverage:\n    exclude:\n      - pattern: generated/**\n        made_up: true\n",
+        )
+        .unwrap_err();
+        assert!(
+            exclude
+                .to_string()
+                .contains("python.coverage.exclude[0].made_up is not supported")
+        );
     }
 
     #[test]
