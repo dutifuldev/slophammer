@@ -50,10 +50,10 @@ design. Installing `@latest` in CI absorbs those breaks mid-pipeline. Pin an
 exact version, ideally behind one variable so upgrades are a single line:
 
 ```sh
-go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.3.0 check .
-npx slophammer-ts@0.3.0 check .
-cargo install slophammer-rs --version 0.3.0 --locked
-uvx slophammer-py@0.3.0 check .
+go run github.com/dutifuldev/slophammer/go/cmd/slophammer-go@v0.4.0 check .
+npx slophammer-ts@0.4.0 check .
+cargo install slophammer-rs --version 0.4.0 --locked
+uvx slophammer-py@0.4.0 check .
 ```
 
 The simplest CI integration is the bundled GitHub Action, which requires an
@@ -63,7 +63,7 @@ exact version by construction:
 - uses: dutifuldev/slophammer@main
   with:
     checker: go
-    version: 0.3.0
+    version: 0.4.0
 ```
 
 Pre-commit users can wire the hooks from `.pre-commit-hooks.yaml`
