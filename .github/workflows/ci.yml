@@ -108,7 +108,7 @@ jobs:
         run: |
           test -z "$(gofmt -l .)"
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@v9
         with:
           version: v2.11.0
           working-directory: go
