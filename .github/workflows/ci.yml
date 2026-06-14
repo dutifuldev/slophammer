@@ -31,18 +31,53 @@ jobs:
 
   action:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - checker: go
+            tag_prefix: go
+            args: check fixtures/repos/go-clean
+          - checker: ts
+            tag_prefix: typescript
+            args: check fixtures/repos/typescript-clean
+          - checker: rs
+            tag_prefix: rust
+            args: check fixtures/repos/rust-clean
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@v6
+        if: matrix.checker == 'go'
         with:
           go-version-file: go/go.mod
           cache: false
+      - uses: actions/setup-node@v6
+        if: matrix.checker == 'ts'
+        with:
+          node-version: "22"
+      - uses: dtolnay/rust-toolchain@stable
+        if: matrix.checker == 'rs'
+      - name: Resolve latest released Slophammer checker
+        id: slophammer
+        shell: bash
+        env:
+          TAG_PREFIX: ${{ matrix.tag_prefix }}
+        run: |
+          set -euo pipefail
+          version="$(git tag --list "$TAG_PREFIX/v*" --sort=-v:refname | sed -n "s#^$TAG_PREFIX/v##p" | head -n 1)"
+          if [ -z "$version" ]; then
+            echo "no $TAG_PREFIX/v* Slophammer release tags found" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Run the Slophammer action against a clean fixture
         uses: ./
         with:
-          checker: go
-          version: 0.3.0
-          args: check fixtures/repos/go-clean
+          checker: ${{ matrix.checker }}
+          version: ${{ steps.slophammer.outputs.version }}
+          args: ${{ matrix.args }}
 
   go-template:
     runs-on: ubuntu-latest
